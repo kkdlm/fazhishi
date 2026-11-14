@@ -4186,8 +4186,8 @@ async function doRestore(){
 /* ========== 账号与云同步（Supabase REST，无 SDK） ==========
    配置：把下面两行换成你自己 Supabase 项目的地址与 anon key。
    留空 = 访客模式，云同步整块不出现，App 行为与之前完全一致。 */
-const SB_URL='';        /* 例：https://abcdwxyz.supabase.co */
-const SB_ANON='';       /* 例：eyJhbGciOi...（anon public，可公开） */
+const SB_URL='https://lbykbafnkhwxqtfuaoio.supabase.co';
+const SB_ANON='sb_publishable_Jo6sLcvuEpRQEbMJ6nnOHQ_sxA_U5nL'; /* publishable key，可公开 */
 const CARDKEY_ON=false; /* 卡密：先埋着，不启用 */
 
 const AUTHKEY=KEY+':auth';
@@ -4813,7 +4813,7 @@ migrateSrs();
 applyMode(); chipRow(); renderHome(); renderList(); renderCloze();
 
 const VER='3.4.0';
-const PATCH='0';   /* 同一版本内的补丁号；0 表示版本本体 */
+const PATCH='1';   /* 同一版本内的补丁号；0 表示版本本体 */
 const CHANGELOG = [
 {v:'3.4.0',d:'2026-11-15',kind:'minor',sum:'加账号与云同步（注册才同步），离线备份降级为兜底',items:[
 ['新增','设置顶部新增「账号与同步」：注册或登录后，掌握、收藏、复习排期、笔记自动同步到云端，换设备登录即接着背。不注册照常能背，只是进度只存本机（访客模式）'],
@@ -4824,7 +4824,11 @@ const CHANGELOG = [
 ['优化','设置「数据」区把原来的导出进度、导入进度、离线备份三处合并成一个「离线备份 / 备份码」入口：导出文本、粘贴导入、密钥+备份码三样原功能都在，只是降级成不登录/断网时的兜底'],
 ['新增','登录状态下标记的报错会自动进后台队列（考点号、标题、说明），便于集中处理'],
 ['内容','首页来源说明改为「正文逐条校对《2027 法硕背诵一本通·法制史》（龚成思）；题库取自讲义配套真题」，设置底部的来源说明同步改正'],
-['修复','问题记录里点「去仓库提 issue」跳错仓库（politics-one-page → fazhishi-yituliu）']]},
+['修复','问题记录里点「去仓库提 issue」跳错仓库（politics-one-page → fazhishi-yituliu）']],patches:[
+ {p:'1',d:'2026-11-15',items:[
+ ['新增','账号与云同步正式开通：设置顶部的「账号与同步」块已上线，可注册登录，进度自动同步到云端，换设备登录即接着背'],
+ ['新增','验证码登录已接通：填邮箱 → 点发送验证码 → 收邮件里的 6 位数字 → 登录，全程不用记密码'],
+ ['说明','不注册仍是访客模式，一切照旧能用，只是进度只存本机；想跨设备才需要注册']]}]},
 {v:'3.3.0',d:'2026-11-15',kind:'minor',sum:'速览筛选改为单行横滑，时间轴跳转精确到条',patches:[
  {p:'5',d:'2026-11-15',items:[
  ['优化','搜索时关键词只在标题和摘要里标黄，展开卡片就没了；现在正文里也标黄，清空搜索自动恢复'],
