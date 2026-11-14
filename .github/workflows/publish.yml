@@ -20,7 +20,7 @@ jobs:
 
       - name: Download single-file app
         env:
-          SRC: https://aka.doubaocdn.com/s/Qk61HmJUF7
+          SRC: https://aka.doubaocdn.com/s/VO34557zXW
         run: |
           set -euo pipefail
           curl -sSL --fail --retry 3 --retry-delay 2 -o index.html "$SRC"
@@ -33,6 +33,7 @@ jobs:
           grep -q "VER='3.4.0'" index.html || { echo "::error::version marker not found"; exit 1; }
           grep -q "SB_URL='https://lbykbafnkhwxqtfuaoio.supabase.co'" index.html || { echo "::error::supabase url missing"; exit 1; }
           grep -q "sb_publishable_" index.html || { echo "::error::supabase key missing"; exit 1; }
+          grep -q "<title>法制史一点通</title>" index.html || { echo "::error::app title mismatch"; exit 1; }
           v=$(grep -o "VER='[0-9.]*'" index.html | head -1 | sed "s/VER='//;s/'//")
           echo "VER=$v" >> "$GITHUB_ENV"
           p=$(grep -o "const PATCH='[0-9]*'" index.html | head -1 | sed "s/const PATCH='//;s/'//")
@@ -58,8 +59,8 @@ jobs:
           curl -fsSL --retry 3 -o startup-1290x2796.png "https://aka.doubaocdn.com/s/rWrQ3pW04j"
           curl -fsSL --retry 3 -o startup-1179x2556.png "https://aka.doubaocdn.com/s/YtMWhoiMyG"
           curl -fsSL --retry 3 -o startup-1170x2532.png "https://aka.doubaocdn.com/s/s3q9SNSEBy"
-          curl -fsSL --retry 3 -o sw.js "https://aka.doubaocdn.com/s/MSgmKhupKb"
-          grep -q "app-3.4.0-p2" sw.js || { echo "::error::sw stale"; exit 1; }
+          curl -fsSL --retry 3 -o sw.js "https://aka.doubaocdn.com/s/ZfCbfvHtSD"
+          grep -q "app-3.4.0-p3" sw.js || { echo "::error::sw stale"; exit 1; }
           node --check sw.js
 
       - name: Drop legacy data dir
