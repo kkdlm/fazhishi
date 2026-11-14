@@ -20,7 +20,7 @@ jobs:
 
       - name: Download single-file app
         env:
-          SRC: https://aka.doubaocdn.com/s/PAxIhVsjx3
+          SRC: https://aka.doubaocdn.com/s/dAXAJRFEnf
         run: |
           set -euo pipefail
           curl -sSL --fail --retry 3 --retry-delay 2 -o index.html "$SRC"
@@ -31,18 +31,28 @@ jobs:
             exit 1
           fi
           head -c 60 index.html | grep -q "<!DOCTYPE html>" || { echo "::error::not html"; exit 1; }
+          grep -q "apple-touch-icon.png" index.html || { echo "::error::icon link missing"; exit 1; }
           grep -q "VER='3.1.4'" index.html || echo "::warning::version marker not found"
+
+      - name: Download home-screen icons and manifest
+        run: |
+          set -euo pipefail
+          curl -fsSL --retry 3 -o apple-touch-icon.png "https://aka.doubaocdn.com/s/MMkHSpL58d"
+          curl -fsSL --retry 3 -o icon-192.png "https://aka.doubaocdn.com/s/wN2B51yuN0"
+          curl -fsSL --retry 3 -o icon-512.png "https://aka.doubaocdn.com/s/JkPVJKcpEn"
+          curl -fsSL --retry 3 -o manifest.webmanifest "https://aka.doubaocdn.com/s/Hxpd7KDsWh"
+          file apple-touch-icon.png icon-192.png icon-512.png
 
       - name: Commit and push
         run: |
           set -euo pipefail
           git config user.name "kkdlm"
           git config user.email "63939444+kkdlm@users.noreply.github.com"
-          git add index.html
+          git add index.html apple-touch-icon.png icon-192.png icon-512.png manifest.webmanifest
           if git diff --cached --quiet; then
-            echo "index.html unchanged"
+            echo "nothing changed"
           else
-            git commit -m "chore: 同步法制史一图流 v3.1.4 单文件应用"
+            git commit -m "chore: 同步法制史一图流 v3.1.4 + 主屏图标"
             git push origin HEAD:main
           fi
 
