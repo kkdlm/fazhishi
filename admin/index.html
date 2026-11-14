@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<title>法制史一点通 · 管理后台</title>
+<style>
+:root{
+  --paper:#F4EEE0;--paper-2:#FBF6EA;--card:#FDFAF1;--line:#DED4BD;
+  --ink:#1D1813;--ink-2:#544C42;--ink-3:#8A8073;
+  --red:#8E2723;--red-soft:#F3DFD8;--green:#46663F;--blue:#2F5568;
+  --c1:#8E2723;--c2:#A9762A;--c3:#46663F;--c4:#2F5568;--c5:#6B4C86;
+}
+html[data-theme="night"]{
+  --paper:#12100C;--paper-2:#191612;--card:#211D17;--line:#39322A;
+  --ink:#EDE6D6;--ink-2:#BAB0A0;--ink-3:#887E70;
+  --red:#D27362;--red-soft:#3A211D;--green:#7FA476;--blue:#7FA6BA;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;background:var(--paper);color:var(--ink);
+ font:14px/1.65 -apple-system,"PingFang SC","Noto Sans SC",system-ui,sans-serif}
+a{color:var(--blue)}
+.wrap{max-width:1180px;margin:0 auto;padding:16px 14px 60px}
+.top{display:flex;align-items:center;gap:10px;margin:6px 0 14px;flex-wrap:wrap}
+.seal{width:38px;height:38px;border-radius:9px;background:var(--red);color:#fff;
+ display:grid;place-items:center;font-weight:800;font-size:19px;letter-spacing:-.03em}
+.top h1{font-size:19px;margin:0;letter-spacing:.02em}
+.top .sub{font-size:11.5px;color:var(--ink-3);letter-spacing:.06em}
+.top .sp{flex:1}
+.btn{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:8px;
+ padding:6px 11px;font-size:12.5px;cursor:pointer}
+.btn.primary{background:var(--red);border-color:var(--red);color:#fff}
+.btn.ghost{background:transparent}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:14px}
+.panel h2{font-size:13px;margin:0 0 10px;color:var(--ink-2);letter-spacing:.08em}
+.kpis{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.kpi{background:var(--paper-2);border:1px solid var(--line);border-radius:10px;padding:11px 12px}
+.kpi .k{font-size:11px;color:var(--ink-3);letter-spacing:.05em}
+.kpi .v{font-size:24px;font-weight:800;line-height:1.25;letter-spacing:-.02em}
+.kpi .v small{font-size:11px;font-weight:600;color:var(--ink-3);margin-left:3px}
+.kpi .d{font-size:10.5px;color:var(--ink-3);margin-top:2px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:820px){.grid2{grid-template-columns:1fr}}
+.chart{width:100%;height:auto;display:block}
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+th,td{padding:6px 8px;text-align:left;border-bottom:1px solid var(--line);white-space:nowrap}
+th{font-size:11px;color:var(--ink-3);font-weight:600}
+td.mono{font-family:ui-monospace,Menlo,monospace;font-size:11.5px}
+.scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.pager{display:flex;gap:8px;align-items:center;justify-content:flex-end;margin-top:10px;font-size:12px}
+input,select{border:1px solid var(--line);background:var(--paper-2);color:var(--ink);
+ border-radius:8px;padding:7px 9px;font-size:12.5px;font-family:inherit}
+.badge{display:inline-block;padding:0 5px;border-radius:4px;font-size:10px;background:var(--paper-2);
+ border:1px solid var(--line);color:var(--ink-3)}
+.badge.on{background:var(--red-soft);color:var(--red);border-color:transparent}
+.hint{font-size:11.5px;color:var(--ink-3)}
+.empty{color:var(--ink-3);font-size:12.5px;padding:14px 2px}
+.login{max-width:360px;margin:70px auto}
+.login .panel{padding:18px}
+.msg{font-size:12px;margin-top:8px;color:var(--red)}
+.hide{display:none!important}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <div class="seal">史</div>
+    <div>
+      <h1>法制史一点通 · 管理后台</h1>
+      <div class="sub">仅限管理员 · 数据实时读自云库</div>
+    </div>
+    <div class="sp"></div>
+    <button class="btn ghost" id="themeBtn" onclick="toggleTheme()">夜间</button>
+    <button class="btn ghost hide" id="outBtn" onclick="signOut()">退出</button>
+  </div>
+
+  <div id="loginBox" class="login">
+    <div class="panel">
+      <h2>管理员登录</h2>
+      <div style="display:grid;gap:8px">
+        <input id="email" placeholder="邮箱" inputmode="email" autocomplete="username">
+        <input id="pwd" type="password" placeholder="密码" autocomplete="current-password">
+        <button class="btn primary" onclick="doLogin()">登录</button>
+      </div>
+      <div class="hint" style="margin-top:8px">用 App 里注册过的管理员账号登录；权限由数据库 <code>profiles.role</code> 决定。</div>
+      <div class="msg" id="loginMsg"></div>
+    </div>
+  </div>
+
+  <div id="main" class="hide">
+    <div class="panel">
+      <h2>核心指标</h2>
+      <div class="kpis" id="kpis"></div>
+      <div class="hint" id="kpiHint" style="margin-top:8px"></div>
+    </div>
+
+    <div class="grid2">
+      <div class="panel"><h2>近 14 天新增用户</h2><div id="c_new"></div></div>
+      <div class="panel"><h2>活跃时段分布（本地时间）</h2><div id="c_hour"></div></div>
+    </div>
+
+    <div class="grid2">
+      <div class="panel"><h2>掌握条数分布</h2><div id="c_dist"></div></div>
+      <div class="panel"><h2>被报最多的考点</h2><div id="c_bugs"></div></div>
+    </div>
+
+    <div class="panel">
+      <h2>用户列表</h2>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px">
+        <input id="q" placeholder="搜索邮箱 / uid 前 8 位" oninput="renderUsers()" style="flex:1;min-width:160px">
+        <select id="sort" onchange="renderUsers()">
+          <option value="seen">最近活跃</option>
+          <option value="new">注册时间</option>
+          <option value="mastered">掌握条数</option>
+        </select>
+        <button class="btn" onclick="loadAll()">刷新</button>
+      </div>
+      <div class="scroll"><table id="users"></table></div>
+      <div class="pager" id="pager"></div>
+    </div>
+
+    <div class="panel">
+      <h2>报错队列</h2>
+      <div class="scroll"><table id="bugs"></table></div>
+    </div>
+
+    <div class="panel">
+      <h2>卡密（未启用）</h2>
+      <div class="hint" id="cards">卡密功能先埋着：数据库表与兑换函数已就位，前端开关 <code>CARDKEY_ON=false</code>，开启后在 App 设置里出现兑换入口。</div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* 与 App 相同的两项配置：换成你自己 Supabase 项目的地址与 anon key */
+const SB_URL='https://lbykbafnkhwxqtfuaoio.supabase.co';
+const SB_ANON='sb_publishable_Jo6sLcvuEpRQEbMJ6nnOHQ_sxA_U5nL';
+const LS='fzs2027.admin.auth';
+let AUTH=null, USERS=[], PROG=[], BUGS=[], PAGE=0, SIZ=20;
+
+function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function sbOn(){ return !!(SB_URL&&SB_ANON); }
+function saveAuth(){ try{ localStorage.setItem(LS,JSON.stringify(AUTH||null)); }catch(e){} }
+function loadAuth(){ try{ AUTH=JSON.parse(localStorage.getItem(LS)||'null'); }catch(e){ AUTH=null; } }
+async function sbReq(path,opt){
+  opt=opt||{};
+  const h={'apikey':SB_ANON,'Content-Type':'application/json'};
+  if(opt.token) h['Authorization']='Bearer '+opt.token;
+  else if(AUTH&&AUTH.access_token) h['Authorization']='Bearer '+AUTH.access_token;
+  if(opt.prefer) h['Prefer']=opt.prefer;
+  const r=await fetch(SB_URL.replace(/\/$/,'')+path,{method:opt.method||'GET',headers:h,body:opt.body?JSON.stringify(opt.body):undefined});
+  const txt=await r.text(); let j=null;
+  try{ j=txt?JSON.parse(txt):null; }catch(e){ j=txt; }
+  if(!r.ok) throw new Error((j&&(j.msg||j.message||j.error_description))||('HTTP '+r.status));
+  return j;
+}
+function toggleTheme(){
+  const n=document.documentElement.getAttribute('data-theme')==='night'?'light':'night';
+  document.documentElement.setAttribute('data-theme',n);
+  document.getElementById('themeBtn').textContent=n==='night'?'日间':'夜间';
+  try{ localStorage.setItem('fzs.admin.theme',n); }catch(e){}
+}
+async function doLogin(){
+  const email=(document.getElementById('email').value||'').trim();
+  const pwd=(document.getElementById('pwd').value||'').trim();
+  const msg=document.getElementById('loginMsg'); msg.textContent='';
+  if(!sbOn()){ msg.textContent='还没配置 Supabase 地址与 anon key，先改本文件顶部的 SB_URL / SB_ANON。'; return; }
+  try{
+    const j=await sbReq('/auth/v1/token?grant_type=password',{method:'POST',body:{email,password:pwd}});
+    AUTH={access_token:j.access_token,refresh_token:j.refresh_token,uid:j.user.id,email:j.user.email,expires_at:Date.now()+((j.expires_in||3600)*1000)};
+    saveAuth();
+    const me=await sbReq('/rest/v1/profiles?uid=eq.'+AUTH.uid+'&select=*');
+    if(!me||!me[0]||me[0].role!=='admin'){ msg.textContent='这个账号不是管理员（profiles.role 不是 admin）'; AUTH=null; saveAuth(); return; }
+    enter();
+  }catch(e){ msg.textContent='登录失败：'+e.message; }
+}
+function signOut(){ AUTH=null; saveAuth(); document.getElementById('main').classList.add('hide');
+  document.getElementById('loginBox').classList.remove('hide'); document.getElementById('outBtn').classList.add('hide'); }
+function enter(){
+  document.getElementById('loginBox').classList.add('hide');
+  document.getElementById('main').classList.remove('hide');
+  document.getElementById('outBtn').classList.remove('hide');
+  loadAll();
+}
+async function loadAll(){
+  try{
+    USERS=await sbReq('/rest/v1/profiles?select=*&order=created_at.desc');
+    PROG =await sbReq('/rest/v1/progress?select=uid,data,rev,updated_at');
+    BUGS =await sbReq('/rest/v1/bug_reports?select=*&order=created_at.desc');
+  }catch(e){ document.getElementById('kpiHint').textContent='读取失败：'+e.message; return; }
+  renderKPI(); renderCharts(); renderUsers(); renderBugs();
+}
+/* ---------- 工具 ---------- */
+function dayKey(d){ const p=n=>String(n).padStart(2,'0'); return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate()); }
+function daysAgo(n){ const d=new Date(); d.setHours(0,0,0,0); d.setDate(d.getDate()-n); return d; }
+function masteredOf(row){ return Object.keys(((row.data||{}).status)||{}).length; }
+function favOf(row){ return (((row.data||{}).fav)||[]).length; }
+function notesOf(row){ return Object.keys(((row.data||{}).notes)||{}).length; }
+
+/* ---------- KPI ---------- */
+function renderKPI(){
+  const today=dayKey(new Date()), y1=dayKey(daysAgo(1)), d7=daysAgo(7).getTime(), d30=daysAgo(30).getTime();
+  const total=USERS.length;
+  const newToday=USERS.filter(u=>dayKey(new Date(u.created_at||0))===today).length;
+  const newY=USERS.filter(u=>dayKey(new Date(u.created_at||0))===y1).length;
+  const new7=USERS.filter(u=>Date.parse(u.created_at||0)>=d7).length;
+  const new30=USERS.filter(u=>Date.parse(u.created_at||0)>=d30).length;
+  const dau=USERS.filter(u=>dayKey(new Date(u.last_seen||0))===today).length;
+  const wau=USERS.filter(u=>Date.parse(u.last_seen||0)>=d7).length;
+  const mau=USERS.filter(u=>Date.parse(u.last_seen||0)>=d30).length;
+  const withProg=PROG.length;
+  const mSum=PROG.reduce((a,r)=>a+masteredOf(r),0), fSum=PROG.reduce((a,r)=>a+favOf(r),0);
+  const nSum=PROG.reduce((a,r)=>a+notesOf(r),0);
+  const avgM=withProg?(mSum/withProg):0, avgF=withProg?(fSum/withProg):0;
+  const active7=PROG.filter(r=>Date.parse(r.updated_at||0)>=d7).length;
+  const openBugs=BUGS.filter(b=>b.status==='open').length;
+  const day1=USERS.filter(u=>Date.parse(u.created_at||0)<daysAgo(1).getTime());
+  const ret1=day1.length?day1.filter(u=>Date.parse(u.last_seen||0)>=Date.parse(u.created_at||0)+86400000).length/day1.length*100:0;
+  const lastSync=PROG.reduce((a,r)=>Math.max(a,Date.parse(r.updated_at||0)),0);
+  const kp=[
+    ['注册用户',total,new7?'本周 +'+new7:'—'],
+    ['今日新增',newToday,'昨日 '+newY],
+    ['30 日新增',new30,''],
+    ['今日活跃 DAU',dau,'占注册 '+(total?(dau/total*100).toFixed(1):0)+'%'],
+    ['7 日活跃 WAU',wau,''],
+    ['30 日活跃 MAU',mau,''],
+    ['次日留存',ret1.toFixed(1)+'%','按注册日算，样本 '+day1.length],
+    ['有过进度同步',withProg,'占注册 '+(total?(withProg/total*100).toFixed(1):0)+'%'],
+    ['人均掌握',avgM.toFixed(1)+' 条','总掌握 '+mSum],
+    ['人均收藏',avgF.toFixed(1)+' 条',''],
+    ['人均笔记',withProg?(nSum/withProg).toFixed(1):'0','共 '+nSum+' 条'],
+    ['近 7 日有同步',active7,''],
+    ['待处理报错',openBugs,'累计 '+BUGS.length],
+    ['最近一次同步',lastSync?relTime(lastSync):'—',''],
+    ['卡密',0,'功能未启用']
+  ];
+  document.getElementById('kpis').innerHTML=kp.map(([k,v,d])=>
+    `<div class="kpi"><div class="k">${esc(k)}</div><div class="v">${esc(v)}${d?'' : ''}</div>${d?`<div class="d">${esc(d)}</div>`:''}</div>`).join('');
+  document.getElementById('kpiHint').textContent='数据读取时间：'+new Date().toLocaleString('zh-CN');
+}
+function relTime(ts){
+  const m=Math.round((Date.now()-ts)/60000);
+  if(m<1) return '刚刚'; if(m<60) return m+' 分钟前';
+  const h=Math.round(m/60); if(h<24) return h+' 小时前';
+  return Math.round(h/24)+' 天前';
+}
+
+/* ---------- 图表（纯 SVG，不依赖外部库） ---------- */
+function bars(data,opt){
+  opt=opt||{};
+  const w=520,h=150,pad={l:26,r:6,t:8,b:22};
+  const max=Math.max(1,...data.map(d=>d.v));
+  const bw=(w-pad.l-pad.r)/data.length;
+  const y=v=>h-pad.b-(h-pad.t-pad.b)*(v/max);
+  let s=`<svg class="chart" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" role="img">`;
+  s+=`<line x1="${pad.l}" y1="${y(0)}" x2="${w-pad.r}" y2="${y(0)}" stroke="var(--line)" stroke-width="1"/>`;
+  data.forEach((d,i)=>{
+    const x=pad.l+i*bw, bh=Math.max(1,(h-pad.b)-y(d.v));
+    s+=`<rect x="${x+bw*0.18}" y="${y(d.v)}" width="${bw*0.64}" height="${bh}" rx="2" fill="${opt.color||'var(--red)'}" opacity="${d.v?0.9:0.15}"/>`;
+    if(opt.labelEvery && i%opt.labelEvery===0 || data.length<=14)
+      s+=`<text x="${x+bw/2}" y="${h-6}" font-size="8.5" fill="var(--ink-3)" text-anchor="middle">${esc(d.k)}</text>`;
+    if(d.v && (data.length<=14)) s+=`<text x="${x+bw/2}" y="${y(d.v)-3}" font-size="8.5" fill="var(--ink-3)" text-anchor="middle">${d.v}</text>`;
+  });
+  s+='</svg>';
+  return s;
+}
+function renderCharts(){
+  /* 新增用户 14 天 */
+  const days=[];
+  for(let i=13;i>=0;i--){ const d=daysAgo(i); days.push({k:(d.getMonth()+1)+'/'+d.getDate(),v:USERS.filter(u=>dayKey(new Date(u.created_at||0))===dayKey(d)).length}); }
+  document.getElementById('c_new').innerHTML=bars(days,{labelEvery:1});
+  /* 活跃小时 */
+  const hours=Array.from({length:24},(_,i)=>({k:String(i),v:0}));
+  USERS.forEach(u=>{ if(u.last_seen){ const h=new Date(u.last_seen).getHours(); if(h>=0&&h<24) hours[h].v++; } });
+  document.getElementById('c_hour').innerHTML=bars(hours,{color:'var(--blue)',labelEvery:6});
+  /* 掌握分布 */
+  const buckets=[['0',0],['1-19',0],['20-49',0],['50-99',0],['100+',0]];
+  PROG.forEach(r=>{ const m=masteredOf(r); const b=m===0?0:m<20?1:m<50?2:m<100?3:4; buckets[b][1]++; });
+  document.getElementById('c_dist').innerHTML=bars(buckets.map(b=>({k:b[0],v:b[1]})),{color:'var(--green)'});
+  /* 报错 Top */
+  const byPoint={};
+  BUGS.forEach(b=>{ const k=(b.point_no?('#'+b.point_no+' '):'')+(b.point_title||'未标考点'); byPoint[k]=(byPoint[k]||0)+1; });
+  const top=Object.entries(byPoint).sort((a,b)=>b[1]-a[1]).slice(0,10).map(([k,v])=>({k,k, v}));
+  document.getElementById('c_bugs').innerHTML=top.length?top.map(t=>
+    `<div style="display:flex;gap:8px;align-items:center;margin:3px 0">
+      <span style="flex:1;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(t.k)}</span>
+      <span style="flex:0 0 120px;height:7px;background:var(--paper-2);border-radius:4px;overflow:hidden">
+        <span style="display:block;height:100%;width:${(t.v/Math.max(1,top[0].v)*100).toFixed(0)}%;background:var(--red)"></span></span>
+      <b style="flex:0 0 22px;text-align:right;font-size:11.5px">${t.v}</b></div>`).join('')
+    :'<div class="empty">还没有报错记录</div>';
+}
+
+/* ---------- 用户列表 ---------- */
+function progOf(uid){ return PROG.find(r=>r.uid===uid)||null; }
+function renderUsers(){
+  const q=(document.getElementById('q').value||'').trim().toLowerCase();
+  const sort=document.getElementById('sort').value;
+  let rows=USERS.slice();
+  if(q) rows=rows.filter(u=>((u.email||'')+' '+(u.uid||'')+' '+(u.nickname||'')).toLowerCase().indexOf(q)>=0);
+  if(sort==='seen') rows.sort((a,b)=>Date.parse(b.last_seen||0)-Date.parse(a.last_seen||0));
+  else if(sort==='new') rows.sort((a,b)=>Date.parse(b.created_at||0)-Date.parse(a.created_at||0));
+  else rows.sort((a,b)=>masteredOf(progOf(b.uid)||{data:{}})-masteredOf(progOf(a.uid)||{data:{}}));
+  const pages=Math.max(1,Math.ceil(rows.length/SIZ)); PAGE=Math.min(PAGE,pages-1);
+  const page=rows.slice(PAGE*SIZ,(PAGE+1)*SIZ);
+  document.getElementById('users').innerHTML=`<thead><tr>
+    <th>邮箱 / uid</th><th>注册</th><th>最近活跃</th><th>掌握</th><th>收藏</th><th>笔记</th><th>rev</th><th>最近同步</th><th>角色</th></tr></thead>
+    <tbody>${page.map(u=>{
+      const p=progOf(u.uid);
+      return `<tr>
+        <td>${esc(u.email||'—')}<div class="mono" style="color:var(--ink-3)">${esc(String(u.uid||'').slice(0,8))}</div></td>
+        <td>${fmtDay(u.created_at)}</td>
+        <td>${u.last_seen?relTime(Date.parse(u.last_seen)):'—'}</td>
+        <td>${p?masteredOf(p):0}</td><td>${p?favOf(p):0}</td><td>${p?notesOf(p):0}</td>
+        <td>${p?esc(p.rev||0):0}</td>
+        <td>${p&&p.updated_at?relTime(Date.parse(p.updated_at)):'—'}</td>
+        <td><span class="badge ${u.role==='admin'?'on':''}">${esc(u.role||'user')}</span></td></tr>`;
+    }).join('')||'<tr><td colspan="9" class="empty">没有匹配的用户</td></tr>'}</tbody>`;
+  document.getElementById('pager').innerHTML=`共 ${rows.length} 人 · 第 ${PAGE+1}/${pages} 页
+    <button class="btn" onclick="PAGE=Math.max(0,PAGE-1);renderUsers()">上一页</button>
+    <button class="btn" onclick="PAGE=Math.min(${pages-1},PAGE+1);renderUsers()">下一页</button>`;
+}
+function fmtDay(ts){
+  const d=new Date(ts||0); if(!ts) return '—';
+  const p=n=>String(n).padStart(2,'0');
+  return (d.getMonth()+1)+'/'+d.getDate()+' '+p(d.getHours())+':'+p(d.getMinutes());
+}
+
+/* ---------- 报错队列 ---------- */
+function renderBugs(){
+  document.getElementById('bugs').innerHTML=`<thead><tr>
+    <th>考点</th><th>内容</th><th>用户</th><th>时间</th><th>状态</th><th>操作</th></tr></thead>
+    <tbody>${BUGS.slice(0,60).map(b=>`<tr>
+      <td>${esc((b.point_no?'#'+b.point_no+' ':'')+(b.point_title||''))}</td>
+      <td style="white-space:normal;max-width:360px">${esc(b.note||'（仅标记）')}</td>
+      <td class="mono">${esc(String(b.uid||'—').slice(0,8))}</td>
+      <td>${fmtDay(b.created_at)}</td>
+      <td><span class="badge ${b.status==='open'?'on':''}">${esc(b.status||'open')}</span></td>
+      <td><button class="btn" onclick="setBug(${b.id},'fixed')">标已修</button>
+          <button class="btn ghost" onclick="setBug(${b.id},'ignored')">忽略</button></td>
+    </tr>`).join('')||'<tr><td colspan="6" class="empty">还没有报错</td></tr>'}</tbody>`;
+}
+async function setBug(id,status){
+  try{
+    await sbReq('/rest/v1/bug_reports?id=eq.'+id,{method:'PATCH',prefer:'return=minimal',body:{status}});
+    const b=BUGS.find(x=>x.id===id); if(b) b.status=status; renderBugs();
+  }catch(e){ alert('改状态失败：'+e.message); }
+}
+
+/* ---------- 启动 ---------- */
+loadAuth();
+try{ const t=localStorage.getItem('fzs.admin.theme'); if(t==='night'){ document.documentElement.setAttribute('data-theme','night'); document.getElementById('themeBtn').textContent='日间'; } }catch(e){}
+if(!sbOn()){ document.getElementById('loginMsg').textContent='还没配置 Supabase 地址与 anon key。'; }
+if(AUTH&&AUTH.access_token){
+  sbReq('/rest/v1/profiles?uid=eq.'+AUTH.uid+'&select=*').then(me=>{
+    if(me&&me[0]&&me[0].role==='admin') enter();
+  }).catch(()=>{});
+}
+</script>
+</body>
+</html>
