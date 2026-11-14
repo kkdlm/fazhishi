@@ -404,6 +404,8 @@ h1 em{font-style:normal;color:var(--red)}
 .r-cover .big{font-family:var(--serif);font-size:52px;color:var(--line);line-height:1;user-select:none}
 .r-ask{margin-top:16px;font-family:var(--serif);font-size:calc(17px * var(--fs));line-height:1.95;color:var(--ink);letter-spacing:.01em}
 .r-ask .bk{display:inline-block;min-width:52px;border-bottom:1.5px dashed var(--red);margin:0 3px;transform:translateY(-1px)}
+.r-ask .maskline{line-height:1.95}
+.r-ask .maskline .bk{min-width:64px}
 .r-ask.whole{display:flex;flex-direction:column;align-items:flex-start;gap:14px}
 .whole-lead{color:var(--ink);line-height:1.8}
 .whole-bk{display:inline-block;min-width:130px;border-bottom:2px dashed var(--red);align-self:center;margin-top:8px}
@@ -2106,17 +2108,95 @@ function contAnswer(prevText,nextText){
   /* 只接“第二/第三/首先/其次/最后/（二）”这种同一答案里的并列项，①②是另一条 */
   return /^(第二|第三|第四|第五|首先|其次|再次|最后|一方面|另一方面)/.test(t);
 }
+/* 抽背卡：按「知识点名（题面）→ 释义（答案）」重组原始行。
+   points.lines 是一句一行、彩色重点字带 k 标记，早期版本把整行当作答案、题面留空，
+   抽背就变成「标题+一整段答案」，没法背。这里改为：
+   · 纯 chd 短行 → 当小标题（甘誓 / 墨刑 / 汤刑…），不单独成卡
+   · 空悬冒号、断横分号这类无信息残片 → 丢弃
+   · 小标题 + 释义句 → 一张卡；无小标题时用冒号前的提示语，仍无则遮掉句中重点词
+   题面展示带空的行，答案展示整句（重点字红色）。 */
 function itemEntries(p){
   const its=itemsOf(p.n); if(!its) return null;
-  const out=[];
+  const isWord=t=>/[\u4e00-\u9fa5A-Za-z0-9]/.test(t);
+  const FILLER=/^(此外|同时|另外|同时期|因此|所以|但是|其中|此时|后来|此后|其次|再者|反之|故|又)/;
+  /* 第一步：把原始行按「小标题」分组（chd 短行开新组），并丢掉无信息残片 */
+  const blocks=[]; let cur=null;
   its.forEach((it,i)=>{
-    const txt=(it.a||[]).map(s=>s[0]).join('');
-    if(it.mn){ const last=out[out.length-1]; if(last){ last.mn=(last.mn?last.mn+'　':'')+txt; } return; }
-    out.push({n:p.n,li:i,kth:i+1,mode:(it.q&&it.q.length)?'cloze':'whole',
-      q:(it.q||[]).map(s=>s[0]).join(''),promptRuns:(it.q&&it.q.length)?it.q:null,
-      ans:it.a||[],lead:null,mn:null,p});
+    const raw=it.a||[];
+    const txt=raw.map(s=>s[0]).join('').trim();
+    if(!txt) return;
+    const only1=raw.length===1, col0=only1?((raw[0][2]||'')):'';
+    if(only1 && col0==='chd' && txt.length<=16 && !/[。；;：:、，,]/.test(txt)){
+      cur={head:txt,lines:[],mn:null}; blocks.push(cur); return;
+    }
+    if(it.mn){ if(cur) cur.mn=(cur.mn?cur.mn+'\u3000':'')+txt; return; }
+    if(/^[\s\-\u2014\uff0d；;、，,。：:\u00b7]+$/.test(txt)) return;
+    if(/[：:]\s*[；;]\s*$/.test(txt)) return;
+    if(/[\-\u2014\uff0d]\s*[；;]\s*$/.test(txt)) return;
+    const core=txt.replace(/[：:；;、，,。\u2014\-\uff0d\u00b7《》()（）\u201c\u201d"'\s0-9]/g,'');
+    if(core.length<3) return;
+    if(!cur){ cur={head:null,lines:[],mn:null}; blocks.push(cur); }
+    cur.lines.push({raw,txt,li:i});
   });
-  return out;
+  /* 第二步：每组按「最多 3 句 / 170 字」切卡，题面取小标题，无小标题时取冒号前提示或整句开头 */
+  const out=[];
+  blocks.forEach(bk=>{
+    if(!bk.lines.length){
+      if(bk.head) return; else return;
+    }
+    const chunks=[]; let buf=[], len=0;
+    bk.lines.forEach(L=>{
+      if(buf.length && (buf.length>=3 || len+L.txt.length>170)){ chunks.push(buf); buf=[]; len=0; }
+      buf.push(L); len+=L.txt.length;
+      /* 一整句说完就收一张卡，避免把不同知识点拼进同一条答案 */
+      if(/[。；！？]\s*$/.test(L.txt)){ chunks.push(buf); buf=[]; len=0; }
+    });
+    if(buf.length) chunks.push(buf);
+    chunks.forEach((ch,ci)=>{
+      const hasKey=ch.some(L=>L.raw.some(([t,k])=>k==='k'&&isWord(t)));
+      const render=(keyHtml,plainFn)=>ch.map(L=>L.raw.map(([t,k,c])=>{
+        const key=(k==='k'&&isWord(t));
+        return key?keyHtml(esc(t)):plainFn(esc(t),(c||''));
+      }).join('')).join('');
+      const ansLine=render(
+        t=>`<span class="rk">${t}</span>`,
+        (t,c)=>((c&&c!=='chd')?`<span class="${c}">${t}</span>`:t)
+      );
+      const askMask=render(
+        ()=>'<span class="bk"></span>',
+        t=>t
+      );
+      const label=bk.head?(chunks.length>1?bk.head+'（'+(ci+1)+'）':bk.head):null;
+      let ask='';
+      if(label){ if(hasKey) ask=askMask; }
+      else{
+        const first=ch[0].txt;
+        const m=first.match(/^([^：:]{2,26})[：:]/);
+        if(m&&m[1]&&first.length>m[0].length+2&&!hasKey) ask=esc(m[1])+'：<span class="bk"></span>';
+        else if(hasKey){
+          const total=ch.reduce((n,L)=>n+L.txt.length,0);
+          const masked=ch.reduce((n,L)=>n+L.raw.filter(([t,k])=>k==='k'&&isWord(t)).reduce((m,[t])=>m+t.length,0),0);
+          const rt=masked/total;
+          ask=(rt>=0.18&&rt<=0.62)?askMask:FALLBACK_CUE();
+        }
+        else{
+          ask=FALLBACK_CUE();
+        }
+        function FALLBACK_CUE(){
+          let cue='', acc='';
+          const cl=first.split(/[，,；;]/).filter(x=>x.trim());
+          for(let i=0;i<cl.length-1;i++){ acc+=cl[i]+'，'; if(acc.replace(/[，,；;]/g,'').length>=8){ cue=acc; break; } }
+          if(!cue && cl.length>1) cue=cl[0]+'，';
+          if(!cue) cue=first.slice(0,Math.max(4,Math.min(14,first.length-2)));
+          if(FILLER.test(cue)) cue=cue.replace(FILLER,'').replace(/^[，,；;。、]+/,'');
+          return esc(cue)+'<span class="bk"></span>';
+        }
+      }
+      out.push({n:p.n,li:ch[0].li,kth:out.length+1,mode:'mask',head:label,
+        askLine:ask,ansLine,ans:[],promptRuns:null,lead:null,mn:bk.mn||null,p});
+    });
+  });
+  return out.length?out:null;
 }
 function entOf(p){
   const byItem=itemEntries(p); if(byItem&&byItem.length) return byItem;
@@ -2270,18 +2350,21 @@ function renderRecite(){
   const promptRuns=e.promptRuns?(e.promptRuns.every(r=>r[1])?e.promptRuns.map(r=>[r[0],false]):e.promptRuns):null;
   const promptHtml=promptRuns?runsHtml(promptRuns,'qk'):'';
   const isWhole=e.mode==='whole';
-  const askHtml=isWhole
-    ? `${e.lead?`<div class="whole-lead">${esc(e.lead)}</div>`:''}<span class="bk whole-bk"></span>`
-    : `${promptHtml}<span class="bk"></span>`;
-  const ansHtml=runsHtml(e.ans,'rk');
-  const fullHtml=isWhole?ansHtml:`${promptHtml}${ansHtml}`;
-  const hintTxt=isWhole?'在心里回忆整句 · 轻点揭晓':'先在心里把答案补上 · 轻点揭晓';
+  const isMask=e.mode==='mask';
+  const askHtml=isMask
+    ? (e.askLine?`<div class="maskline">${e.askLine}</div>`:'<span class="bk whole-bk"></span>')
+    : (isWhole
+      ? `${e.lead?`<div class="whole-lead">${esc(e.lead)}</div>`:''}<span class="bk whole-bk"></span>`
+      : `${promptHtml}<span class="bk"></span>`);
+  const ansHtml=isMask?e.ansLine:runsHtml(e.ans,'rk');
+  const fullHtml=(isWhole||isMask)?ansHtml:`${promptHtml}${ansHtml}`;
+  const hintTxt=isMask?(e.askLine?'把空处补上 · 轻点揭晓':'在心里回忆这句 · 轻点揭晓'):(isWhole?'在心里回忆整句 · 轻点揭晓':'先在心里把答案补上 · 轻点揭晓');
   const rateFn=TODAY_MODE?'todayRate':'rate';
   const srsCur=S.srs[ekey(e)];
   const memTag=TODAY_MODE?`<span class="memtag ${srsCur?'review':'new'}">${srsCur?('复习 · 第'+(srsCur.r+1)+'次'):'新学'}</span>`:'';
   card.innerHTML=`
     <div class="r-meta"><i class="dot" style="background:${cOf(p.cat||p.ch)}"></i>${p.ch}${p.sub&&p.sub!==p.ch?' · '+p.sub:''} · ${pad3(p.n)} · 第 ${e.kth} 条 ${memTag}<button class="bug-mini" onclick="bugFromRecite(event)" aria-label="记录问题"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><rect x="8" y="6" width="8" height="13" rx="4"/><path d="M12 6V4M9 9h.01M15 9h.01M12 12v6M5 10l-2-1M19 10l2-1M5 15l-2 1M19 15l2 1"/></svg></button></div>
-    <div class="r-title" style="font-size:calc(19px * var(--fs))">${esc(p.title)}</div>
+    <div class="r-title" style="font-size:calc(19px * var(--fs))">${esc(e.head||p.title)}</div>
     <div class="r-rule"></div>
     ${RSHOW
       ? `<div class="r-ans fadein">${fullHtml}${e.mn?`<div class="r-mn"><span class="mnk">口诀</span><span class="mnt">${esc(e.mn)}</span></div>`:''}</div>
@@ -4273,8 +4356,14 @@ normalizeState();
 migrateSrs();
 applyMode(); chipRow(); renderHome(); renderList(); renderCloze();
 
-const VER='3.1.8';
+const VER='3.1.9';
 const CHANGELOG = [
+ {v:'3.1.9',d:'2026-11-14',t:'修：抽背卡片「题面与答案错位、句子被切碎」',items:[
+  '根因是卡片题面被留空（每张卡只有一整段答案），「甘誓」「是启出兵讨伐有扈氏所颁布的。」这类半句实际上是原文的一行，被当成独立一张卡',
+  '现在按「知识点名（甘誓 / 墨刑 / 汤刑…）→ 释义」重组：chd 短行只当题面，紧跟的释义句做答案，同一条目下最多 3 句合成一张卡',
+  '丢掉无信息残片（如「夏《禹刑》《甘誓》：；」「……-；」这类空悬冒号/断横的表格碎片）',
+  '有彩字重点的行，题面按彩色重点字挖空显示，答案整句并用红色标出重点；只有标点被标成重点时不再挖空（否则题干和答案一模一样）',
+  '没有小标题的句子，题面取冒号前的提示语或整句前半，答案完整；卡片标题也改用知识点名，不再一律显示小节名']},
  {v:'3.1.8',d:'2026-11-14',t:'修：考点卡的「练本考点」点了报错',items:[
   '这个按钮引用了一个没定义的 practicePoint，点了会抛错、什么都不发生；题库里没有「考点号」字段无法一对一关联，改成「练本朝真题」，按大章映射（民国→北洋/南京临时/南京国民政府，根据地→革命根据地）筛好题目直接进刷题',
   '补上 version.json：「检查新版本」现在能真正比对到线上版本']},
