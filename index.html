@@ -17,7 +17,7 @@
 <link rel="apple-touch-startup-image" media="(device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3)" href="startup-1290x2796.png">
 <link rel="apple-touch-startup-image" media="(device-width: 393px) and (device-height: 852px) and (-webkit-device-pixel-ratio: 3)" href="startup-1179x2556.png">
 <link rel="apple-touch-startup-image" media="(device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3)" href="startup-1170x2532.png">
-<title>法制史一图流</title>
+<title>法制史一点通</title>
 <style>
 :root{
   --cc-b:#1F5C8C;--cc-r:#A8322A;--cc-p:#6A3F92;--cc-o:#B4650F;--cc-gr:#3F6B33;
@@ -1108,7 +1108,7 @@ html[data-theme="night"] .mode-btn{background:var(--card);color:var(--red);borde
   <div class="splash-inner">
     <div class="splash-slips" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
     <div class="splash-seal serif">史</div>
-    <h1 class="splash-title serif">法制史一图流</h1>
+    <h1 class="splash-title serif">法制史一点通</h1>
     <p class="splash-sub">2027 法硕非法学 · 断代 + 专题 双线</p>
     <div class="splash-strip"><s></s>夏 商 周 秦 汉 唐 宋 元 明 清<s></s></div>
   </div>
@@ -1118,7 +1118,7 @@ html[data-theme="night"] .mode-btn{background:var(--card);color:var(--red);borde
   <div class="wrap">
     <div class="seal serif">史</div>
     <div class="tt">
-      <b>法制史一图流</b>
+      <b>法制史一点通</b>
       <span>断代史／专题史 · 一键切换</span>
     </div>
     <div class="mini-ring" onclick="go('home')">
@@ -1138,7 +1138,7 @@ html[data-theme="night"] .mode-btn{background:var(--card);color:var(--red);borde
   <div class="wrap">
     <div class="hero">
       <div class="eyebrow">2027 · 法硕非法学 · 中国法制史</div>
-      <h1>法制史<br><em>一图流</em></h1>
+      <h1>法制史<br><em>一点通</em></h1>
       <div class="hero-sub">169 条考点 · 29 个专题 · 23 个朝代段</div>
       <div class="stamp serif">史</div>
     </div>
@@ -4813,7 +4813,7 @@ migrateSrs();
 applyMode(); chipRow(); renderHome(); renderList(); renderCloze();
 
 const VER='3.4.0';
-const PATCH='2';   /* 同一版本内的补丁号；0 表示版本本体 */
+const PATCH='3';   /* 同一版本内的补丁号；0 表示版本本体 */
 const CHANGELOG = [
 {v:'3.4.0',d:'2026-11-15',kind:'minor',sum:'加账号与云同步（注册才同步），离线备份降级为兜底',items:[
 ['新增','设置顶部新增「账号与同步」：注册或登录后，掌握、收藏、复习排期、笔记自动同步到云端，换设备登录即接着背。不注册照常能背，只是进度只存本机（访客模式）'],
@@ -4825,6 +4825,8 @@ const CHANGELOG = [
 ['新增','登录状态下标记的报错会自动进后台队列（考点号、标题、说明），便于集中处理'],
 ['内容','首页来源说明改为「正文逐条校对《2027 法硕背诵一本通·法制史》（龚成思）；题库取自讲义配套真题」，设置底部的来源说明同步改正'],
 ['修复','问题记录里点「去仓库提 issue」跳错仓库（politics-one-page → fazhishi-yituliu）']],patches:[
+ {p:'3',d:'2026-11-15',items:[
+ ['优化','应用改名为「法制史一点通」：启动页、首页大标题、页面标题（也就是加桌面后的图标名）统一改过来，原「一图流」只作为图表本身的概念保留']]},
  {p:'2',d:'2026-11-15',items:[
  ['修复','验证码框只认 6 位数字，收到 8 位验证码时登不进去：现在 4–10 位数字都收，位数跟着邮件走，后台改多长都不影响'],
  ['修复','提示文案里写死「6 位」「10 分钟内有效」，与实际邮件不一致，统一改成不提具体位数和时限的说法']]},
