@@ -20,7 +20,7 @@ jobs:
 
       - name: Download single-file app
         env:
-          SRC: https://aka.doubaocdn.com/s/dAXAJRFEnf
+          SRC: https://aka.doubaocdn.com/s/Slznn9qpw2
         run: |
           set -euo pipefail
           curl -sSL --fail --retry 3 --retry-delay 2 -o index.html "$SRC"
@@ -31,7 +31,7 @@ jobs:
             exit 1
           fi
           head -c 60 index.html | grep -q "<!DOCTYPE html>" || { echo "::error::not html"; exit 1; }
-          grep -q "apple-touch-icon.png" index.html || { echo "::error::icon link missing"; exit 1; }
+          test $(grep -c 'rel="apple-touch-icon' index.html) -ge 4 || { echo "::error::touch icons missing"; exit 1; }
           grep -q "VER='3.1.4'" index.html || echo "::warning::version marker not found"
 
       - name: Download home-screen icons and manifest
@@ -52,7 +52,7 @@ jobs:
           if git diff --cached --quiet; then
             echo "nothing changed"
           else
-            git commit -m "chore: 同步法制史一图流 v3.1.4 + 主屏图标"
+            git commit -m "chore: 法制史 v3.1.4 图标声明补全多尺寸"
             git push origin HEAD:main
           fi
 
@@ -69,6 +69,6 @@ jobs:
           echo "POST pages -> $code"
           case "$code" in
             201|204|409) echo "Pages site is available or already enabled" ;;
-            *) echo "::warning::GITHUB_TOKEN cannot create a Pages site; flip Settings -> Pages manually once"; cat /tmp/pages.json || true ;;
+            *) echo "::warning::GITHUB_TOKEN cannot create a Pages site; flip Settings -> Pages manually once" ;;
           esac
           exit 0
