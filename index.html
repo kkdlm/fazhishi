@@ -4270,7 +4270,7 @@ async function sendOtp(){
 async function verifyOtp(){
   const e=((document.getElementById('acctMail')||{}).value||'').trim();
   const c=((document.getElementById('acctCode')||{}).value||'').trim();
-  if(!e||!/^\d{4,10}$/.test(c)){ mtoast('邮箱 + 验证码，缺一个都不行'); return; }
+  if(!e||!/^\d{4,6}$/.test(c)){ mtoast('邮箱 + 验证码，缺一个都不行'); return; }
   try{
     const j=await sbReq('/auth/v1/verify',{method:'POST',body:{type:'email',email:e,token:c}});
     if(!adoptSession(j)){ mtoast('登录失败：返回里没有会话'); return; }
@@ -4415,7 +4415,7 @@ function accountHTML(){
     const tail=`</div>`;
     if(ACCTAB==='otp'){
       return head+cap+`
-        <div class="keyrow"><input id="acctCode" inputmode="numeric" maxlength="10" placeholder="邮件里的验证码">
+        <div class="keyrow"><input id="acctCode" inputmode="numeric" maxlength="6" placeholder="邮件里的验证码">
           <button id="otpBtn" style="flex:0 0 auto" onclick="sendOtp()">${left>0?('重发 '+left+'s'):'发送验证码'}</button></div>
         <div class="keyrow"><button style="flex:1" onclick="verifyOtp()">登录 / 注册</button></div>
         <div class="fine">没注册过会自动建号；验证码邮件发不出来时，改用「密码登录」注册即可。</div>`+tail+cardKeyHTML();
@@ -4813,7 +4813,7 @@ migrateSrs();
 applyMode(); chipRow(); renderHome(); renderList(); renderCloze();
 
 const VER='3.4.0';
-const PATCH='3';   /* 同一版本内的补丁号；0 表示版本本体 */
+const PATCH='4';   /* 同一版本内的补丁号；0 表示版本本体 */
 const CHANGELOG = [
 {v:'3.4.0',d:'2026-11-15',kind:'minor',sum:'加账号与云同步（注册才同步），离线备份降级为兜底',items:[
 ['新增','设置顶部新增「账号与同步」：注册或登录后，掌握、收藏、复习排期、笔记自动同步到云端，换设备登录即接着背。不注册照常能背，只是进度只存本机（访客模式）'],
@@ -4825,6 +4825,8 @@ const CHANGELOG = [
 ['新增','登录状态下标记的报错会自动进后台队列（考点号、标题、说明），便于集中处理'],
 ['内容','首页来源说明改为「正文逐条校对《2027 法硕背诵一本通·法制史》（龚成思）；题库取自讲义配套真题」，设置底部的来源说明同步改正'],
 ['修复','问题记录里点「去仓库提 issue」跳错仓库（politics-one-page → fazhishi-yituliu）']],patches:[
+ {p:'4',d:'2026-11-15',items:[
+ ['修复','验证码输入框收回到最多 6 位：后台把邮件验证码长度设回 6 位后，输入框只允许 6 个数字，多输会被截断']]},
  {p:'3',d:'2026-11-15',items:[
  ['优化','应用改名为「法制史一点通」：启动页、首页大标题、页面标题（也就是加桌面后的图标名）统一改过来，原「一图流」只作为图表本身的概念保留']]},
  {p:'2',d:'2026-11-15',items:[
