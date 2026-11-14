@@ -1,1 +1,0 @@
-const YTL=[{"name":"古代一图流总表（一）立法思想·法律形式·刑法原则","src":"https://aka.doubaocdn.com/s/N3GACZGz8k","kb":259}];

@@ -1,1 +1,0 @@
-YTL.push({"name":"古代中枢与司法机构演变图（三公九卿→三省六部→清末）","src":"https://aka.doubaocdn.com/s/ob7NbwbpWg","kb":72});

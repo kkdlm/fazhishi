@@ -1,1 +1,0 @@
-YTL.push({"name":"古代一图流总表（二）罪名·刑罚·司法制度","src":"https://aka.doubaocdn.com/s/HDb3l5JkmU","kb":269});
