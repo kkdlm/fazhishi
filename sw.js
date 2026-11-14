@@ -1,4 +1,4 @@
-const CACHE='app-3.4.0-p5';
+const CACHE='app-3.4.0-p7';
 const CORE=['manifest.webmanifest','icon-192.png','icon-512.png','apple-touch-icon.png'];
 
 self.addEventListener('install',e=>{
@@ -45,6 +45,8 @@ self.addEventListener('fetch',e=>{
   if(r.method!=='GET') return;
   const url=new URL(r.url);
   if(url.origin!==location.origin) return;
+  // 管理后台（/admin/）不归 Service Worker 管，直接走网络，避免被缓存首页顶掉
+  if(url.pathname==='/admin'||url.pathname.startsWith('/admin/')) return;
 
   if(r.mode==='navigate'){
     e.respondWith((async()=>{
