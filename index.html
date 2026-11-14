@@ -2038,7 +2038,7 @@ function bugBody(list){
     `- 问题：${b.text||'（仅标记位置，需要核对）'}`).join('\n\n');
 }
 function openIssue(title,body){
-  const url='https://github.com/kkdlm/fazhishi-yituliu/issues/new?labels=bug&title='+
+  const url='https://github.com/kkdlm/fazhishi/issues/new?labels=bug&title='+
     encodeURIComponent(title)+'&body='+encodeURIComponent(body);
   window.open(url,'_blank');
 }
@@ -4813,7 +4813,7 @@ migrateSrs();
 applyMode(); chipRow(); renderHome(); renderList(); renderCloze();
 
 const VER='3.4.0';
-const PATCH='4';   /* 同一版本内的补丁号；0 表示版本本体 */
+const PATCH='5';   /* 同一版本内的补丁号；0 表示版本本体 */
 const CHANGELOG = [
 {v:'3.4.0',d:'2026-11-15',kind:'minor',sum:'加账号与云同步（注册才同步），离线备份降级为兜底',items:[
 ['新增','设置顶部新增「账号与同步」：注册或登录后，掌握、收藏、复习排期、笔记自动同步到云端，换设备登录即接着背。不注册照常能背，只是进度只存本机（访客模式）'],
@@ -4825,6 +4825,9 @@ const CHANGELOG = [
 ['新增','登录状态下标记的报错会自动进后台队列（考点号、标题、说明），便于集中处理'],
 ['内容','首页来源说明改为「正文逐条校对《2027 法硕背诵一本通·法制史》（龚成思）；题库取自讲义配套真题」，设置底部的来源说明同步改正'],
 ['修复','问题记录里点「去仓库提 issue」跳错仓库（politics-one-page → fazhishi-yituliu）']],patches:[
+ {p:'5',d:'2026-11-15',items:[
+ ['修复','设置里「更新卡在旧版本怎么办」写的网址、问题记录里「去仓库提 issue」跳转的仓库地址，都还是改名前的老地址，已统一换成 fazhishi'],
+ ['说明','仓库与网址改名为 fazhishi（https://kkdlm.github.io/fazhishi/），应用名仍是「法制史一点通」；旧地址 GitHub 会继续重定向']]},
  {p:'4',d:'2026-11-15',items:[
  ['修复','验证码输入框收回到最多 6 位：后台把邮件验证码长度设回 6 位后，输入框只允许 6 个数字，多输会被截断']]},
  {p:'3',d:'2026-11-15',items:[
@@ -4992,7 +4995,7 @@ function showCacheHelp(){
    <p><b>安卓 Chrome / 主屏幕应用</b></p>
    <p>1. 长按主屏幕上的图标 → 「应用信息」→「存储和缓存」→ <b>清除缓存 / 清除数据</b>；<br>
       2. 或浏览器地址栏左侧「🔒」→「站点设置」→「清除并重置」；<br>
-      3. 重新打开 <b>kkdlm.github.io/fazhishi-yituliu</b>，版本记录里应显示比当前更新的版本或补丁号。</p>
+      3. 重新打开 <b>kkdlm.github.io/fazhishi</b>，版本记录里应显示比当前更新的版本或补丁号。</p>
    <p><b>iOS Safari</b>：设置 → Safari → 高级 → 网站数据 → 找到本站删除，再重开。</p>
    <p>清一次之后就正常了：新版会按版本号自动判断，缓存和服务器版本不一致时强制走网络，不会再卡在旧版。</p>
    </div>`);
