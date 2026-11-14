@@ -1639,7 +1639,7 @@ function cardHTML(p){
       </button>
       <div class="card-body" style="display:none"></div>
       <div class="card-foot" style="display:none">
-        <button class="ghost" onclick="practicePoint(event,${p.n})">✎ 练本考点 <span class="practice-flag">${pointQCount(p.n)}</span></button>
+        <button class="ghost" onclick="practiceCh(event,'${p.cat}')">✎ 练本朝真题 <span class="practice-flag">${quizChCount(p.cat)}</span></button>
         <button class="ghost ${(S.fav||[]).includes(p.n)?'on':''}" onclick="toggleFav(event,${p.n})">${(S.fav||[]).includes(p.n)?'★ 已收藏':'☆ 收藏'}</button>
         <button class="ghost ${S.status[p.n]==='ok'?'on':''}" onclick="markOk(event,${p.n})">${S.status[p.n]==='ok'?'✓ 已掌握':'标记已掌握'}</button>
         <button class="ghost" onclick="toggleNote(${p.n})">📝 笔记</button>
@@ -2634,7 +2634,18 @@ let QZ=null;
 const QF={type:'all',ch:'all',num:'10'};
 const SUBJ=['夏商周','秦汉','魏晋南北朝','隋唐','宋元','明清','清末','民国','根据地'];
 function shuffle(a){ for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
-function pointQCount(n){ return REALQ.filter(q=>q.point===n).length; }
+/* 从考点卡片直接进该章的真题练习（原按钮引用了未定义的 practicePoint，点了会抛错）
+   题库按大章分（夏商周/秦汉/…），考点按朝代分，这里做一层章名映射 */
+const CAT2Q={'民国':['北洋','南京临时','南京国民政府'],'根据地':['革命根据地']};
+function qChsFor(cat){ const m=CAT2Q[cat]; return m||[cat]; }
+function quizChCount(cat){ const s=qChsFor(cat); return REALQ.filter(q=>s.includes(q.ch)).length; }
+function practiceCh(e,cat){
+  if(e) e.stopPropagation();
+  const s=qChsFor(cat);
+  if(!quizChCount(cat)){ mtoast('该章暂无配套真题'); return; }
+  QF.type='all'; QF.ch=(s.length===1?s[0]:'all'); QF.num='all';
+  go('quiz'); renderQuizSetup();
+}
 function srcLabel(q){ return q.src==='real'?'真题':(q.src==='xiao8'?'名卷':(q.src==='ai'?'AI':'自编')); }
 function srcBadge(q){ return `<span class="src-badge src-${q.src||'mock'}">${srcLabel(q)}</span>`; }
 function yearLabel(q){ return q.year?`${q.year}年`:'真题'; }
@@ -4262,8 +4273,11 @@ normalizeState();
 migrateSrs();
 applyMode(); chipRow(); renderHome(); renderList(); renderCloze();
 
-const VER='3.1.7';
+const VER='3.1.8';
 const CHANGELOG = [
+ {v:'3.1.8',d:'2026-11-14',t:'修：考点卡的「练本考点」点了报错',items:[
+  '这个按钮引用了一个没定义的 practicePoint，点了会抛错、什么都不发生；题库里没有「考点号」字段无法一对一关联，改成「练本朝真题」，按大章映射（民国→北洋/南京临时/南京国民政府，根据地→革命根据地）筛好题目直接进刷题',
+  '补上 version.json：「检查新版本」现在能真正比对到线上版本']},
  {v:'3.1.7',d:'2026-11-14',t:'启动屏自动停留延长到 3 秒',items:[
   '自动关闭从 2.2 秒延长到 3 秒，标题与印章能看完整，也更容易分辨是自动进入还是自己点的',
   '点击/触摸依然立即进入；硬兜底从 3 秒顺延到 3.8 秒']},
