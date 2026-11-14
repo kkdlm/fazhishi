@@ -46,24 +46,19 @@ jobs:
             git push origin HEAD:main
           fi
 
-      - name: Enable GitHub Pages (main / root)
+      - name: Enable GitHub Pages (main / root, best effort)
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}
         run: |
-          set -euo pipefail
           api="https://api.github.com/repos/$REPO/pages"
           code=$(curl -sS -o /tmp/pages.json -w '%{http_code}' -X POST "$api" \
             -H "Authorization: Bearer $GH_TOKEN" \
             -H "Accept: application/vnd.github+json" \
-            -d '{"source":{"branch":"main","path":"/"}}')
+            -d '{"source":{"branch":"main","path":"/"}}' || echo 000)
           echo "POST pages -> $code"
-          if [ "$code" = "409" ]; then
-            echo "Pages already enabled"
-          elif [ "$code" -ge 400 ]; then
-            cat /tmp/pages.json || true
-            echo "::error::failed to enable pages"
-            exit 1
-          fi
-          curl -sS "$api" -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" \
-            | python3 -c 'import json,sys; d=json.load(sys.stdin); print("pages url:", d.get("html_url")); print("status:", d.get("status"))' || true
+          case "$code" in
+            201|204|409) echo "Pages site is available or already enabled" ;;
+            *) echo "::warning::GITHUB_TOKEN cannot create a Pages site; flip Settings -> Pages manually once"; cat /tmp/pages.json || true ;;
+          esac
+          exit 0
