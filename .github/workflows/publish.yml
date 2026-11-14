@@ -20,20 +20,30 @@ jobs:
 
       - name: Download single-file app
         env:
-          SRC: https://aka.doubaocdn.com/s/xEB0VUt9VJ
+          SRC: https://aka.doubaocdn.com/s/J69BO1hzAA
         run: |
           set -euo pipefail
           curl -sSL --fail --retry 3 --retry-delay 2 -o index.html "$SRC"
           size=$(stat -c%s index.html)
           echo "size=$size"
-          if [ "$size" -lt 4000000 ]; then echo "::error::too small ($size)"; exit 1; fi
+          if [ "$size" -lt 300000 ]; then echo "::error::too small ($size)"; exit 1; fi
           head -c 60 index.html | grep -q "<!DOCTYPE html>" || { echo "::error::not html"; exit 1; }
           test $(grep -c 'rel="apple-touch-icon' index.html) -ge 4 || { echo "::error::touch icons missing"; exit 1; }
           test $(grep -c 'apple-touch-startup-image' index.html) -ge 3 || { echo "::error::startup images missing"; exit 1; }
           grep -q "serviceWorker.register" index.html || { echo "::error::sw registration missing"; exit 1; }
-          grep -q "VER='3.1.49'" index.html || { echo "::error::version marker not found"; exit 1; }
+          grep -q "VER='3.1.50'" index.html || { echo "::error::version marker not found"; exit 1; }
           v=$(grep -o "VER='[0-9.]*'" index.html | head -1 | sed "s/VER='//;s/'//")
           echo "VER=$v" >> "$GITHUB_ENV"
+
+      - name: Download images bundle and unpack
+        run: |
+          set -euo pipefail
+          curl -fsSL --retry 3 -o img.tar.gz "https://aka.doubaocdn.com/s/h3s882hWvu"
+          rm -rf img && tar xzf img.tar.gz
+          n=$(ls img/*.webp | wc -l)
+          echo "images=$n"
+          if [ "$n" -lt 80 ]; then echo "::error::images missing ($n)"; exit 1; fi
+          grep -q 'img/lect-' index.html || echo '::warning::index does not reference img/lect-*'
 
       - name: Download icons, startup images, sw
         run: |
@@ -45,8 +55,8 @@ jobs:
           curl -fsSL --retry 3 -o startup-1290x2796.png "https://aka.doubaocdn.com/s/rWrQ3pW04j"
           curl -fsSL --retry 3 -o startup-1179x2556.png "https://aka.doubaocdn.com/s/YtMWhoiMyG"
           curl -fsSL --retry 3 -o startup-1170x2532.png "https://aka.doubaocdn.com/s/s3q9SNSEBy"
-          curl -fsSL --retry 3 -o sw.js "https://aka.doubaocdn.com/s/amQfM7SJI8"
-          grep -q "app-3.1.49" sw.js || { echo "::error::sw stale"; exit 1; }
+          curl -fsSL --retry 3 -o sw.js "https://aka.doubaocdn.com/s/8f42xio50Y"
+          grep -q "app-3.1.50" sw.js || { echo "::error::sw stale"; exit 1; }
           node --check sw.js
 
       - name: Generate version.json (auto, always in sync with index.html)
@@ -61,7 +71,7 @@ jobs:
           set -euo pipefail
           git config user.name "kkdlm"
           git config user.email "63939444+kkdlm@users.noreply.github.com"
-          git add index.html apple-touch-icon.png icon-192.png icon-512.png manifest.webmanifest startup-*.png sw.js version.json
+          git add index.html img apple-touch-icon.png icon-192.png icon-512.png manifest.webmanifest startup-*.png sw.js version.json
           if git diff --cached --quiet; then echo "nothing changed"; else
             git commit -m "chore: 法制史 v${VER} 发布 + version.json 自动同步"
             git push origin HEAD:main
