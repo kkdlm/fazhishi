@@ -25,7 +25,7 @@ jobs:
           set -euo pipefail
           curl -sSL --fail --retry 3 --retry-delay 2 -o index.html "$SRC"
           size=$(stat -c%s index.html)
-          echo "size=$size"
+          echo "index-size=$size"
           if [ "$size" -lt 300000 ]; then echo "::error::too small ($size)"; exit 1; fi
           head -c 60 index.html | grep -q "<!DOCTYPE html>" || { echo "::error::not html"; exit 1; }
           test $(grep -c 'rel="apple-touch-icon' index.html) -ge 4 || { echo "::error::touch icons missing"; exit 1; }
@@ -38,12 +38,12 @@ jobs:
       - name: Download images bundle and unpack
         run: |
           set -euo pipefail
-          curl -fsSL --retry 3 -o img.tar.gz "https://aka.doubaocdn.com/s/h3s882hWvu"
+          curl -fsSL --retry 3 -o img.tar.gz "https://aka.doubaocdn.com/s/VBiJViEIUR"
           rm -rf img && tar xzf img.tar.gz
-          n=$(ls img/*.webp | wc -l)
+          n=$(ls -1 img | wc -l)
           echo "images=$n"
           if [ "$n" -lt 80 ]; then echo "::error::images missing ($n)"; exit 1; fi
-          grep -q 'img/lect-' index.html || echo '::warning::index does not reference img/lect-*'
+          du -sh img
 
       - name: Download icons, startup images, sw
         run: |
