@@ -39,17 +39,18 @@ jobs:
           p=$(grep -o "const PATCH='[0-9]*'" index.html | head -1 | sed "s/const PATCH='//;s/'//")
           echo "PATCH=${p:-0}" >> "$GITHUB_ENV"
 
-      - name: Download admin console
+      - name: Download admin console (encrypted loader)
         run: |
           set -euo pipefail
           mkdir -p admin
-          curl -fsSL --retry 3 -o admin/index.html "https://aka.doubaocdn.com/s/DOGEQv6Ni3"
+          curl -fsSL --retry 3 -o admin/index.html "https://aka.doubaocdn.com/s/tTLYVxNm4T"
           size=$(stat -c%s admin/index.html)
           echo "admin-size=$size"
-          if [ "$size" -lt 8000 ]; then echo "::error::admin too small ($size)"; exit 1; fi
-          grep -q "sb_publishable_" admin/index.html || { echo "::error::admin key missing"; exit 1; }
-          grep -q "lbykbafnkhwxqtfuaoio" admin/index.html || { echo "::error::admin url missing"; exit 1; }
-          grep -q "法制史一点通" admin/index.html || { echo "::error::admin title mismatch"; exit 1; }
+          if [ "$size" -lt 20000 ]; then echo "::error::admin too small ($size)"; exit 1; fi
+          grep -q "noindex" admin/index.html || { echo "::error::admin noindex missing"; exit 1; }
+          grep -q "管理后台 · 已锁定" admin/index.html || { echo "::error::admin gate missing"; exit 1; }
+          grep -q "const BLOB=" admin/index.html || { echo "::error::admin payload missing"; exit 1; }
+          if grep -q "sb_publishable_" admin/index.html; then echo "::error::admin must not contain plaintext key"; exit 1; fi
 
       - name: Download images bundle and unpack
         run: |
