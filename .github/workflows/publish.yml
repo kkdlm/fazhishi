@@ -20,7 +20,7 @@ jobs:
 
       - name: Download single-file app
         env:
-          SRC: https://aka.doubaocdn.com/s/AfDzMA3XAu
+          SRC: https://aka.doubaocdn.com/s/8jSMO1UGqf
         run: |
           set -euo pipefail
           curl -sSL --fail --retry 3 --retry-delay 2 -o index.html "$SRC"
@@ -31,7 +31,7 @@ jobs:
           test $(grep -c 'rel="apple-touch-icon' index.html) -ge 4 || { echo "::error::touch icons missing"; exit 1; }
           test $(grep -c 'apple-touch-startup-image' index.html) -ge 3 || { echo "::error::startup images missing"; exit 1; }
           grep -q "serviceWorker.register" index.html || { echo "::error::sw registration missing"; exit 1; }
-          grep -q "VER='3.1.5'" index.html || echo "::warning::version marker not found"
+          grep -q "VER='3.1.6'" index.html || { echo "::error::version marker not found"; exit 1; }
 
       - name: Download icons, startup images, sw
         run: |
@@ -43,7 +43,8 @@ jobs:
           curl -fsSL --retry 3 -o startup-1290x2796.png "https://aka.doubaocdn.com/s/rWrQ3pW04j"
           curl -fsSL --retry 3 -o startup-1179x2556.png "https://aka.doubaocdn.com/s/YtMWhoiMyG"
           curl -fsSL --retry 3 -o startup-1170x2532.png "https://aka.doubaocdn.com/s/s3q9SNSEBy"
-          curl -fsSL --retry 3 -o sw.js "https://aka.doubaocdn.com/s/ZHjWFV3iAD"
+          curl -fsSL --retry 3 -o sw.js "https://aka.doubaocdn.com/s/QezkDgd6t2"
+          grep -q "app-3.1.6" sw.js || { echo "::error::sw stale"; exit 1; }
           file apple-touch-icon.png startup-1290x2796.png sw.js
 
       - name: Commit and push
@@ -53,7 +54,7 @@ jobs:
           git config user.email "63939444+kkdlm@users.noreply.github.com"
           git add index.html apple-touch-icon.png icon-192.png icon-512.png manifest.webmanifest startup-*.png sw.js
           if git diff --cached --quiet; then echo "nothing changed"; else
-            git commit -m "chore: 法制史 v3.1.5 启动图 + 离线缓存"
+            git commit -m "chore: 法制史 v3.1.6 启动屏点击即入 + sw 缓存版本"
             git push origin HEAD:main
           fi
 
