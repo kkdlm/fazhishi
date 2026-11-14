@@ -2,7 +2,9 @@
 
 2027 法硕非法学 · 中国法制史复习应用。手机优先的单页应用，打开即用，可离线。
 
-**在线使用**：<https://kkdlm.github.io/fazhishi-yituliu/>
+**在线使用**：<https://kkdlm.github.io/fazhishi/>
+
+（仓库与网址已从 `fazhishi-yituliu` 改名为 `fazhishi`，应用显示名仍是「法制史一点通」。旧链接 GitHub 会继续重定向，但建议用新地址。）
 
 ## 怎么用
 
