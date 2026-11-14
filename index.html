@@ -4261,7 +4261,7 @@ async function sendOtp(){
     try{ localStorage.setItem(KEY+':otpAt',String(Date.now())); }catch(err){}
     OTPLEFT=60; clearInterval(OTPTIMER);
     OTPTIMER=setInterval(()=>{ OTPLEFT--; const b=document.getElementById('otpBtn'); if(b) b.textContent=OTPLEFT>0?('重发 '+OTPLEFT+'s'):'发送验证码'; if(OTPLEFT<=0) clearInterval(OTPTIMER); },1000);
-    mtoast('验证码已发到邮箱，6 位数字，10 分钟内有效');
+    mtoast('验证码已发到邮箱，请尽快填入');
     newCaptcha();
   }catch(err){
     mtoast('邮件没发出去：'+(err.message||'').slice(0,60)+'。可以先改用「密码登录」'); 
@@ -4270,7 +4270,7 @@ async function sendOtp(){
 async function verifyOtp(){
   const e=((document.getElementById('acctMail')||{}).value||'').trim();
   const c=((document.getElementById('acctCode')||{}).value||'').trim();
-  if(!e||!/^\d{6}$/.test(c)){ mtoast('邮箱 + 6 位验证码，缺一个都不行'); return; }
+  if(!e||!/^\d{4,10}$/.test(c)){ mtoast('邮箱 + 验证码，缺一个都不行'); return; }
   try{
     const j=await sbReq('/auth/v1/verify',{method:'POST',body:{type:'email',email:e,token:c}});
     if(!adoptSession(j)){ mtoast('登录失败：返回里没有会话'); return; }
@@ -4415,7 +4415,7 @@ function accountHTML(){
     const tail=`</div>`;
     if(ACCTAB==='otp'){
       return head+cap+`
-        <div class="keyrow"><input id="acctCode" inputmode="numeric" maxlength="6" placeholder="6 位验证码">
+        <div class="keyrow"><input id="acctCode" inputmode="numeric" maxlength="10" placeholder="邮件里的验证码">
           <button id="otpBtn" style="flex:0 0 auto" onclick="sendOtp()">${left>0?('重发 '+left+'s'):'发送验证码'}</button></div>
         <div class="keyrow"><button style="flex:1" onclick="verifyOtp()">登录 / 注册</button></div>
         <div class="fine">没注册过会自动建号；验证码邮件发不出来时，改用「密码登录」注册即可。</div>`+tail+cardKeyHTML();
@@ -4813,7 +4813,7 @@ migrateSrs();
 applyMode(); chipRow(); renderHome(); renderList(); renderCloze();
 
 const VER='3.4.0';
-const PATCH='1';   /* 同一版本内的补丁号；0 表示版本本体 */
+const PATCH='2';   /* 同一版本内的补丁号；0 表示版本本体 */
 const CHANGELOG = [
 {v:'3.4.0',d:'2026-11-15',kind:'minor',sum:'加账号与云同步（注册才同步），离线备份降级为兜底',items:[
 ['新增','设置顶部新增「账号与同步」：注册或登录后，掌握、收藏、复习排期、笔记自动同步到云端，换设备登录即接着背。不注册照常能背，只是进度只存本机（访客模式）'],
@@ -4825,9 +4825,12 @@ const CHANGELOG = [
 ['新增','登录状态下标记的报错会自动进后台队列（考点号、标题、说明），便于集中处理'],
 ['内容','首页来源说明改为「正文逐条校对《2027 法硕背诵一本通·法制史》（龚成思）；题库取自讲义配套真题」，设置底部的来源说明同步改正'],
 ['修复','问题记录里点「去仓库提 issue」跳错仓库（politics-one-page → fazhishi-yituliu）']],patches:[
+ {p:'2',d:'2026-11-15',items:[
+ ['修复','验证码框只认 6 位数字，收到 8 位验证码时登不进去：现在 4–10 位数字都收，位数跟着邮件走，后台改多长都不影响'],
+ ['修复','提示文案里写死「6 位」「10 分钟内有效」，与实际邮件不一致，统一改成不提具体位数和时限的说法']]},
  {p:'1',d:'2026-11-15',items:[
  ['新增','账号与云同步正式开通：设置顶部的「账号与同步」块已上线，可注册登录，进度自动同步到云端，换设备登录即接着背'],
- ['新增','验证码登录已接通：填邮箱 → 点发送验证码 → 收邮件里的 6 位数字 → 登录，全程不用记密码'],
+ ['新增','验证码登录已接通：填邮箱 → 点发送验证码 → 收邮件里的数字验证码 → 登录，全程不用记密码'],
  ['说明','不注册仍是访客模式，一切照旧能用，只是进度只存本机；想跨设备才需要注册']]}]},
 {v:'3.3.0',d:'2026-11-15',kind:'minor',sum:'速览筛选改为单行横滑，时间轴跳转精确到条',patches:[
  {p:'5',d:'2026-11-15',items:[
