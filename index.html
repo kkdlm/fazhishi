@@ -4516,8 +4516,13 @@ normalizeState();
 migrateSrs();
 applyMode(); chipRow(); renderHome(); renderList(); renderCloze();
 
-const VER='3.2.1';
+const VER='3.2.2';
 const CHANGELOG = [
+{v:'3.2.2',d:'2026-11-15',kind:'patch',sum:'切回前台立即检查更新，不用清后台重启',items:[
+['修复','此前只有重新打开页面才会检查新版本：应用挂在后台时发布了新版，切回来仍停在旧版且没有任何提示'],
+['优化','现在每次回到前台（切屏、从后台唤回、解锁）都会立刻核对线上版本号，发现新版即弹出「发现新版本」并可一键更新；同一版本被手动关掉后不再反复弹'],
+['优化','回到前台时顺带让后台缓存去拉取新的离线文件，缩短下次启动的等待'],
+['优化','同一分钟内反复切屏不会重复请求，前台停留期间每 10 分钟自查一次']]},
 {v:'3.2.1',d:'2026-11-15',kind:'patch',sum:'精简版本记录，去掉冗长说明文字',items:[
 ['优化','版本记录底部那段版本号规则说明已删除，只保留版本列表本身']]},
 {v:'3.2.0',d:'2026-11-15',kind:'minor',sum:'版本记录改为统一规范格式，版本号规则固定',items:[
@@ -4583,38 +4588,35 @@ function cmpVer(a,b){
   for(let i=0;i<3;i++){ const A=x[i]||0, B=y[i]||0; if(A!==B) return A>B?1:-1; }
   return 0;
 }
-function verBar(msg,btnTxt,onAct,sticky){
+function verBar(msg,btnTxt,onAct,sticky,verTag){
   let el=document.getElementById('verbar');
   if(!el){ el=document.createElement('div'); el.id='verbar'; el.className='verbar'; document.body.appendChild(el); }
   el.innerHTML='<span class="vb-txt"></span><button class="vb-act"></button><button class="vb-x">×</button>';
   el.querySelector('.vb-txt').textContent=msg;
+  el.dataset.ver=verTag||'';
   const b=el.querySelector('.vb-act');
   b.textContent=btnTxt;
   b.onclick=onAct;
-  el.querySelector('.vb-x').onclick=()=>{ el.classList.remove('show'); clearTimeout(el._t); };
+  el.querySelector('.vb-x').onclick=()=>{ el.classList.remove('show'); clearTimeout(el._t); if(el.dataset.ver) window.__dismissedVer=el.dataset.ver; };
   el.classList.add('show');
   clearTimeout(el._t);
   if(!sticky) el._t=setTimeout(()=>el.classList.remove('show'),8000);
 }
 async function refreshApp(){
+  try{ localStorage.setItem(KEY+':upTry',String((parseInt(localStorage.getItem(KEY+':upTry')||'0',10)||0)+1)); }catch(e){}
   try{ const rs=await navigator.serviceWorker.getRegistrations(); await Promise.all(rs.map(x=>x.unregister())); }catch(e){}
   try{ const ks=await caches.keys(); await Promise.all(ks.map(k=>caches.delete(k))); }catch(e){}
   try{ location.replace(location.pathname+'?v='+Date.now()); }catch(e){ location.reload(); }
 }
-let __upTries=0;
 async function checkRemote(manual){
   try{
     const r=await fetch('./version.json?t='+Date.now(),{cache:'no-store'});
     if(!r.ok) throw new Error('no');
     const j=await r.json();
     if(cmpVer(j.version,VER)>0){
-      __upTries++;
-      if(__upTries>=3){
-        verBar('自动更新没成功（还在 v'+VER+'）','看解决办法',()=>showCacheHelp(),true);
-      }else{
-        verBar('有新版本 v'+j.version,'立即更新',()=>refreshApp(),true);
-      }
-    }else{ __upTries=0; if(manual){ mtoast('已是最新版本 v'+VER); } }
+      if(!manual && window.__dismissedVer===j.version) return;
+      verBar('发现新版本 v'+j.version,'立即更新',()=>refreshApp(),true,j.version);
+    }else{ if(manual){ mtoast('已是最新版本 v'+VER); } }
   }catch(e){
     if(manual) mtoast('检查不到更新信息（离线或直链打开时正常）');
   }
@@ -4634,16 +4636,29 @@ function checkNow(){ checkRemote(true); }
 function bootVer(){
   let last=null;
   try{ last=localStorage.getItem(KEY+':ver'); localStorage.setItem(KEY+':ver',VER); }catch(e){}
+  let tries=0;
+  try{ tries=parseInt(localStorage.getItem(KEY+':upTry')||'0',10)||0; }catch(e){}
   if(last && last!==VER){
+    try{ localStorage.setItem(KEY+':upTry','0'); }catch(e){}
     verBar('已更新至 v'+VER,'查看版本',()=>{ openChangelog(); document.getElementById('verbar').classList.remove('show'); },false);
+  }else if(tries>=2){
+    verBar('更新好像没生效（还在 v'+VER+'）','看解决办法',()=>showCacheHelp(),true);
   }
   window.__chkAt=Date.now();
   setTimeout(()=>checkRemote(false),1500);
-  document.addEventListener('visibilitychange',()=>{
-    if(document.visibilityState==='visible' && Date.now()-window.__chkAt>600000){
-      window.__chkAt=Date.now(); checkRemote(false);
-    }
-  });
+  /* 回到前台立刻核对一次版本：不清后台、切回来也能发现更新；
+     同时催一下 Service Worker 去拉新的 sw.js。30 秒内重复切屏不重复请求。 */
+  function onForeground(){
+    if(document.visibilityState!=='visible') return;
+    if(Date.now()-(window.__chkAt||0)<30000) return;
+    window.__chkAt=Date.now();
+    checkRemote(false);
+    try{ if(navigator.serviceWorker) navigator.serviceWorker.getRegistration().then(r=>r&&r.update&&r.update()).catch(()=>{}); }catch(e){}
+  }
+  document.addEventListener('visibilitychange',onForeground);
+  window.addEventListener('focus',onForeground);
+  window.addEventListener('pageshow',e=>{ if(e.persisted) onForeground(); });
+  setInterval(onForeground,600000);
 }
 setTimeout(bootVer,600);
 </script>
