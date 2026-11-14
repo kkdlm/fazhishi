@@ -31,8 +31,8 @@ jobs:
           test $(grep -c 'rel="apple-touch-icon' index.html) -ge 4 || { echo "::error::touch icons missing"; exit 1; }
           test $(grep -c 'apple-touch-startup-image' index.html) -ge 3 || { echo "::error::startup images missing"; exit 1; }
           grep -q "VER='3.4.0'" index.html || { echo "::error::version marker not found"; exit 1; }
-          grep -q "const PATCH='6'" index.html || { echo "::error::patch marker not 6"; exit 1; }
-          grep -q "apple-mobile-web-app-title\" content=\"法制史一点通\"" index.html || { echo "::error::ios app title missing"; exit 1; }
+          grep -q "const PATCH='7'" index.html || { echo "::error::patch marker not 7"; exit 1; }
+          grep -q '"apple-mobile-web-app-title" content="法制史一点通"' index.html || { echo "::error::ios app title missing"; exit 1; }
           grep -q "SB_URL='https://lbykbafnkhwxqtfuaoio.supabase.co'" index.html || { echo "::error::supabase url missing"; exit 1; }
           grep -q "sb_publishable_" index.html || { echo "::error::supabase key missing"; exit 1; }
           grep -q "github.com/kkdlm/fazhishi/issues" index.html || { echo "::error::issue repo not renamed"; exit 1; }
@@ -66,25 +66,24 @@ jobs:
           if [ "$n" -lt 80 ]; then echo "::error::images missing ($n)"; exit 1; fi
           du -sh img
 
-      - name: Download icons, startup images, manifest, sw
+      - name: Download manifest and check app name
+        run: |
+          set -euo pipefail
+          curl -fsSL --retry 3 -o manifest.webmanifest "https://aka.doubaocdn.com/s/lEaA9jHkfg"
+          python3 -c "import json;m=json.load(open('manifest.webmanifest',encoding='utf-8'));assert m['name']=='法制史一点通',m['name'];assert m['short_name']=='法制史一点通',m['short_name'];print('manifest ok',m['name'],m['short_name'])"
+
+      - name: Download icons, startup images, sw
         run: |
           set -euo pipefail
           curl -fsSL --retry 3 -o apple-touch-icon.png "https://aka.doubaocdn.com/s/MMkHSpL58d"
           curl -fsSL --retry 3 -o icon-192.png "https://aka.doubaocdn.com/s/wN2B51yuN0"
           curl -fsSL --retry 3 -o icon-512.png "https://aka.doubaocdn.com/s/JkPVJKcpEn"
-          curl -fsSL --retry 3 -o manifest.webmanifest "https://aka.doubaocdn.com/s/lEaA9jHkfg"
-          python3 - <<'PY'
-import json
-m = json.load(open('manifest.webmanifest', encoding='utf-8'))
-assert m.get('name') == '法制史一点通', f"manifest name wrong: {m.get('name')}"
-assert m.get('short_name') == '法制史一点通', f"manifest short_name wrong: {m.get('short_name')}"
-print('manifest ok:', m['name'], '/', m['short_name'])
-PY
           curl -fsSL --retry 3 -o startup-1290x2796.png "https://aka.doubaocdn.com/s/rWrQ3pW04j"
           curl -fsSL --retry 3 -o startup-1179x2556.png "https://aka.doubaocdn.com/s/YtMWhoiMyG"
           curl -fsSL --retry 3 -o startup-1170x2532.png "https://aka.doubaocdn.com/s/s3q9SNSEBy"
           curl -fsSL --retry 3 -o sw.js "https://aka.doubaocdn.com/s/jEtDfFJZH7"
-          grep -q "app-3.4.0-p6" sw.js || { echo "::error::sw stale"; exit 1; }
+          grep -q "app-3.4.0-p7" sw.js || { echo "::error::sw stale"; exit 1; }
+          grep -q "/admin/" sw.js || { echo "::error::sw admin bypass missing"; exit 1; }
           node --check sw.js
 
       - name: Drop legacy data dir
