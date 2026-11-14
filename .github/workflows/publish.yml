@@ -35,7 +35,7 @@ jobs:
           grep -q "SB_URL='https://lbykbafnkhwxqtfuaoio.supabase.co'" index.html || { echo "::error::supabase url missing"; exit 1; }
           grep -q "sb_publishable_" index.html || { echo "::error::supabase key missing"; exit 1; }
           grep -q "github.com/kkdlm/fazhishi/issues" index.html || { echo "::error::issue repo not renamed"; exit 1; }
-          if grep -q "fazhishi-yituliu" index.html; then echo "::error::old repo name still inside app"; exit 1; fi
+          grep -q "kkdlm.github.io/fazhishi<" index.html || { echo "::error::in-app url hint not renamed"; exit 1; }
           grep -q "<title>法制史一点通</title>" index.html || { echo "::error::app title mismatch"; exit 1; }
           v=$(grep -o "VER='[0-9.]*'" index.html | head -1 | sed "s/VER='//;s/'//")
           echo "VER=$v" >> "$GITHUB_ENV"
