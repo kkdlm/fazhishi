@@ -1,0 +1,49 @@
+name: publish
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - 'index.html'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  fetch-app:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download single-file app
+        env:
+          SRC: https://aka.doubaocdn.com/s/peRYiU9JUL
+        run: |
+          set -euo pipefail
+          curl -sSL --fail --retry 3 --retry-delay 2 -o index.html "$SRC"
+          size=$(stat -c%s index.html)
+          echo "size=$size"
+          if [ "$size" -lt 4000000 ]; then
+            echo "::error::download too small ($size), abort"
+            head -c 200 index.html || true
+            exit 1
+          fi
+          head -c 60 index.html | grep -q "<!DOCTYPE html>" || { echo "::error::not html"; exit 1; }
+          grep -q "const VER='3.0'" index.html || echo "::warning::version marker not found"
+
+      - name: Commit and push
+        run: |
+          set -euo pipefail
+          git config user.name "kkdlm"
+          git config user.email "63939444+kkdlm@users.noreply.github.com"
+          git add index.html
+          if git diff --cached --quiet; then
+            echo "index.html unchanged"
+            exit 0
+          fi
+          git commit -m "chore: 同步法制史一图流 v3.0 单文件应用"
+          git push origin HEAD:main
