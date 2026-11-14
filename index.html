@@ -1195,9 +1195,9 @@ html[data-theme="night"] .mode-btn{background:var(--card);color:var(--red);borde
       <p>一图流不是用来逐字背条的。先按朝代把「谁定的法、定了什么、怎么审」串成一条线，再回头抠每一部法典里的具体制度。</p>
       <p>考试最吃分的是三块：法典的「第一次」（第一部成文法典、第一次公布成文法、最早最完整的法典）、刑罚与罪名体系的演变、清末修律与根据地法制。</p>
       <p>彩色词就是考点本身：法典名、罪名、刑名、机构名、原则名。灰黑部分读过去，先把彩色的记住。</p>
-      <div class="src">—— 正文据四份材料（古代/近代一图流 + 纵向梳理古代/近代）整合；题库取自《法制史（97）0001》讲义配套客观题</div>
+      <div class="src">—— 正文逐条校对《2027 法硕背诵一本通·法制史》（龚成思）；题库取自讲义配套真题</div>
     </div>
-    <div class="tip">学习记录只保存在本机浏览器，换设备不会同步；可在设置里导出/导入进度。</div>
+    <div class="tip">学习记录默认只存在本机；登录账号后（设置 → 账号与同步）可跨设备自动同步。</div>
     <div style="height:20px"></div>
   </div>
 </section>
@@ -1362,7 +1362,8 @@ let S=(()=>{
   try{ return Object.assign({},DEF,JSON.parse(localStorage.getItem(KEY)||'{}')); }
   catch(e){ return Object.assign({},DEF); }
 })();
-function save(){ try{ localStorage.setItem(KEY, JSON.stringify(S)); }catch(e){} }
+function save(){ S.localAt=Date.now(); try{ localStorage.setItem(KEY, JSON.stringify(S)); }catch(e){}
+  if(typeof scheduleSync==='function') scheduleSync(); }
 function normArr(v){ return Array.isArray(v)?v:[]; }
 function normObj(v){ return (v&&typeof v==='object'&&!Array.isArray(v))?v:{}; }
 function normalizeState(){
@@ -1994,6 +1995,11 @@ function saveBug(goSubmit){
   if(!Array.isArray(S.bugLog)) S.bugLog=[];
   S.bugLog.unshift({at:Date.now(),where:c.where,loc:c.loc,n:c.n,text:el?el.value:'',sent:false});
   save(); closeSheet();
+  if(authOk()){
+    sbReq('/rest/v1/bug_reports',{method:'POST',prefer:'return=minimal',body:{
+      uid:AUTH.uid,point_no:c.n||null,point_title:c.loc||'',note:(el?el.value:''),
+      ua:(navigator.userAgent||'').slice(0,120)}}).catch(()=>{});
+  }
   if(goSubmit){ submitBugs(); } else { mtoast('已记录，共 '+S.bugLog.length+' 条'); }
 }
 function bugFromCard(ev,n){
@@ -2032,7 +2038,7 @@ function bugBody(list){
     `- 问题：${b.text||'（仅标记位置，需要核对）'}`).join('\n\n');
 }
 function openIssue(title,body){
-  const url='https://github.com/kkdlm/politics-one-page/issues/new?labels=bug&title='+
+  const url='https://github.com/kkdlm/fazhishi-yituliu/issues/new?labels=bug&title='+
     encodeURIComponent(title)+'&body='+encodeURIComponent(body);
   window.open(url,'_blank');
 }
@@ -4177,18 +4183,296 @@ async function doRestore(){
   }catch(e){ mtoast('解密失败：密钥不对或同步码不完整'); }
 }
 
-function openSettings(){
-  openSheet('设置',`
+/* ========== 账号与云同步（Supabase REST，无 SDK） ==========
+   配置：把下面两行换成你自己 Supabase 项目的地址与 anon key。
+   留空 = 访客模式，云同步整块不出现，App 行为与之前完全一致。 */
+const SB_URL='';        /* 例：https://abcdwxyz.supabase.co */
+const SB_ANON='';       /* 例：eyJhbGciOi...（anon public，可公开） */
+const CARDKEY_ON=false; /* 卡密：先埋着，不启用 */
+
+const AUTHKEY=KEY+':auth';
+let AUTH=null, ACCTAB='otp', OTPLEFT=0, OTPTIMER=null, SYNCING=false, SYNCTIMER=null, SYNCERR='', CAPTCHA='';
+function sbOn(){ return !!(SB_URL && SB_ANON); }
+function loadAuth(){ try{ AUTH=JSON.parse(localStorage.getItem(AUTHKEY)||'null'); }catch(e){ AUTH=null; } return AUTH; }
+function saveAuth(){ try{ if(AUTH&&AUTH.access_token) localStorage.setItem(AUTHKEY,JSON.stringify(AUTH)); else localStorage.removeItem(AUTHKEY); }catch(e){} }
+function authOk(){ return !!(AUTH && AUTH.access_token && AUTH.uid); }
+function guestMode(){ return !sbOn() || !authOk(); }
+function nowISO(){ return new Date().toISOString(); }
+async function sbReq(path,opt){
+  opt=opt||{};
+  const h={'apikey':SB_ANON,'Content-Type':'application/json'};
+  if(opt.token) h['Authorization']='Bearer '+opt.token;
+  else if(authOk()) h['Authorization']='Bearer '+AUTH.access_token;
+  if(opt.prefer) h['Prefer']=opt.prefer;
+  const r=await fetch(SB_URL.replace(/\/$/,'')+path,{method:opt.method||'GET',headers:h,body:opt.body?JSON.stringify(opt.body):undefined});
+  const txt=await r.text(); let j=null;
+  try{ j=txt?JSON.parse(txt):null; }catch(e){ j=txt; }
+  if(!r.ok){
+    const msg=(j&&(j.msg||j.message||j.error_description))||('HTTP '+r.status);
+    const err=new Error(msg); err.status=r.status; err.data=j; throw err;
+  }
+  return j;
+}
+function adoptSession(j){
+  if(!j||!j.access_token||!j.user) return null;
+  AUTH={access_token:j.access_token, refresh_token:j.refresh_token, uid:j.user.id,
+    email:(j.user.email||''), expires_at:Date.now()+((j.expires_in||3600)*1000)};
+  saveAuth(); return AUTH;
+}
+async function ensureToken(){
+  if(!authOk()) return false;
+  if(Date.now()<(AUTH.expires_at||0)-60000) return true;
+  if(!AUTH.refresh_token) return false;
+  try{
+    const j=await sbReq('/auth/v1/token?grant_type=refresh_token',{method:'POST',body:{refresh_token:AUTH.refresh_token}});
+    adoptSession(j); return true;
+  }catch(e){ AUTH=null; saveAuth(); return false; }
+}
+
+/* ---------- 文字验证码（防恶意注册，纯前端+本机冷却） ---------- */
+function newCaptcha(){
+  const pool='ACDEFHJKLMNPQRTUVWXY34679';
+  let s='';
+  for(let i=0;i<4;i++) s+=pool[Math.floor(Math.random()*pool.length)];
+  CAPTCHA=s;
+  const el=document.getElementById('capShow'); if(el) el.textContent=s;
+  return s;
+}
+function capOk(){
+  const el=document.getElementById('capIn');
+  const v=(el?el.value:'').trim().toUpperCase();
+  return v && v===CAPTCHA;
+}
+function failCap(){ mtoast('文字验证码不对，照右边那 4 个字再输一次'); newCaptcha(); }
+function coolDown(){ try{ return Math.max(0, (parseInt(localStorage.getItem(KEY+':otpAt')||'0',10)+60000-Date.now())/1000); }catch(e){ return 0; } }
+
+/* ---------- 登录 / 注册 ---------- */
+function setAcctab(t){ ACCTAB=t; openSettings(); }
+function renderAcct(){ const el=document.getElementById('acctBox'); if(el) el.innerHTML=accountHTML(); }
+async function sendOtp(){
+  if(!sbOn()) return;
+  if(OTPLEFT>0) return;
+  const e=(document.getElementById('acctMail')||{}).value||'';
+  if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e.trim())){ mtoast('邮箱格式不对'); return; }
+  if(!capOk()){ failCap(); return; }
+  mtoast('正在发送…');
+  try{
+    await sbReq('/auth/v1/otp',{method:'POST',body:{email:e.trim(),create_user:true}});
+    try{ localStorage.setItem(KEY+':otpAt',String(Date.now())); }catch(err){}
+    OTPLEFT=60; clearInterval(OTPTIMER);
+    OTPTIMER=setInterval(()=>{ OTPLEFT--; const b=document.getElementById('otpBtn'); if(b) b.textContent=OTPLEFT>0?('重发 '+OTPLEFT+'s'):'发送验证码'; if(OTPLEFT<=0) clearInterval(OTPTIMER); },1000);
+    mtoast('验证码已发到邮箱，6 位数字，10 分钟内有效');
+    newCaptcha();
+  }catch(err){
+    mtoast('邮件没发出去：'+(err.message||'').slice(0,60)+'。可以先改用「密码登录」'); 
+  }
+}
+async function verifyOtp(){
+  const e=((document.getElementById('acctMail')||{}).value||'').trim();
+  const c=((document.getElementById('acctCode')||{}).value||'').trim();
+  if(!e||!/^\d{6}$/.test(c)){ mtoast('邮箱 + 6 位验证码，缺一个都不行'); return; }
+  try{
+    const j=await sbReq('/auth/v1/verify',{method:'POST',body:{type:'email',email:e,token:c}});
+    if(!adoptSession(j)){ mtoast('登录失败：返回里没有会话'); return; }
+    await afterLogin();
+  }catch(err){ mtoast('登录失败：'+(err.message||'').slice(0,60)); }
+}
+async function pwdGo(mode){
+  const e=((document.getElementById('acctMail')||{}).value||'').trim();
+  const p=((document.getElementById('acctPwd')||{}).value||'').trim();
+  if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e)){ mtoast('邮箱格式不对'); return; }
+  if(p.length<6){ mtoast('密码至少 6 位'); return; }
+  if(!capOk()){ failCap(); return; }
+  try{
+    let j;
+    if(mode==='reg'){
+      j=await sbReq('/auth/v1/signup',{method:'POST',body:{email:e,password:p}});
+      if(!j||!j.access_token){ mtoast('注册成功，但还差一步：去邮箱点确认链接，或到后台关掉 Confirm email'); return; }
+      adoptSession(j);
+    }else{
+      j=await sbReq('/auth/v1/token?grant_type=password',{method:'POST',body:{email:e,password:p}});
+      adoptSession(j);
+    }
+    await afterLogin();
+  }catch(err){
+    const m=(err.message||'').toLowerCase();
+    if(m.indexOf('invalid')>=0||m.indexOf('credentials')>=0) mtoast('邮箱或密码不对');
+    else mtoast('没成功：'+(err.message||'').slice(0,60));
+  }
+}
+async function signOut(){
+  try{ await sbReq('/auth/v1/logout',{method:'POST'}); }catch(e){}
+  AUTH=null; saveAuth(); renderAcct(); mtoast('已退出，回到访客模式（云端进度保留，本机继续可用）');
+}
+
+/* ---------- 登录之后：建档 + 拉云端进度 + 冲突处理 ---------- */
+async function afterLogin(){
+  await ensureToken();
+  try{ await sbReq('/rest/v1/profiles',{method:'POST',prefer:'resolution=merge-duplicates,return=minimal',
+    body:{uid:AUTH.uid,email:AUTH.email,last_seen:nowISO(),ua:(navigator.userAgent||'').slice(0,120)}}); }catch(e){}
+  let row=null;
+  try{ const rows=await sbReq('/rest/v1/progress?uid=eq.'+AUTH.uid+'&select=*'); row=(rows&&rows[0])||null; }catch(e){}
+  const localHas=Object.keys(S.status||{}).length+Object.keys(S.srs||{}).length+(S.fav||[]).length+
+    Object.keys(S.notes||{}).length>0;
+  if(!row){ await pushCloud(true); renderAcct(); mtoast('已登录：本机进度已上传到云端'); return; }
+  if(!localHas){ applyCloud(row); renderAcct(); mtoast('已登录：已载入云端进度'); return; }
+  const cloudNewer=(Date.parse(row.updated_at||0)||0)>(S.localAt||0)+60000;
+  if(!cloudNewer){ await pushCloud(true); renderAcct(); mtoast('已登录：本机较新，已合并上传'); return; }
+  askConflict(row);
+}
+function askConflict(row){
+  const when=(row.updated_at||'').replace('T',' ').slice(0,16);
+  const n=Object.keys((row.data||{}).status||{}).length;
+  openSheet('这台设备和云端都有进度',`
     <div class="sheet-sec">
-      <h4>进度备份</h4>
-      <div class="fine">设一个密钥，把掌握、收藏、复习排期加密成一段备份码。换设备时粘贴这段码、输入同一密钥即可恢复。密钥只存在本机。</div>
+      <div class="fine">云端那份更新（${esc(when)}，掌握 ${n} 条）。选一份留下来，不会两边都丢着不管。</div>
+      <div class="keyrow"><button style="flex:1" onclick="useCloud()">用云端覆盖本机</button>
+        <button style="flex:1" onclick="useLocal()">用本机覆盖云端</button></div>
+      <div class="fine">选错了还能再进设置换一次，两个方向都会留下时间戳。</div>
+    </div>`);
+  window.__conflictRow=row;
+}
+function useCloud(){
+  const r=window.__conflictRow; if(r){ applyCloud(r); }
+  closeSheet(); renderAcct(); mtoast('已载入云端进度');
+}
+async function useLocal(){ closeSheet(); await pushCloud(true); renderAcct(); mtoast('已用本机进度覆盖云端'); }
+function applyCloud(row){
+  const d=(row&&row.data)||{};
+  ['status','fav','due','seen','log','ient','srs','notes','quizLog','qwrong','qdone'].forEach(k=>{ if(d[k]!==undefined) S[k]=d[k]; });
+  if(d.today!==undefined) S.today=d.today;
+  S.rev=parseInt(row&&row.rev||'0',10)||0;
+  S.syncAt=Date.parse(row&&row.updated_at||'')||0;
+  S.localAt=Date.parse(row&&row.updated_at||'')||Date.now();
+  try{ localStorage.setItem(KEY,JSON.stringify(S)); }catch(e){}
+  EMAP=null; renderAll(); applyPrefs&&applyPrefs();
+}
+
+/* ---------- 推送 / 拉取 ---------- */
+function cloudPack(){
+  return {status:S.status,fav:S.fav,due:S.due,seen:S.seen,log:S.log,ient:S.ient,srs:S.srs,
+    notes:S.notes,quizLog:S.quizLog,qwrong:S.qwrong,qdone:S.qdone,today:S.today};
+}
+function scheduleSync(){
+  if(guestMode()) return;
+  clearTimeout(SYNCTIMER);
+  SYNCTIMER=setTimeout(()=>pushCloud(false),2000);
+}
+async function pushCloud(force){
+  if(guestMode()) return false;
+  if(SYNCING && !force) return false;
+  if(!(await ensureToken())){ SYNCERR='登录已过期，重新登录后才会继续同步'; return false; }
+  SYNCING=true;
+  try{
+    S.rev=(parseInt(S.rev||'0',10)||0)+1;
+    const at=nowISO();
+    await sbReq('/rest/v1/progress',{method:'POST',prefer:'resolution=merge-duplicates,return=minimal',
+      body:{uid:AUTH.uid,data:cloudPack(),rev:S.rev,updated_at:at}});
+    S.syncAt=Date.parse(at); S.localAt=Date.parse(at); SYNCERR='';
+    try{ localStorage.setItem(KEY,JSON.stringify(S)); }catch(e){}
+    const tip=document.getElementById('syncTip'); if(tip) tip.textContent='已同步 · '+syncTimeText();
+    return true;
+  }catch(e){
+    SYNCERR=(e.message||'同步失败').slice(0,60);
+    const tip=document.getElementById('syncTip'); if(tip) tip.textContent='这次没同步上：'+SYNCERR;
+    return false;
+  }finally{ SYNCING=false; }
+}
+async function pullCloud(manual){
+  if(guestMode()){ if(manual) mtoast('现在是访客模式，登录后才能同步'); return; }
+  if(!(await ensureToken())){ if(manual) mtoast('登录已过期，请重新登录'); return; }
+  try{
+    const rows=await sbReq('/rest/v1/progress?uid=eq.'+AUTH.uid+'&select=*');
+    const row=rows&&rows[0];
+    if(!row){ await pushCloud(true); if(manual) mtoast('云端还没有记录，已把本机进度上传'); return; }
+    applyCloud(row); if(manual) mtoast('已拉取云端进度');
+  }catch(e){ if(manual) mtoast('拉取失败：'+(e.message||'').slice(0,50)); }
+}
+function syncNow(){ pushCloud(true).then(ok=>mtoast(ok?'已同步到云端':'同步没成功：'+SYNCERR)); }
+function syncTimeText(){
+  if(!S.syncAt) return '还没同步过';
+  const d=new Date(S.syncAt), p=n=>String(n).padStart(2,'0');
+  const same=new Date().toDateString()===d.toDateString();
+  return (same?'今天 ':((d.getMonth()+1)+'/'+d.getDate()+' '))+p(d.getHours())+':'+p(d.getMinutes());
+}
+/* 回到前台补推一次：离线期间攒的改动在这里上传 */
+document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible'&&authOk()&&!guestMode()) scheduleSync(); });
+
+/* ---------- 账号面板 ---------- */
+function accountHTML(){
+  if(!sbOn()) return '';   /* 服务端未配置时整块隐藏，不显示半成品 */
+  if(!authOk()){
+    const left=Math.max(OTPLEFT,coolDown());
+    const head=`<div class="sheet-sec"><h4>账号与同步</h4>
+      <div class="fine">现在是访客模式：不注册照常能背，只是进度只存本机、换设备不同步。注册后自动同步，多台设备接着背。</div>
+      <div class="seg-row">
+        <button class="${ACCTAB==='otp'?'on':''}" onclick="setAcctab('otp')">验证码登录</button>
+        <button class="${ACCTAB==='pwd'?'on':''}" onclick="setAcctab('pwd')">密码登录</button>
+      </div>
+      <div class="keyrow"><input id="acctMail" inputmode="email" autocomplete="email" placeholder="邮箱"></div>`;
+    const cap=`<div class="keyrow"><input id="capIn" maxlength="4" style="text-transform:uppercase" placeholder="照抄右边 4 个字">
+        <b id="capShow" style="flex:0 0 auto;padding:0 10px;letter-spacing:.18em;font-family:ui-monospace,monospace">${esc(CAPTCHA)}</b></div>`;
+    const tail=`</div>`;
+    if(ACCTAB==='otp'){
+      return head+cap+`
+        <div class="keyrow"><input id="acctCode" inputmode="numeric" maxlength="6" placeholder="6 位验证码">
+          <button id="otpBtn" style="flex:0 0 auto" onclick="sendOtp()">${left>0?('重发 '+left+'s'):'发送验证码'}</button></div>
+        <div class="keyrow"><button style="flex:1" onclick="verifyOtp()">登录 / 注册</button></div>
+        <div class="fine">没注册过会自动建号；验证码邮件发不出来时，改用「密码登录」注册即可。</div>`+tail+cardKeyHTML();
+    }
+    return head+`
+      <div class="keyrow"><input id="acctPwd" type="password" autocomplete="current-password" placeholder="密码，至少 6 位"></div>`+cap+`
+      <div class="keyrow"><button style="flex:1" onclick="pwdGo('in')">登录</button>
+        <button style="flex:1" onclick="pwdGo('reg')">注册新账号</button></div>
+      <div class="fine">注册后如果收到确认邮件，点一次链接即可；想直接可用可在 Supabase 后台关掉 Confirm email。</div>`+tail+cardKeyHTML();
+  }
+  return `<div class="sheet-sec"><h4>账号与同步</h4>
+    <div class="opt"><span><b>${esc(AUTH.email||'已登录')}</b><small>${guestMode()?'':'云端同步已开启'} · ${esc(syncTimeText())}${(parseInt(S.rev||'0',10))?' · rev '+S.rev:''}</small></span><span class="n">${authOk()?'在线':'离线'}</span></div>
+    <div id="syncTip" class="fine">${esc(SYNCERR?'上次没同步上：'+SYNCERR:'改一点就会自动同步；切回前台也会补推')}</div>
+    <div class="keyrow"><button style="flex:1" onclick="syncNow()">立即同步</button>
+      <button style="flex:1" onclick="pullCloud(true)">从云端拉取</button></div>
+    <button class="opt" onclick="signOut()"><span>退出登录<small>退出后回到访客模式，云端记录保留</small></span><span class="n">退</span></button>
+  </div>`+cardKeyHTML();
+}
+function cardKeyHTML(){
+  if(!CARDKEY_ON) return '';
+  return `<div class="sheet-sec"><h4>卡密兑换</h4>
+    <div class="keyrow"><input id="cardIn" placeholder="输入卡密"><button style="flex:0 0 auto" onclick="redeemCard()">兑换</button></div>
+    <div class="fine">卡密用于开通长期权限；没买过忽略即可。</div></div>`;
+}
+async function redeemCard(){
+  const code=((document.getElementById('cardIn')||{}).value||'').trim();
+  if(!code){ mtoast('先填卡密'); return; }
+  if(guestMode()){ mtoast('登录后才能兑换'); return; }
+  try{
+    const r=await sbReq('/rest/v1/rpc/redeem_card',{method:'POST',body:{p_code:code}});
+    mtoast('兑换成功，有效期至 '+(r||'').slice(0,10));
+    openSettings();
+  }catch(e){ mtoast('兑换失败：'+(e.message||'').slice(0,50)); }
+}
+
+function openOldBackup(){
+  openSheet('离线备份（兜底）',`
+    <div class="sheet-sec">
+      <div class="fine">不登录也能换设备：这里三样都是纯本机操作，不上传任何东西。有账号时优先用云同步，这里留着应急。</div>
+      <button class="opt" onclick="openExport()"><span>导出进度文本<small>复制一段文本，手工带走</small></span><span class="n">复制</span></button>
+      <button class="opt" onclick="openImport()"><span>导入进度文本<small>粘贴之前导出的文本</small></span><span class="n">粘贴</span></button>
+    </div>
+    <div class="sheet-sec">
+      <h4>备份码</h4>
+      <div class="fine">设一个密钥，把掌握、收藏、复习排期加密成一段备份码，换设备时粘贴回来。密钥只存在本机，丢了就解不开。</div>
       <div class="keyrow"><input id="keyin" value="${esc(S.key||'')}" placeholder="自定义密钥，至少 4 位"></div>
       <div class="keyrow"><button style="flex:1" onclick="saveKey()">存密钥</button>
         <button style="flex:1" onclick="makeCode()">生成备份码</button>
         <button style="flex:1" onclick="openRestore()">恢复</button></div>
       <div id="codebox"></div>
       <div class="tagline" id="keytip">${S.key?'已设置密钥 · 只存在本机':'尚未设置密钥'}</div>
-    </div>
+    </div>`);
+}
+function openSettings(){
+  if(sbOn() && !authOk()) newCaptcha();
+  openSheet('设置',`
+    ${accountHTML()}
     <div class="sheet-sec">
       <h4>外观</h4>
       <div class="seg-row">
@@ -4212,8 +4496,7 @@ function openSettings(){
     </div>
     <div class="sheet-sec">
       <h4>数据</h4>
-      <button class="opt" onclick="openExport()"><span>导出进度<small>换设备时复制这段文本</small></span><span class="n">复制</span></button>
-      <button class="opt" onclick="openImport()"><span>导入进度<small>粘贴之前导出的文本</small></span><span class="n">粘贴</span></button>
+      <button class="opt" onclick="openOldBackup()"><span>离线备份 / 备份码<small>${sbOn()?'不登录或断网时应急用':'导出、导入、备份码都在这里'}</small></span><span class="n">›</span></button>
       <button class="opt" onclick="openBugs()"><span>问题记录<small>随手标记的 bug 与待改处</small></span><span class="n">${Array.isArray(S.bugLog)?S.bugLog.length:0}</span></button>
       <button class="opt" onclick="resetAll()"><span style="color:var(--red)">清空全部记录<small>掌握、收藏、复习计划都会清零</small></span><span class="n">重置</span></button>
     </div>
@@ -4223,7 +4506,7 @@ function openSettings(){
       <button class="opt" onclick="openChangelog()"><span>版本记录<small>${CHANGELOG.length} 个版本 · 当前 v${VER}${(+PATCH>0)?' · 补丁 '+PATCH:''}</small></span><span class="n">›</span></button>
       <button class="opt" onclick="checkNow()"><span>检查新版本<small>手动查一次</small></span><span class="n">查</span></button>
     </div>
-    <div class="fine">共 ${PTS.length} 条考点 · 全部内容取自《2027 这就是一页纸·知识点手册》原书，仅本机保存。</div>
+    <div class="fine">共 ${PTS.length} 条考点 · 内容取自《2027 法硕背诵一本通·法制史》，学习记录${guestMode()?'只存在本机':'已同步到云端'}。</div>
   `);
 }
 function openStats(){
@@ -4529,9 +4812,19 @@ normalizeState();
 migrateSrs();
 applyMode(); chipRow(); renderHome(); renderList(); renderCloze();
 
-const VER='3.3.0';
-const PATCH='5';   /* 同一版本内的补丁号；0 表示版本本体 */
+const VER='3.4.0';
+const PATCH='0';   /* 同一版本内的补丁号；0 表示版本本体 */
 const CHANGELOG = [
+{v:'3.4.0',d:'2026-11-15',kind:'minor',sum:'加账号与云同步（注册才同步），离线备份降级为兜底',items:[
+['新增','设置顶部新增「账号与同步」：注册或登录后，掌握、收藏、复习排期、笔记自动同步到云端，换设备登录即接着背。不注册照常能背，只是进度只存本机（访客模式）'],
+['新增','注册优先用邮箱验证码；邮件一时发不出来，可切到「密码登录」用邮箱+密码注册登录，注册链路不会被邮件卡死'],
+['新增','防恶意注册：提交前要照抄 4 个字符的文字验证码（每次刷新），验证码邮件 60 秒冷却，按钮走「重发 32s」倒计时'],
+['新增','同步冲突不静默覆盖：本机和云端都有进度时先问一句「用云端还是本机」，选完才写，另一份仍在原处'],
+['新增','卡密兑换入口已埋好（开关默认关闭，界面上完全不出现），后续开启只改一个开关，兑换逻辑与数据表已就绪'],
+['优化','设置「数据」区把原来的导出进度、导入进度、离线备份三处合并成一个「离线备份 / 备份码」入口：导出文本、粘贴导入、密钥+备份码三样原功能都在，只是降级成不登录/断网时的兜底'],
+['新增','登录状态下标记的报错会自动进后台队列（考点号、标题、说明），便于集中处理'],
+['内容','首页来源说明改为「正文逐条校对《2027 法硕背诵一本通·法制史》（龚成思）；题库取自讲义配套真题」，设置底部的来源说明同步改正'],
+['修复','问题记录里点「去仓库提 issue」跳错仓库（politics-one-page → fazhishi-yituliu）']]},
 {v:'3.3.0',d:'2026-11-15',kind:'minor',sum:'速览筛选改为单行横滑，时间轴跳转精确到条',patches:[
  {p:'5',d:'2026-11-15',items:[
  ['优化','搜索时关键词只在标题和摘要里标黄，展开卡片就没了；现在正文里也标黄，清空搜索自动恢复'],
@@ -4722,6 +5015,9 @@ function bootVer(){
   setInterval(onForeground,600000);
 }
 setTimeout(bootVer,600);
+/* 账号：恢复会话，登录态下拉一次云端 */
+loadAuth();
+if(authOk()) setTimeout(()=>{ pullCloud(false); },1800);
 </script>
 <div id="boxZoom"><div class="bz-bar"><span id="bzTitle">原页图示（左右滑动看全）</span><button class="bz-close" onclick="closeBoxZoom()">关闭</button></div><div class="bz-body" id="bzBody"></div></div>
 
