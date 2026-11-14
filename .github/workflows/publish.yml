@@ -20,7 +20,7 @@ jobs:
 
       - name: Download single-file app
         env:
-          SRC: https://aka.doubaocdn.com/s/fiQScmF5r9
+          SRC: https://aka.doubaocdn.com/s/nuen2c84Di
         run: |
           set -euo pipefail
           curl -sSL --fail --retry 3 --retry-delay 2 -o index.html "$SRC"
@@ -30,7 +30,7 @@ jobs:
           head -c 60 index.html | grep -q "<!DOCTYPE html>" || { echo "::error::not html"; exit 1; }
           test $(grep -c 'rel="apple-touch-icon' index.html) -ge 4 || { echo "::error::touch icons missing"; exit 1; }
           test $(grep -c 'apple-touch-startup-image' index.html) -ge 3 || { echo "::error::startup images missing"; exit 1; }
-          grep -q "VER='3.1.56'" index.html || { echo "::error::version marker not found"; exit 1; }
+          grep -q "VER='3.2.0'" index.html || { echo "::error::version marker not found"; exit 1; }
           v=$(grep -o "VER='[0-9.]*'" index.html | head -1 | sed "s/VER='//;s/'//")
           echo "VER=$v" >> "$GITHUB_ENV"
 
@@ -54,8 +54,8 @@ jobs:
           curl -fsSL --retry 3 -o startup-1290x2796.png "https://aka.doubaocdn.com/s/rWrQ3pW04j"
           curl -fsSL --retry 3 -o startup-1179x2556.png "https://aka.doubaocdn.com/s/YtMWhoiMyG"
           curl -fsSL --retry 3 -o startup-1170x2532.png "https://aka.doubaocdn.com/s/s3q9SNSEBy"
-          curl -fsSL --retry 3 -o sw.js "https://aka.doubaocdn.com/s/HR9rQwJVgu"
-          grep -q "app-3.1.56" sw.js || { echo "::error::sw stale"; exit 1; }
+          curl -fsSL --retry 3 -o sw.js "https://aka.doubaocdn.com/s/mYHcg1lnir"
+          grep -q "app-3.2.0" sw.js || { echo "::error::sw stale"; exit 1; }
           node --check sw.js
 
       - name: Drop legacy data dir
