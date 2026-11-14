@@ -20,7 +20,7 @@ jobs:
 
       - name: Download single-file app
         env:
-          SRC: https://aka.doubaocdn.com/s/SZsOGLmljv
+          SRC: https://aka.doubaocdn.com/s/O22fVVdeEp
         run: |
           set -euo pipefail
           curl -sSL --fail --retry 3 --retry-delay 2 -o index.html "$SRC"
@@ -33,6 +33,8 @@ jobs:
           grep -q "VER='3.3.0'" index.html || { echo "::error::version marker not found"; exit 1; }
           v=$(grep -o "VER='[0-9.]*'" index.html | head -1 | sed "s/VER='//;s/'//")
           echo "VER=$v" >> "$GITHUB_ENV"
+          p=$(grep -o "const PATCH='[0-9]*'" index.html | head -1 | sed "s/const PATCH='//;s/'//")
+          echo "PATCH=${p:-0}" >> "$GITHUB_ENV"
 
       - name: Download images bundle and unpack
         run: |
@@ -54,8 +56,8 @@ jobs:
           curl -fsSL --retry 3 -o startup-1290x2796.png "https://aka.doubaocdn.com/s/rWrQ3pW04j"
           curl -fsSL --retry 3 -o startup-1179x2556.png "https://aka.doubaocdn.com/s/YtMWhoiMyG"
           curl -fsSL --retry 3 -o startup-1170x2532.png "https://aka.doubaocdn.com/s/s3q9SNSEBy"
-          curl -fsSL --retry 3 -o sw.js "https://aka.doubaocdn.com/s/3yONa3CViH"
-          grep -q "app-3.3.0" sw.js || { echo "::error::sw stale"; exit 1; }
+          curl -fsSL --retry 3 -o sw.js "https://aka.doubaocdn.com/s/EToHzYsQFx"
+          grep -q "app-3.3.0-p1" sw.js || { echo "::error::sw stale"; exit 1; }
           node --check sw.js
 
       - name: Drop legacy data dir
@@ -65,8 +67,8 @@ jobs:
       - name: Generate version.json (auto, always in sync with index.html)
         run: |
           set -euo pipefail
-          printf '{\n  "version": "%s",\n  "date": "%s",\n  "notes": "法制史一图流最新版（本文件由 Actions 自动生成，无需手改）"\n}\n' \
-            "$VER" "$(date -u +%Y-%m-%d)" > version.json
+          printf '{\n  "version": "%s",\n  "patch": %s,\n  "date": "%s"\n}\n' \
+            "$VER" "${PATCH:-0}" "$(date -u +%Y-%m-%d)" > version.json
           cat version.json
 
       - name: Commit and push
@@ -76,7 +78,7 @@ jobs:
           git config user.email "63939444+kkdlm@users.noreply.github.com"
           git add -A
           if git diff --cached --quiet; then echo "nothing changed"; else
-            git commit -m "chore: 法制史 v${VER} 发布 + version.json 自动同步"
+            git commit -m "chore: 法制史 v${VER} 发布（补丁 ${PATCH:-0}）+ version.json 自动同步"
             git push origin HEAD:main
           fi
 
