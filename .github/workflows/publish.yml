@@ -39,6 +39,18 @@ jobs:
           p=$(grep -o "const PATCH='[0-9]*'" index.html | head -1 | sed "s/const PATCH='//;s/'//")
           echo "PATCH=${p:-0}" >> "$GITHUB_ENV"
 
+      - name: Download admin console
+        run: |
+          set -euo pipefail
+          mkdir -p admin
+          curl -fsSL --retry 3 -o admin/index.html "https://aka.doubaocdn.com/s/DOGEQv6Ni3"
+          size=$(stat -c%s admin/index.html)
+          echo "admin-size=$size"
+          if [ "$size" -lt 8000 ]; then echo "::error::admin too small ($size)"; exit 1; fi
+          grep -q "sb_publishable_" admin/index.html || { echo "::error::admin key missing"; exit 1; }
+          grep -q "lbykbafnkhwxqtfuaoio" admin/index.html || { echo "::error::admin url missing"; exit 1; }
+          grep -q "法制史一点通" admin/index.html || { echo "::error::admin title mismatch"; exit 1; }
+
       - name: Download images bundle and unpack
         run: |
           set -euo pipefail
