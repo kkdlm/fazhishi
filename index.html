@@ -403,16 +403,16 @@ h1 em{font-style:normal;color:var(--red)}
 .r-cover .hint{font-size:12.5px;letter-spacing:.08em}
 .r-cover .big{font-family:var(--serif);font-size:52px;color:var(--line);line-height:1;user-select:none}
 .r-ask{margin-top:16px;font-family:var(--serif);font-size:calc(17px * var(--fs));line-height:1.95;color:var(--ink);letter-spacing:.01em}
-.r-ask .bk{display:inline-block;min-width:52px;border-bottom:1.5px dashed var(--red);margin:0 3px;transform:translateY(-1px)}
+.r-ask .bk{display:inline-block;min-width:52px;border-bottom:1.5px dashed var(--zhu);margin:0 3px;transform:translateY(-1px)}
 .r-ask .maskline{line-height:1.95}
 .r-ask .maskline .bk{min-width:64px}
 .r-ask.whole{display:flex;flex-direction:column;align-items:flex-start;gap:14px}
 .whole-lead{color:var(--ink);line-height:1.8}
 .whole-bk{display:inline-block;min-width:130px;border-bottom:2px dashed var(--red);align-self:center;margin-top:8px}
 .r-ans{margin-top:16px;font-family:var(--serif);font-size:calc(16px * var(--fs));line-height:1.9;color:var(--ink-2)}
-.r-ans .rk{color:var(--red);font-weight:600}
+.r-ans .rk{color:var(--zhu);font-weight:600}
 .r-mn{margin-top:11px;padding-top:9px;border-top:1px dashed color-mix(in srgb,var(--ink) 12%,transparent)}
-.r-ask .rk,.r-ask .qk{color:color-mix(in srgb,var(--c,#94651A) 78%,var(--ink-2));font-weight:600}
+.r-ask .rk,.r-ask .qk{color:color-mix(in srgb,var(--zhu,#A5342E) 78%,var(--ink-2));font-weight:600}
 .r-cover.sm{min-height:auto;padding:26px 0 6px;gap:10px}
 .r-cover.sm .hint{color:var(--ink-3)}
 .reveal-btn{background:var(--ink);color:var(--paper);padding:10px 22px;border-radius:11px;font-size:13.5px;letter-spacing:.1em}
@@ -4356,8 +4356,11 @@ normalizeState();
 migrateSrs();
 applyMode(); chipRow(); renderHome(); renderList(); renderCloze();
 
-const VER='3.1.9';
+const VER='3.1.10';
 const CHANGELOG = [
+ {v:'3.1.10',d:'2026-11-14',t:'修：抽背答案的重点词显示成了竹青绿而不是朱红',items:[
+  '竹青改版时把 --red 这个变量整体指到了主体绿，答案里的重点词（.rk）和空位的虚线都跟着变绿，看上去和正文没区别，重点根本认不出来',
+  '现在答案重点词、空位虚线单独改用印章朱红（--zhu #A5342E），填空处一眼能看出来']},
  {v:'3.1.9',d:'2026-11-14',t:'修：抽背卡片「题面与答案错位、句子被切碎」',items:[
   '根因是卡片题面被留空（每张卡只有一整段答案），「甘誓」「是启出兵讨伐有扈氏所颁布的。」这类半句实际上是原文的一行，被当成独立一张卡',
   '现在按「知识点名（甘誓 / 墨刑 / 汤刑…）→ 释义」重组：chd 短行只当题面，紧跟的释义句做答案，同一条目下最多 3 句合成一张卡',
