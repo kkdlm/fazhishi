@@ -3,12 +3,11 @@ name: publish
 on:
   push:
     branches: [main]
-    paths-ignore:
-      - 'index.html'
   workflow_dispatch:
 
 permissions:
   contents: write
+  pages: write
 
 jobs:
   fetch-app:
@@ -29,11 +28,10 @@ jobs:
           echo "size=$size"
           if [ "$size" -lt 4000000 ]; then
             echo "::error::download too small ($size), abort"
-            head -c 200 index.html || true
             exit 1
           fi
           head -c 60 index.html | grep -q "<!DOCTYPE html>" || { echo "::error::not html"; exit 1; }
-          grep -q "const VER='3.0'" index.html || echo "::warning::version marker not found"
+          grep -q "VER='3.0'" index.html || echo "::warning::version marker not found"
 
       - name: Commit and push
         run: |
@@ -43,7 +41,29 @@ jobs:
           git add index.html
           if git diff --cached --quiet; then
             echo "index.html unchanged"
-            exit 0
+          else
+            git commit -m "chore: 同步法制史一图流 v3.0 单文件应用"
+            git push origin HEAD:main
           fi
-          git commit -m "chore: 同步法制史一图流 v3.0 单文件应用"
-          git push origin HEAD:main
+
+      - name: Enable GitHub Pages (main / root)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          api="https://api.github.com/repos/$REPO/pages"
+          code=$(curl -sS -o /tmp/pages.json -w '%{http_code}' -X POST "$api" \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            -d '{"source":{"branch":"main","path":"/"}}')
+          echo "POST pages -> $code"
+          if [ "$code" = "409" ]; then
+            echo "Pages already enabled"
+          elif [ "$code" -ge 400 ]; then
+            cat /tmp/pages.json || true
+            echo "::error::failed to enable pages"
+            exit 1
+          fi
+          curl -sS "$api" -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" \
+            | python3 -c 'import json,sys; d=json.load(sys.stdin); print("pages url:", d.get("html_url")); print("status:", d.get("status"))' || true
