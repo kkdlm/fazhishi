@@ -1022,12 +1022,12 @@ html[data-theme="night"] mark.hl{background:#8a6d2f;color:#fff}
 .tnote img{display:block;width:100%!important;max-width:100%!important;height:auto;border:1px solid #E7DFD2;border-radius:6px;background:#fff}
 </style>
 <style>
-#boxZoom{position:fixed;inset:0;background:rgba(24,18,12,.94);z-index:9999;display:none;flex-direction:column}
-#boxZoom .bz-bar{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;color:#F5EADB;font-size:13px}
+#boxZoom{position:fixed;inset:0;background:rgba(24,18,12,.94);z-index:9999;display:none;flex-direction:column;overflow:hidden}
+#boxZoom .bz-bar{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;color:#F5EADB;font-size:13px;flex:none}
 #boxZoom .bz-close{background:#7A3E24;color:#fff;border:0;border-radius:8px;padding:6px 14px}
-#boxZoom .bz-body{flex:1;overflow:auto;-webkit-overflow-scrolling:touch;padding:0 6px 18px}
-#boxZoom img{width:100%;max-width:100%;min-width:0;display:block}
-#boxZoom .zoomed img{width:1500px;max-width:none}
+#boxZoom .bz-body{flex:1;position:relative;overflow:hidden;touch-action:none;display:flex;align-items:center;justify-content:center;padding:0}
+#boxZoom .bz-img{max-width:100%;max-height:100%;margin:auto;display:block;transform-origin:center center;will-change:transform;user-select:none;-webkit-user-drag:none}
+#boxZoom .bz-tip{position:absolute;bottom:10px;left:0;right:0;text-align:center;color:#b9a898;font-size:11px;pointer-events:none}
 </style>
 <style>
 .bg-grid{display:grid;grid-template-columns:1fr;gap:10px}
@@ -2873,23 +2873,90 @@ function aiExpBlocks(exp){
   });
   return out.join('');
 }
+let ZS=1,ZX=0,ZY=0,ZIMG=null,ZBOX=null,ZT=null;
+function zClamp(){
+  if(!ZIMG||!ZBOX) return;
+  const w=ZIMG.offsetWidth*ZS, h=ZIMG.offsetHeight*ZS;
+  const mx=Math.max(0,(w-ZBOX.clientWidth)/2), my=Math.max(0,(h-ZBOX.clientHeight)/2);
+  ZX=Math.min(mx,Math.max(-mx,ZX)); ZY=Math.min(my,Math.max(-my,ZY));
+}
+function zPaint(){
+  if(!ZIMG) return;
+  zClamp();
+  ZIMG.style.transform='translate3d('+ZX+'px,'+ZY+'px,0) scale('+ZS+')';
+}
+function zReset(){ ZS=1;ZX=0;ZY=0;zPaint(); }
+function zSetScale(ns,cx,cy){
+  ns=Math.min(8,Math.max(1,ns));
+  if(!ZIMG||!ZBOX) return;
+  const dx=cx-ZBOX.clientWidth/2, dy=cy-ZBOX.clientHeight/2;
+  const k=ns/ZS;
+  ZX=dx-(dx-ZX)*k; ZY=dy-(dy-ZY)*k; ZS=ns;
+  zPaint();
+}
 function openImgZoom(src,title){
-  document.getElementById('bzTitle').textContent=title||'一图流原页（左右滑动看全）';
-  document.getElementById('bzBody').innerHTML='<img src="'+src+'" alt="讲义原页" onclick="bzToggleZoom()">';
+  document.getElementById('bzTitle').textContent=title||'原页图示';
+  ZBOX=document.getElementById('bzBody');
+  ZBOX.innerHTML='<img class="bz-img" src="'+src+'" alt="讲义原页" draggable="false"><div class="bz-tip">双指缩放 · 拖动移动 · 双击放大</div>';
+  ZIMG=ZBOX.querySelector('img');
+  ZS=1;ZX=0;ZY=0;
   const z=document.getElementById('boxZoom'); z.style.display='flex';
   document.body.style.overflow='hidden';
+  bindZoomGestures();
 }
 function openBoxZoom(){
   if(!QZ) return;
   const q=QZ.list[QZ.idx]; if(!q||q.box==null) return;
   const b=BOXES[q.box];
-  document.getElementById('bzTitle').textContent='老龚点睛 · 原页（左右滑动看全）';
-  document.getElementById('bzBody').innerHTML='<img src="'+b.src+'" alt="老龚点睛" onclick="bzToggleZoom()">';
-  const z=document.getElementById('boxZoom'); z.style.display='flex';
-  document.body.style.overflow='hidden';
+  openImgZoom(b.src,'老龚点睛 · '+((b.name||'').replace(/·老龚点睛$/,'')||('第'+b.page+'页')));
 }
-function bzToggleZoom(){ document.getElementById('bzBody').classList.toggle('zoomed'); }
-function closeBoxZoom(){ document.getElementById('boxZoom').style.display='none'; document.body.style.overflow=''; }
+function bzToggleZoom(){ zReset(); }
+function closeBoxZoom(){
+  const z=document.getElementById('boxZoom'); z.style.display='none';
+  const b=document.getElementById('bzBody'); if(b) b.innerHTML='';
+  ZIMG=null; ZS=1;ZX=0;ZY=0;
+  document.body.style.overflow='';
+}
+function bindZoomGestures(){
+  if(!ZBOX||ZBOX.__bound) return; ZBOX.__bound=1;
+  let mode=0,sx=0,sy=0,bx=0,by=0,d0=0,s0=1,lastTap=0,moved=false;
+  const dist=t=>Math.hypot(t[0].clientX-t[1].clientX,t[0].clientY-t[1].clientY);
+  const mid=t=>({x:(t[0].clientX+t[1].clientX)/2,y:(t[0].clientY+t[1].clientY)/2});
+  ZBOX.addEventListener('touchstart',e=>{
+    moved=false;
+    if(e.touches.length===2){
+      mode=2; d0=dist(e.touches); s0=ZS;
+      const m=mid(e.touches); bx=m.x; by=m.y;
+    }else{
+      mode=1; sx=e.touches[0].clientX; sy=e.touches[0].clientY; bx=ZX; by=ZY;
+      const now=Date.now();
+      if(now-lastTap<320 && ZS>1.2){ ZS=1;ZX=0;ZY=0;zPaint(); lastTap=0; mode=0; }
+      else if(now-lastTap<320 && ZS<=1.2){ zSetScale(2.6,e.touches[0].clientX,e.touches[0].clientY); lastTap=0; mode=0; }
+      else lastTap=now;
+    }
+  },{passive:true});
+  ZBOX.addEventListener('touchmove',e=>{
+    e.preventDefault(); moved=true;
+    if(mode===2&&e.touches.length===2){
+      const d=dist(e.touches); const m=mid(e.touches);
+      if(d0>0) zSetScale(s0*d/d0,bx,by);
+    }else if(mode===1&&e.touches.length===1){
+      const t=e.touches[0];
+      ZX=bx+(t.clientX-sx); ZY=by+(t.clientY-sy); zPaint();
+    }
+  },{passive:false});
+  ZBOX.addEventListener('touchend',e=>{
+    if(mode===1&&!moved&&e.changedTouches.length===1){
+      // 未拖动时轻点：不处理（双击由 touchstart 计数）
+    }
+    if(ZS<1){ ZS=1;ZX=0;ZY=0;zPaint(); }
+    if(e.touches.length===0) mode=0;
+  },{passive:true});
+  ZBOX.addEventListener('wheel',e=>{
+    e.preventDefault();
+    zSetScale(ZS*(e.deltaY<0?1.12:0.89),e.clientX,e.clientY);
+  },{passive:false});
+}
 function expHTML(q){
   if(q.src==='real'){
     const e=String(q.exp||'').replace(/^\[解析\]\s*/,'').trim();
@@ -3810,7 +3877,7 @@ function meetByName(name){
 }
 const JD = [];
 const BY = [];
-const BOXES = [{"page": 6, "src": "img/boxe-x071.webp", "kb": 28, "name": "立法指导思想·老龚点睛", "w": null, "h": null}, {"page": 8, "src": "img/boxe-x072.webp", "kb": 49, "name": "法律形式·老龚点睛", "w": null, "h": null}, {"page": 10, "src": "img/boxe-x073.webp", "kb": 36, "name": "《法经》立法要点（断代·篇目）", "w": null, "h": null}, {"page": 11, "src": "img/boxe-x074.webp", "kb": 62, "name": "《法经》具法与《九章律》总则体例", "w": null, "h": null}, {"page": 24, "src": "img/boxe-x075.webp", "kb": 101, "name": "法定刑演变·老龚点睛", "w": null, "h": null}, {"page": 27, "src": "img/boxe-x076.webp", "kb": 28, "name": "刑罚适用原则·老龚点睛", "w": null, "h": null}, {"page": 30, "src": "img/boxe-x077.webp", "kb": 18, "name": "债法·烧埋银（侵权之债）", "w": null, "h": null}, {"page": 33, "src": "img/boxe-x078.webp", "kb": 15, "name": "中央官制·相权演变（1-3-0）", "w": null, "h": null}, {"page": 34, "src": "img/boxe-x079.webp", "kb": 11, "name": "监察制度·老龚点睛", "w": null, "h": null}, {"page": 34, "src": "img/boxe-x080.webp", "kb": 20, "name": "官吏管理·选官制度演变", "w": null, "h": null}, {"page": 35, "src": "img/boxe-x081.webp", "kb": 23, "name": "司法机关·三法司演变", "w": null, "h": null}, {"page": 38, "src": "img/boxe-x082.webp", "kb": 21, "name": "诉讼审判制度·老龚点睛", "w": null, "h": null}];
+const BOXES = [{"page": 6, "src": "img/boxe-x071.webp", "kb": 28, "name": "立法指导思想·老龚点睛", "w": null, "h": null}, {"page": 8, "src": "img/boxe-x072.webp", "kb": 49, "name": "法律形式·老龚点睛", "w": null, "h": null}, {"page": 10, "src": "img/boxe-x073.webp", "kb": 36, "name": "律典篇目沿革（自《法经》起）", "w": null, "h": null}, {"page": 11, "src": "img/boxe-x074.webp", "kb": 62, "name": "律典总则体例与编纂体例", "w": null, "h": null}, {"page": 24, "src": "img/boxe-x075.webp", "kb": 101, "name": "法定刑演变·老龚点睛", "w": null, "h": null}, {"page": 27, "src": "img/boxe-x076.webp", "kb": 28, "name": "刑罚适用原则·老龚点睛", "w": null, "h": null}, {"page": 30, "src": "img/boxe-x077.webp", "kb": 18, "name": "债法·债权分类（侵权之债／契约之债）", "w": null, "h": null}, {"page": 33, "src": "img/boxe-x078.webp", "kb": 15, "name": "中央官制·相权演变（1-3-0）", "w": null, "h": null}, {"page": 34, "src": "img/boxe-x079.webp", "kb": 11, "name": "监察制度·老龚点睛", "w": null, "h": null}, {"page": 34, "src": "img/boxe-x080.webp", "kb": 20, "name": "官吏管理·选官制度演变", "w": null, "h": null}, {"page": 35, "src": "img/boxe-x081.webp", "kb": 23, "name": "司法机关·三法司演变", "w": null, "h": null}, {"page": 38, "src": "img/boxe-x082.webp", "kb": 21, "name": "诉讼审判制度·老龚点睛", "w": null, "h": null}];
 const YTL = [{"name":"古代一图流总表（一）立法思想·法律形式·刑法原则·罪名刑罚·诉讼审判","src":"img/ytl-x083.webp","kb":415,"w":null,"h":null},{"name":"古代一图流总表（二）主要立法·民事·经济·官吏考核·婚姻继承·行政监察","src":"img/ytl-x084.webp","kb":410,"w":null,"h":null},{"name":"古代中枢与司法机构演变图（三公九卿→三省六部→清末）","src":"img/ytl-x085.webp","kb":115,"w":null,"h":null},{"name":"近代一图流总表（一）清末·南京临时·北洋·南京国民政府","src":"img/ytl-x086.webp","kb":494,"w":null,"h":null},{"name":"近代一图流总表（二）工农民主·抗日民主·人民民主政权","src":"img/ytl-x087.webp","kb":451,"w":null,"h":null},{"name":"近代宪性文件与司法体制总表","src":"img/ytl-x088.webp","kb":196,"w":null,"h":null}];
 const LECTAB = [{"k":"t017","name":"第二章 主要法律形式 · 夏商至明清法律形式总表","pg":"P17","kind":"总表","src":"img/lect-t017.webp","subs":["主要法律形式演变"],"owner":[2,9,15],"eras":["夏","商","西周","春秋","战国","秦","汉","明"],"w":null,"h":null},{"k":"t018","name":"第二章 主要法律形式 · 刑／法／律／刑律／刑法演变总表","pg":"P18","kind":"总表","src":"img/lect-t018.webp","subs":["主要法律形式演变"],"owner":[30,40],"eras":["夏","商","西周","春秋","战国","秦","汉","三国","两晋","南北朝","元","明","清"],"w":null,"h":null},{"k":"t020","name":"第二章 主要法律形式 · 表格","pg":"P20","kind":"表格","src":"img/lect-t020.webp","subs":["主要法律形式演变"],"owner":[],"w":null,"h":null},{"k":"t024","name":"第三章 第三节 主要立法成果 · 本节考点一览表","pg":"P24–25","kind":"一览","src":"img/lect-t024.webp","subs":["主要立法"],"owner":[],"w":null,"h":null},{"k":"t027","name":"第三章 主要立法 · 表格","pg":"P27","kind":"表格","src":"img/lect-t027.webp","subs":["主要立法"],"owner":[],"w":null,"h":null},{"k":"t029","name":"第三章 主要立法 · 历代主要立法成果总表","pg":"P29","kind":"总表","src":"img/lect-t029.webp","subs":["主要立法"],"owner":[39,49],"eras":["商","春秋","秦","汉","三国","两晋","唐","元","明","清"],"w":null,"h":null},{"k":"t033","name":"第三章 主要立法 · 表格","pg":"P33","kind":"表格","src":"img/lect-t033.webp","subs":["主要立法"],"owner":[],"w":null,"h":null},{"k":"t039","name":"第三章 主要立法 · 表格","pg":"P39","kind":"表格","src":"img/lect-t039.webp","subs":["主要立法"],"owner":[],"w":null,"h":null},{"k":"t043","name":"第四章 罪名 · 夏商西周秦汉罪名总表","pg":"P43","kind":"总表","src":"img/lect-t043.webp","subs":["罪名演变"],"owner":[17,32],"eras":["夏","商","西周","秦","汉"],"w":null,"h":null},{"k":"t044","name":"第四章 罪名 · 表格","pg":"P44","kind":"表格","src":"img/lect-t044.webp","subs":["罪名演变"],"owner":[],"w":null,"h":null},{"k":"t045","name":"第四章 罪名 · 表格","pg":"P45","kind":"表格","src":"img/lect-t045.webp","subs":["罪名演变"],"owner":[],"w":null,"h":null},{"k":"t046","name":"第四章 罪名 · 表格","pg":"P46","kind":"表格","src":"img/lect-t046.webp","subs":["罪名演变"],"owner":[],"w":null,"h":null},{"k":"t051","name":"第四章 罪名 · 表格","pg":"P51","kind":"表格","src":"img/lect-t051.webp","subs":["罪名演变"],"owner":[],"w":null,"h":null},{"k":"t052","name":"第四章 罪名 · 表格","pg":"P52","kind":"表格","src":"img/lect-t052.webp","subs":["罪名演变"],"owner":[],"w":null,"h":null},{"k":"t053","name":"第四章 罪名 · 表格","pg":"P53","kind":"表格","src":"img/lect-t053.webp","subs":["罪名演变"],"owner":[],"w":null,"h":null},{"k":"t058","name":"第四章 罪名 · 表格","pg":"P58","kind":"表格","src":"img/lect-t058.webp","subs":["罪名演变"],"owner":[],"w":null,"h":null},{"k":"t059","name":"第五章 刑种 · 表格","pg":"P59","kind":"表格","src":"img/lect-t059.webp","subs":["刑罚演变"],"owner":[],"w":null,"h":null},{"k":"t060","name":"第五章 刑种 · 表格","pg":"P60","kind":"表格","src":"img/lect-t060.webp","subs":["刑罚演变"],"owner":[],"w":null,"h":null},{"k":"t061","name":"第五章 刑种 · 表格","pg":"P61","kind":"表格","src":"img/lect-t061.webp","subs":["刑罚演变"],"owner":[],"w":null,"h":null},{"k":"t068","name":"第六章 定罪量刑原则 · 古代刑罚与现代刑法对照表","pg":"P68","kind":"总表","src":"img/lect-t068.webp","subs":["刑法原则演变"],"owner":[],"eras":["汉","元"],"w":null,"h":null},{"k":"t069","name":"第六章 定罪量刑原则 · 表格","pg":"P69","kind":"表格","src":"img/lect-t069.webp","subs":["刑法原则演变"],"owner":[],"w":null,"h":null},{"k":"t071","name":"第六章 定罪量刑原则 · 历代刑法原则与特权演变总表","pg":"P71","kind":"总表","src":"img/lect-t071.webp","subs":["刑法原则演变"],"owner":[41,54,60],"eras":["西周","汉","三国","南北朝","隋","唐","清"],"w":null,"h":null},{"k":"t072","name":"第六章 定罪量刑原则 · 表格","pg":"P72","kind":"表格","src":"img/lect-t072.webp","subs":["刑法原则演变"],"owner":[],"w":null,"h":null},{"k":"t080","name":"第六章 定罪量刑原则 · 表格","pg":"P80","kind":"表格","src":"img/lect-t080.webp","subs":["刑法原则演变"],"owner":[],"w":null,"h":null},{"k":"t087","name":"第六章 定罪量刑原则 · 表格","pg":"P87","kind":"表格","src":"img/lect-t087.webp","subs":["刑法原则演变"],"owner":[],"w":null,"h":null},{"k":"t095","name":"第七章 行政·地方行政区划 · 历代演变总表","pg":"P95","kind":"总表","src":"img/lect-t095.webp","subs":["行政制度演变"],"owner":[46,115,88],"eras":["秦","汉","宋","明"],"w":null,"h":null},{"k":"t101","name":"第七章 行政·官吏管理 · 历代选官与考绩演变总表","pg":"P101","kind":"总表","src":"img/lect-t101.webp","subs":["行政制度演变","监察制度演变"],"owner":[46,114],"eras":["汉","唐","元","明"],"w":null,"h":null},{"k":"t110","name":"第八章 民事·债权 · 表格","pg":"P110","kind":"表格","src":"img/lect-t110.webp","subs":["民事立法"],"owner":[],"w":null,"h":null},{"k":"t122","name":"第九章 经济·市场管理 · 历代市场管理总表","pg":"P122","kind":"总表","src":"img/lect-t122.webp","subs":["经济立法"],"owner":[37,48,78,118,130],"eras":["夏","商","汉","唐","明"],"w":null,"h":null},{"k":"t124","name":"第九章 经济·土地赋税 · 历代赋税制度总表","pg":"P124","kind":"总表","src":"img/lect-t124.webp","subs":["经济立法","土地立法"],"owner":[37,48,78],"eras":["夏","商","战国","秦","汉","唐","明"],"w":null,"h":null},{"k":"t131","name":"第十章 司法·诉讼 · 表格","pg":"P131","kind":"表格","src":"img/lect-t131.webp","subs":["司法制度演变"],"owner":[],"w":null,"h":null},{"k":"t132","name":"第十章 司法·诉讼 · 表格","pg":"P132","kind":"表格","src":"img/lect-t132.webp","subs":["司法制度演变"],"owner":[],"w":null,"h":null},{"k":"t142","name":"第十章 司法·诉讼 · 表格","pg":"P142","kind":"表格","src":"img/lect-t142.webp","subs":["司法制度演变"],"owner":[],"w":null,"h":null},{"k":"t151","name":"下编 第一章 立法概况 · 表格","pg":"P151","kind":"表格","src":"img/lect-t151.webp","subs":["立法概况"],"owner":[],"w":null,"h":null},{"k":"t155","name":"下编 第二章 宪法制度 · 表格","pg":"P155","kind":"表格","src":"img/lect-t155.webp","subs":["宪法性文件"],"owner":[],"w":null,"h":null},{"k":"t156","name":"下编 第二章 宪法制度 · 表格","pg":"P156","kind":"表格","src":"img/lect-t156.webp","subs":["宪法性文件"],"owner":[],"w":null,"h":null},{"k":"t162","name":"下编 第二章 宪法制度 · 表格","pg":"P162","kind":"表格","src":"img/lect-t162.webp","subs":["宪法性文件"],"owner":[],"w":null,"h":null},{"k":"t165","name":"下编 第三章 刑事 · 表格","pg":"P165","kind":"表格","src":"img/lect-t165.webp","subs":["刑事立法"],"owner":[],"w":null,"h":null},{"k":"t169","name":"下编 第三章 刑事 · 表格","pg":"P169","kind":"表格","src":"img/lect-t169.webp","subs":["刑事立法"],"owner":[],"w":null,"h":null},{"k":"t171","name":"下编 第四章 民商事 · 表格","pg":"P171","kind":"表格","src":"img/lect-t171.webp","subs":["民商立法"],"owner":[],"w":null,"h":null},{"k":"t176","name":"下编 第四章 民商事 · 表格","pg":"P176","kind":"表格","src":"img/lect-t176.webp","subs":["民商立法"],"owner":[],"w":null,"h":null},{"k":"t179","name":"下编 第五章 司法 · 表格","pg":"P179","kind":"表格","src":"img/lect-t179.webp","subs":["司法制度","司法体系变化","司法诉讼审判制度改革"],"owner":[],"w":null,"h":null},{"k":"t183","name":"下编 第五章 司法 · 表格","pg":"P183","kind":"表格","src":"img/lect-t183.webp","subs":["司法制度","司法体系变化","司法诉讼审判制度改革"],"owner":[],"w":null,"h":null},{"k":"t199","name":"附录四 · 表格","pg":"P199","kind":"表格","src":"img/lect-t199.webp","subs":[],"owner":[],"w":null,"h":null},{"k":"t200","name":"附录四 · 表格","pg":"P200","kind":"表格","src":"img/lect-t200.webp","subs":[],"owner":[],"w":null,"h":null},{"k":"t201","name":"附录四 · 表格","pg":"P201","kind":"表格","src":"img/lect-t201.webp","subs":[],"owner":[],"w":null,"h":null},{"k":"t203","name":"附录四 · 表格","pg":"P203","kind":"表格","src":"img/lect-t203.webp","subs":[],"owner":[],"w":null,"h":null},{"k":"t205","name":"附录四 · 表格","pg":"P205","kind":"表格","src":"img/lect-t205.webp","subs":[],"owner":[],"w":null,"h":null},{"k":"t207","name":"附录四 · 表格","pg":"P207","kind":"表格","src":"img/lect-t207.webp","subs":[],"owner":[],"w":null,"h":null},{"k":"t209","name":"附录四 · 表格","pg":"P209","kind":"表格","src":"img/lect-t209.webp","subs":[],"owner":[],"w":null,"h":null},{"k":"fv01","name":"绪论 · 本节复盘背诵","pg":"P8","kind":"复盘","src":"img/lect-fv01.webp","owner":[],"eras":[],"w":null,"h":null},{"k":"fv02","name":"第一章 立法指导思想 · 本节复盘背诵","pg":"P16","kind":"复盘","src":"img/lect-fv02.webp","owner":[],"eras":[],"w":null,"h":null},{"k":"fv03","name":"第二章 主要法律形式 · 本节复盘背诵","pg":"P23–24","kind":"复盘","src":"img/lect-fv03.webp","owner":[],"eras":[],"w":null,"h":null},{"k":"fv04","name":"第三章 主要立法 · 本节复盘背诵","pg":"P40–41","kind":"复盘","src":"img/lect-fv04.webp","owner":[],"eras":[],"w":null,"h":null},{"k":"fv05","name":"第四章 罪名 · 本节复盘背诵","pg":"P56–57","kind":"复盘","src":"img/lect-fv05.webp","owner":[],"eras":[],"w":null,"h":null},{"k":"fv06","name":"第五章 刑种 · 本节复盘背诵","pg":"P66","kind":"复盘","src":"img/lect-fv06.webp","owner":[],"eras":[],"w":null,"h":null},{"k":"fv07","name":"第六章 定罪量刑原则 · 本节复盘背诵","pg":"P89","kind":"复盘","src":"img/lect-fv07.webp","owner":[],"eras":[],"w":null,"h":null},{"k":"fv08","name":"第七章 行政·中央官制 · 本节复盘背诵","pg":"P94","kind":"复盘","src":"img/lect-fv08.webp","owner":[],"eras":[],"w":null,"h":null},{"k":"fv09","name":"第七章 行政·地方行政区划 · 本节复盘背诵","pg":"P96","kind":"复盘","src":"img/lect-fv09.webp","owner":[],"eras":[],"w":null,"h":null},{"k":"fv10","name":"第七章 行政·官吏管理 · 本节复盘背诵","pg":"P102","kind":"复盘","src":"img/lect-fv10.webp","owner":[],"eras":[],"w":null,"h":null},{"k":"fv11","name":"第八章 民事·债权 · 本节思维导图","pg":"P107","kind":"导图","src":"img/lect-fv11.webp","owner":[],"eras":[],"w":null,"h":null},{"k":"fv12","name":"第八章 民事·婚姻 · 本节复盘背诵","pg":"P116–118","kind":"复盘","src":"img/lect-fv12.webp","owner":[],"eras":[],"w":null,"h":null},{"k":"fv13","name":"第八章 民事·继承 · 本节复盘背诵","pg":"P121","kind":"复盘","src":"img/lect-fv13.webp","owner":[],"eras":[],"w":null,"h":null},{"k":"fv14","name":"第十章 司法·司法机构 · 本节复盘背诵","pg":"P129","kind":"复盘","src":"img/lect-fv14.webp","owner":[],"eras":[],"w":null,"h":null},{"k":"fv15","name":"第十章 司法·诉讼 · 本节复盘背诵（一）","pg":"P135–136","kind":"复盘","src":"img/lect-fv15.webp","owner":[],"eras":[],"w":null,"h":null},{"k":"fv16","name":"第十章 司法·诉讼 · 本节复盘背诵（二）","pg":"P137–138","kind":"复盘","src":"img/lect-fv16.webp","owner":[],"eras":[],"w":null,"h":null},{"k":"fv17","name":"第十章 司法·诉讼 · 本节复盘背诵（三）","pg":"P143","kind":"复盘","src":"img/lect-fv17.webp","owner":[],"eras":[],"w":null,"h":null},{"k":"fv18","name":"第十章 司法·诉讼 · 本节复盘背诵（四）","pg":"P146","kind":"复盘","src":"img/lect-fv18.webp","owner":[],"eras":[],"w":null,"h":null},{"k":"fv19","name":"下编 第二章 宪法·南京国民政府 · 本节复盘背诵","pg":"P161","kind":"复盘","src":"img/lect-fv19.webp","owner":[],"eras":[],"w":null,"h":null},{"k":"fv20","name":"下编 第五章 司法·诉讼审判 · 本节复盘背诵","pg":"P181–182","kind":"复盘","src":"img/lect-fv20.webp","owner":[],"eras":[],"w":null,"h":null}];
 function renderYTL(plain){
@@ -3893,9 +3960,8 @@ function renderBoxGallery(plain){
   const cards=BOXES.map((b,i)=>`<div class="bg-card" onclick="openImgZoom(BOXES[${i}].src)">
       <div class="bg-name">${esc(b.name||('第'+b.page+'页'))}</div>
       <img loading="lazy" src="${b.src}" alt="老龚点睛">
-      <div class="bg-meta">原书第 ${b.page} 页</div>
     </div>`).join('');
-  const head=plain?'':`<div class="sec-h" style="margin:18px 0 8px"><h2>老龚点睛</h2><span class="more">${BOXES.length} 张 · 点击可放大</span></div>`;
+  const head=plain?'':`<div class="sec-h" style="margin:18px 0 8px"><h2>老龚点睛</h2><span class="more">${BOXES.length} 张</span></div>`;
   return head+`<div class="bg-grid">${cards}</div>`;
 }
 function renderTopic(){
@@ -4444,9 +4510,9 @@ normalizeState();
 migrateSrs();
 applyMode(); chipRow(); renderHome(); renderList(); renderCloze();
 
-const VER='3.1.52';
+const VER='3.1.53';
 const CHANGELOG = [
-{ver:'3.1.52',date:'2026-11-15',items:['专题各栏顶部的说明文字全部去掉，只留标题和张数（时间轴／纵向专题／一图流原页／复盘·一览／知识表／速记总表／老龚点睛）','图片卡片上的页码、纵向总表标记、对应考点保留']},{ver:'3.1.51',date:'2026-11-15',items:['图片换回讲义原始分辨率：89 张图从 820×1166 的压缩版重渲染为 1400px 宽的高清版（直接从 PDF 原页 220dpi 渲染，非放大插值），放大查看时文字边缘不再虚','仍保持按需加载 + 单张缓存，主文件仍是 0.59MB；一屏只下载当前可见的几张，不会像以前那样一次拉 12MB']},{ver:'3.1.50',date:'2026-11-15',items:['主文件从 12.8MB 瘦到 0.59MB：把 89 张讲义截图从 HTML 内联 base64 拆成独立 img/*.webp，按需加载、单独进缓存。手机上再也不会因为下载/写缓存一个 12MB 的文件而白屏或装不上新版本','SW 重写：网络响应先返回、写缓存失败不影响你看到页面；网络失败才回退缓存；缓存也没有时给可点重试的页面，不再只甩一行 offline','安装不再预缓存任何大文件，新版本随开随生效','图表、复盘、一览、知识表的图片路径全部改为 img/，页面渲染与放大查看不受影响']},{ver:'3.1.49',date:'2026-11-14',items:['修「一直提示更新但更新不了」的死循环：旧版点更新后导航仍被 Service Worker 缓存拦，加载回旧页又继续提示。现在 SW 做「版本感知」——先取 version.json，与缓存里记录的版本不一致时强制走网络取新页面，一致才用缓存秒开','SW 注册改为 updateViaCache:none 并主动 reg.update()，新 SW 一旦就绪立刻提示「新版本已下载完成，立即重启」；「立即更新」会先注销 SW、清空所有缓存再硬刷新','连续三次仍停留在旧版时，弹「看解决办法」，给出手动清站点缓存的具体步骤（少数设备旧 SW 顽固时用）','安装阶段不再预缓存 12MB 主文件（原来 addAll 超时会导致新 SW 永远装不上）']},{ver:'3.1.48',date:'2026-11-14',items:['修好「不能更新」：原来点「立即更新」只是带时间戳刷新，导航请求仍被 Service Worker 缓存挡住，看到的还是旧版。现在更新会先注销 SW、清空所有 cache 再硬刷新；SW 也改成导航优先走网络（6 秒超时回退缓存），并把 12MB 主文件从安装预缓存里拿掉（原来容易超时导致新 SW 装不上）','专题史：绪论不再单独成组，并入「立法沿革」并排在该组最前（讲义绪论本就是立法指导思想的上位）；断代史与首页编年行仍然是绪论第一','全站不再出现「通论」叫法，只有历史更新日志里保留旧称']},{ver:'3.1.47',date:'2026-11-14',items:['民事章（P104–121）逐页核对：西周补身份（分封制＋宗法等级三项）、元补四等人制度、唐补瑕疵担保（市券三日悔）与「官为理／官不为理」、明补身份继承与法定继承顺位；删掉唐·继承末尾串入的监察行','诉讼章（P127–148）核对：唐「三司推事」「三司使」补字，其余五听·三刺·嘉石·春秋决狱·录囚·翻异别勘·务限法·鞫谳分司·厂卫·九卿会审·大审·圆审·秋审朝审均已对页','下编（P149–184）核对：清末四级三审·陪审·律师·兼理司法·保安处分·特种刑事法庭·马锡五审判方式、各立宪文件政权组织形式对照（十九信条君主立宪→临时约法责任内阁制→袁记约法总统制→贿选宪法责任内阁制→五五宪草与 1947 宪法总统制）均已对上','行政章补明「五军都督府」；修正两处小节名错位。至此全书正文已逐页过一遍']},{ver:'3.1.46',date:'2026-11-14',items:['罪名节（讲义 P42–58）逐页人工核对完成：夏补「违命」、商改「三风十愆」、秦补《盗徙封》条文与「纵囚／不直／失刑」办案责任罪名、汉补「1. 惩治思想言论」与《沈命法》条文、唐补「为常赦所不原／一准乎礼」与保辜制度、明补出处与「重典治吏」、清补文字狱立法背景','改正两处归属错位：①秦「办案责任罪名」以罪名节（P43）为主条目，司法制度节 P130 处改「见秦·罪名演变（P43）」指路；②原「两晋·罪名演变」实为讲义 P45 的「重罪十条 VS 十恶」，改为南北朝考点并按讲义补齐三点变化与五项继承','张斐《法律表》20 个法律概念从罪名点移回真实出处（讲义 P19，立法章律学），挂到两晋·主要立法','行政章抽查：明补「五军都督府」；修正两处小节名错位（南京临时·革命法令、根据地·宪法性文件）']},{ver:'3.1.45',date:'2026-11-14',items:['复盘页补全：改为逐页读页脚真实印刷页，从头扫全书，补齐绪论 P8、主要法律形式 P23–24、中央官制 P94、地方区划 P96、官吏管理 P102、债权导图 P107、继承 P121、司法机构 P129、南京国民政府 P161，并修正下编诉讼为 P181–182（原 P180–181 差一页）','「复盘·一览」栏现有 21 组（19 张复盘 + 1 张思维导图 + 1 张本节考点一览表），每组页码都经页脚核对']},
+{ver:'3.1.53',date:'2026-11-15',items:['老龚点睛 12 张图修回正确原图（上一版重渲染时误把目录页当成正文页，前两张成了目录），并逐张核对卡片标题与图内小节一致','图片查看器重写：支持双指任意缩放（1×–8×）、单指拖动、双击快速放大/复位、滚轮缩放，放大后自动限制边界不跑飞']},{ver:'3.1.52',date:'2026-11-15',items:['专题各栏顶部的说明文字全部去掉，只留标题和张数（时间轴／纵向专题／一图流原页／复盘·一览／知识表／速记总表／老龚点睛）','图片卡片上的页码、纵向总表标记、对应考点保留']},{ver:'3.1.51',date:'2026-11-15',items:['图片换回讲义原始分辨率：89 张图从 820×1166 的压缩版重渲染为 1400px 宽的高清版（直接从 PDF 原页 220dpi 渲染，非放大插值），放大查看时文字边缘不再虚','仍保持按需加载 + 单张缓存，主文件仍是 0.59MB；一屏只下载当前可见的几张，不会像以前那样一次拉 12MB']},{ver:'3.1.50',date:'2026-11-15',items:['主文件从 12.8MB 瘦到 0.59MB：把 89 张讲义截图从 HTML 内联 base64 拆成独立 img/*.webp，按需加载、单独进缓存。手机上再也不会因为下载/写缓存一个 12MB 的文件而白屏或装不上新版本','SW 重写：网络响应先返回、写缓存失败不影响你看到页面；网络失败才回退缓存；缓存也没有时给可点重试的页面，不再只甩一行 offline','安装不再预缓存任何大文件，新版本随开随生效','图表、复盘、一览、知识表的图片路径全部改为 img/，页面渲染与放大查看不受影响']},{ver:'3.1.49',date:'2026-11-14',items:['修「一直提示更新但更新不了」的死循环：旧版点更新后导航仍被 Service Worker 缓存拦，加载回旧页又继续提示。现在 SW 做「版本感知」——先取 version.json，与缓存里记录的版本不一致时强制走网络取新页面，一致才用缓存秒开','SW 注册改为 updateViaCache:none 并主动 reg.update()，新 SW 一旦就绪立刻提示「新版本已下载完成，立即重启」；「立即更新」会先注销 SW、清空所有缓存再硬刷新','连续三次仍停留在旧版时，弹「看解决办法」，给出手动清站点缓存的具体步骤（少数设备旧 SW 顽固时用）','安装阶段不再预缓存 12MB 主文件（原来 addAll 超时会导致新 SW 永远装不上）']},{ver:'3.1.48',date:'2026-11-14',items:['修好「不能更新」：原来点「立即更新」只是带时间戳刷新，导航请求仍被 Service Worker 缓存挡住，看到的还是旧版。现在更新会先注销 SW、清空所有 cache 再硬刷新；SW 也改成导航优先走网络（6 秒超时回退缓存），并把 12MB 主文件从安装预缓存里拿掉（原来容易超时导致新 SW 装不上）','专题史：绪论不再单独成组，并入「立法沿革」并排在该组最前（讲义绪论本就是立法指导思想的上位）；断代史与首页编年行仍然是绪论第一','全站不再出现「通论」叫法，只有历史更新日志里保留旧称']},{ver:'3.1.47',date:'2026-11-14',items:['民事章（P104–121）逐页核对：西周补身份（分封制＋宗法等级三项）、元补四等人制度、唐补瑕疵担保（市券三日悔）与「官为理／官不为理」、明补身份继承与法定继承顺位；删掉唐·继承末尾串入的监察行','诉讼章（P127–148）核对：唐「三司推事」「三司使」补字，其余五听·三刺·嘉石·春秋决狱·录囚·翻异别勘·务限法·鞫谳分司·厂卫·九卿会审·大审·圆审·秋审朝审均已对页','下编（P149–184）核对：清末四级三审·陪审·律师·兼理司法·保安处分·特种刑事法庭·马锡五审判方式、各立宪文件政权组织形式对照（十九信条君主立宪→临时约法责任内阁制→袁记约法总统制→贿选宪法责任内阁制→五五宪草与 1947 宪法总统制）均已对上','行政章补明「五军都督府」；修正两处小节名错位。至此全书正文已逐页过一遍']},{ver:'3.1.46',date:'2026-11-14',items:['罪名节（讲义 P42–58）逐页人工核对完成：夏补「违命」、商改「三风十愆」、秦补《盗徙封》条文与「纵囚／不直／失刑」办案责任罪名、汉补「1. 惩治思想言论」与《沈命法》条文、唐补「为常赦所不原／一准乎礼」与保辜制度、明补出处与「重典治吏」、清补文字狱立法背景','改正两处归属错位：①秦「办案责任罪名」以罪名节（P43）为主条目，司法制度节 P130 处改「见秦·罪名演变（P43）」指路；②原「两晋·罪名演变」实为讲义 P45 的「重罪十条 VS 十恶」，改为南北朝考点并按讲义补齐三点变化与五项继承','张斐《法律表》20 个法律概念从罪名点移回真实出处（讲义 P19，立法章律学），挂到两晋·主要立法','行政章抽查：明补「五军都督府」；修正两处小节名错位（南京临时·革命法令、根据地·宪法性文件）']},{ver:'3.1.45',date:'2026-11-14',items:['复盘页补全：改为逐页读页脚真实印刷页，从头扫全书，补齐绪论 P8、主要法律形式 P23–24、中央官制 P94、地方区划 P96、官吏管理 P102、债权导图 P107、继承 P121、司法机构 P129、南京国民政府 P161，并修正下编诉讼为 P181–182（原 P180–181 差一页）','「复盘·一览」栏现有 21 组（19 张复盘 + 1 张思维导图 + 1 张本节考点一览表），每组页码都经页脚核对']},
 {ver:'3.1.44',date:'2026-11-14',items:['专题图表拆成两栏：「复盘·一览」= 每节开篇一览表＋节末复盘/导图（24 张）；「知识表」= 正文表格页 38 张，含 10 张红星纵向总表','两栏内都按讲义印刷页顺序排，总表标注覆盖朝代与对应考点']},
 {ver:'3.1.43',date:'2026-11-14',items:['按你的意见撤掉「考点卡片内嵌速记」——塞在正文里太乱','专题新增独立的「速记总表」栏：只放 10 张跨朝代总表，标页码、覆盖朝代和对应考点，可与「图表」栏对照看']},
 {ver:'3.1.42',date:'2026-11-14',items:['修正速记归属：不再按小节一刀切，改为「表所在页落在哪个考点的页码范围里就挂给谁」，并显示该表覆盖的朝代','P68 古今刑罚对照表不按朝代挂（只留在图表栏）；P101 官吏考绩表只挂行政制度演变，不再误挂监察']},
