@@ -1081,6 +1081,31 @@ html[data-theme="night"] mark.hl{background:#8a6d2f;color:#fff}
 .hat-card.masked .hat-a .a-txt{visibility:hidden}
 .hat-practice{margin-top:14px}
 
+
+/* ==== p25 视觉润色 ==== */
+@keyframes viewIn{from{opacity:.35;transform:translateY(5px)}to{opacity:1;transform:none}}
+.view.on{animation:viewIn .22s ease both}
+@media (prefers-reduced-motion:reduce){.view.on{animation:none}}
+button,.opt,.chip,.quiz-opt,.setcard{-webkit-tap-highlight-color:transparent}
+.quiz-opt,.setcard,.opt,.chip{transition:transform .12s ease,border-color .16s ease,background .16s ease,box-shadow .16s ease}
+.quiz-opt:active,.setcard:active,.opt:active,.chip:active{transform:scale(.988)}
+/* 横滚容器右端渐隐，暗示还能滑 */
+.era-track,#chips,.hat-chips,.vt-chips,#topicSeg{-webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 22px),transparent);
+  mask-image:linear-gradient(90deg,#000 calc(100% - 22px),transparent)}
+/* 套题卡 */
+.setcard{padding:12px 14px;align-items:stretch!important}
+.setno{flex:0 0 auto;width:27px;height:27px;border-radius:8px;display:flex;align-items:center;justify-content:center;
+  font-family:var(--serif);font-size:13px;color:#fff;background:var(--zhu);margin:1px 10px 0 0;
+  box-shadow:0 4px 10px -6px var(--zhu)}
+.setmain{flex:1;min-width:0}
+.setbar{display:block;height:3px;border-radius:3px;background:var(--track);margin-top:7px;overflow:hidden}
+.setbar i{display:block;height:100%;border-radius:3px;background:linear-gradient(90deg,var(--bamboo),color-mix(in srgb,var(--bamboo) 45%,#fff));transition:width .3s ease}
+.setpct{flex:0 0 auto;align-self:center;font-family:var(--serif);font-size:12.5px;color:var(--ink-2);
+  font-variant-numeric:tabular-nums;margin-left:9px}
+html[data-theme="night"] .setno{background:color-mix(in srgb,var(--zhu) 78%,#000)}
+html[data-theme="night"] .setbar{background:rgba(255,255,255,.12)}
+.ex-gap{margin:5px 0 2px;font-size:11.5px;color:var(--ink-2);letter-spacing:.01em}
+.ex-gap b{color:var(--bad);font-family:var(--serif)}
 </style>
 <style>
 .by-card{background:#fff;border:1px solid #E7DED2;border-radius:10px;padding:13px 14px;margin:10px 0}
@@ -3016,12 +3041,16 @@ function renderQuizSets(){
   var box=document.getElementById('quizBody');
   var wrongN=(S.qwrong||[]).length, doneN=(S.qdone||[]).length;
   var acc=doneN?Math.round(doneN/Math.max(1,doneN+wrongN)*100):0;
-  var cards=QSETS.map(function(st){
+  var setCN=['一','二','三','四'];
+  var cards=QSETS.map(function(st,si){
     var all=qOfSet(st.id); if(!all.length) return '';
     var done=all.filter(function(q){return (S.qdone||[]).indexOf(q.id)>=0}).length;
-    return '<button class="opt" style="margin-bottom:10px" onclick="qfSet(\'set\',\''+st.id+'\');QF.bian=\'all\';QF.chap=\'all\';QF.sec=\'all\';QF.era=\'all\';renderQuizSetup()">'+
-      '<span><b>'+st.name+'</b><small>'+st.desc+' · '+all.length+' 题 · 已做 '+done+'</small></span>'+
-      '<span class="n">'+all.length+'</span></button>';
+    var pct=all.length?Math.round(done/all.length*100):0;
+    return '<button class="opt setcard" style="margin-bottom:10px" onclick="qfSet(\'set\',\''+st.id+'\');QF.bian=\'all\';QF.chap=\'all\';QF.sec=\'all\';QF.era=\'all\';renderQuizSetup()">'+
+      '<span class="setno">'+(setCN[si]||(si+1))+'</span>'+
+      '<span class="setmain"><b>'+st.name+'</b><small>'+st.desc+' · '+all.length+' 题 · 已做 '+done+'</small>'+
+      '<span class="setbar"><i style="width:'+pct+'%"></i></span></span>'+
+      '<span class="setpct">'+pct+'%</span></button>';
   }).join('');
   box.innerHTML=
     '<div class="sec-h" style="margin:2px 0 10px"><h2>刷题</h2><span class="more">共 '+REALQ.length+' 题 · '+QSETS.length+' 套题</span></div>'+
@@ -3309,6 +3338,8 @@ function renderQuiz(){
   const q=QZ.list[QZ.idx];
   const correctSet=ansIdx(q);
   const letters=['A','B','C','D'];
+  const missAns=QZ.revealed?correctSet.filter(i=>!QZ.sel.includes(i)):[];
+  const extraAns=QZ.revealed?QZ.sel.filter(i=>!correctSet.includes(i)):[];
   const isMulti=q.type==='multi';
   const kindTxt=isMulti?'多选':'单选';
   box.innerHTML=`
@@ -3348,6 +3379,7 @@ function renderQuiz(){
       ${QZ.revealed?`
         <div class="quiz-explain">
           <b class="ex-verdict" style="color:${QZ.lastCorrect?'var(--ok)':'var(--bad)'}">${QZ.lastCorrect?'回答正确':'回答错误 · 正确答案 '+q.ans.join('')}</b>
+          ${(missAns.length||extraAns.length)?`<div class="ex-gap">你选了 ${QZ.sel.map(i=>letters[i]).join('')||'—'}${missAns.length?` · 少选 <b>${missAns.map(i=>letters[i]).join('')}</b>`:''}${extraAns.length?` · 多选 <b>${extraAns.map(i=>letters[i]).join('')}</b>`:''}</div>`:''}
           <div class="ex-body">${expHTML(q)}</div>
           <div class="ex-foot">
             ${mainPt(q)?`<button class="ghost" style="padding:6px 12px" onclick="openCardJump(${mainPt(q)})">查看对应考点</button>`:`<span class="ex-none">${q.set==='zhuanti'?'专题史题 · 速览无对应卡':'该题知识点速览未收录'}</span>`}
@@ -5283,7 +5315,7 @@ migrateSrs();
 applyMode(); chipRow(); renderHome(); renderList(); renderCloze();
 
 const VER='3.7.0';
-const PATCH='24';   /* 同一版本内的补丁号；0 表示版本本体 */
+const PATCH='25';   /* 同一版本内的补丁号；0 表示版本本体 */
 const CHANGELOG = [
 {v:'3.5.0',d:'2026-11-15',kind:'minor',sum:'改为登录后解锁全部板块，用户中心独立成一页',items:[
 ['变更','未注册登录时只开放「总览」：断代史 / 专题史、检索、卡片正文都能看，掌握与笔记照常记；速览、背诵、专题、刷题按下会直接跳到「我的」页要求登录'],
