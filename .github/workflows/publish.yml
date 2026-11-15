@@ -20,7 +20,7 @@ jobs:
 
       - name: Download single-file app
         env:
-          SRC: https://aka.doubaocdn.com/s/VEUL7gINvs
+          SRC: https://aka.doubaocdn.com/s/YivpVtFv7d
         run: |
           set -euo pipefail
           curl -sSL --fail --retry 3 --retry-delay 2 -o index.html "$SRC"
@@ -31,7 +31,7 @@ jobs:
           test $(grep -c 'rel="apple-touch-icon' index.html) -ge 4 || { echo "::error::touch icons missing"; exit 1; }
           test $(grep -c 'apple-touch-startup-image' index.html) -ge 3 || { echo "::error::startup images missing"; exit 1; }
           grep -q "VER='3.7.0'" index.html || { echo "::error::version marker not found"; exit 1; }
-          grep -q "const PATCH='19'" index.html || { echo "::error::patch marker not 19"; exit 1; }
+          grep -q "const PATCH='20'" index.html || { echo "::error::patch marker not 20"; exit 1; }
           grep -q '"apple-mobile-web-app-title" content="法制史一点通"' index.html || { echo "::error::ios app title missing"; exit 1; }
           grep -q "SB_URL='https://lbykbafnkhwxqtfuaoio.supabase.co'" index.html || { echo "::error::supabase url missing"; exit 1; }
           grep -q "sb_publishable_" index.html || { echo "::error::supabase key missing"; exit 1; }
@@ -72,6 +72,7 @@ jobs:
           grep -Fq "function qzSync" index.html || { echo "::error::逐题保存缺失"; exit 1; }
           grep -Fq "function progCardHTML" index.html || { echo "::error::继续上次卡片缺失"; exit 1; }
           grep -Fq "进度已保存" index.html || { echo "::error::退出一题一存提示缺失"; exit 1; }
+          grep -Fq "function cnNum" index.html || { echo "::error::章节目录排序缺失"; exit 1; }
           v=$(grep -o "VER='[0-9.]*'" index.html | head -1 | sed "s/VER='//;s/'//")
           echo "VER=$v" >> "$GITHUB_ENV"
           p=$(grep -o "const PATCH='[0-9]*'" index.html | head -1 | sed "s/const PATCH='//;s/'//")
@@ -122,8 +123,8 @@ jobs:
               got=struct.unpack('>II',d[16:24])
               assert got==(w,h),(f,got); print(f,'ok',got)
           PY
-          curl -fsSL --retry 3 -o sw.js "https://aka.doubaocdn.com/s/nVDS6vVCSV"
-          grep -q "app-3.7.0-p19" sw.js || { echo "::error::sw stale"; exit 1; }
+          curl -fsSL --retry 3 -o sw.js "https://aka.doubaocdn.com/s/ZW6XuOz33d"
+          grep -q "app-3.7.0-p20" sw.js || { echo "::error::sw stale"; exit 1; }
           grep -q "/admin/" sw.js || { echo "::error::sw admin bypass missing"; exit 1; }
           node --check sw.js
 
