@@ -96,15 +96,16 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p admin
-          curl -fsSL --retry 3 -o admin/index.html "https://aka.doubaocdn.com/s/5Ad0ERAWlK"
+          curl -fsSL --retry 3 -o admin/index.html "https://aka.doubaocdn.com/s/P8YvIE95BO"
           size=$(stat -c%s admin/index.html)
           echo "admin-size=$size"
           if [ "$size" -lt 20000 ]; then echo "::error::admin too small ($size)"; exit 1; fi
           grep -q "noindex" admin/index.html || { echo "::error::admin noindex missing"; exit 1; }
           grep -q "管理后台 · 已锁定" admin/index.html || { echo "::error::admin gate missing"; exit 1; }
           grep -q "const BLOB=" admin/index.html || { echo "::error::admin payload missing"; exit 1; }
+          grep -q "document.write(html)" admin/index.html || { echo "::error::admin 解锁后应为整页接管，不能再用 iframe"; exit 1; }
           grep -q "user-scalable=no" admin/index.html || { echo "::error::admin 未禁缩放"; exit 1; }
-          grep -q "srcdoc=html" admin/index.html || { echo "::error::admin unlock broken"; exit 1; }
+          if grep -q "f.srcdoc" admin/index.html; then echo "::error::admin 还在用 iframe 壳"; exit 1; fi
           if grep -q "sb_publishable_" admin/index.html; then echo "::error::admin must not contain plaintext key"; exit 1; fi
 
       - name: Download images bundle and unpack
