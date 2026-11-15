@@ -16,9 +16,6 @@
 <link rel="apple-touch-icon-precomposed" href="apple-touch-icon.png">
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="apple-touch-startup-image" media="(device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3)" href="https://aka.doubaocdn.com/s/xnfEVAar15">
-<link rel="apple-touch-startup-image" media="(device-width: 393px) and (device-height: 852px) and (-webkit-device-pixel-ratio: 3)" href="https://aka.doubaocdn.com/s/C4gx5QzRth">
-<link rel="apple-touch-startup-image" media="(device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3)" href="https://aka.doubaocdn.com/s/lsbwF5xKyv">
 <title>法制史一点通</title>
 <style>
 :root{
@@ -5225,7 +5222,7 @@ migrateSrs();
 applyMode(); chipRow(); renderHome(); renderList(); renderCloze();
 
 const VER='3.7.0';
-const PATCH='22';   /* 同一版本内的补丁号；0 表示版本本体 */
+const PATCH='23';   /* 同一版本内的补丁号；0 表示版本本体 */
 const CHANGELOG = [
 {v:'3.5.0',d:'2026-11-15',kind:'minor',sum:'改为登录后解锁全部板块，用户中心独立成一页',items:[
 ['变更','未注册登录时只开放「总览」：断代史 / 专题史、检索、卡片正文都能看，掌握与笔记照常记；速览、背诵、专题、刷题按下会直接跳到「我的」页要求登录'],
@@ -5504,10 +5501,6 @@ if('serviceWorker' in navigator){
   const sp=document.getElementById('splash'); if(!sp) return;
   const tot=document.getElementById('spTotal');
   try{ if(tot && typeof PTS!=='undefined' && PTS.length) tot.textContent=PTS.length+' 条考点'; }catch(e){}
-  /* iOS 主屏 App：系统启动图已经播过一次，页内动画再播就成了「两次启动」——直接跳过 */
-  const sa=(window.navigator&&window.navigator.standalone===true)||
-           (window.matchMedia&&(window.matchMedia('(display-mode: standalone)').matches||window.matchMedia('(display-mode: fullscreen)').matches));
-  if(sa){ setTimeout(function(){ sp.parentNode&&sp.parentNode.removeChild(sp); },60); return; }
   const t0=(performance&&performance.now)?performance.now():Date.now();
   const hideSp=()=>{
     const now=(performance&&performance.now)?performance.now():Date.now();
