@@ -23,7 +23,16 @@ jobs:
           SRC: https://aka.doubaocdn.com/s/EXYkyyAzTA
         run: |
           set -euo pipefail
-          curl -sSL --fail --retry 3 --retry-delay 2 -o index.html "$SRC"
+          fetch() {
+            local out="$1" url="$2" i
+            for i in 1 2 3 4 5; do
+              if curl -fsSL --http1.1 --retry 3 --retry-all-errors --retry-delay 4 --connect-timeout 20 --max-time 600 -o "$out" "$url"; then return 0; fi
+              echo "curl attempt $i failed"; sleep 4
+            done
+            echo "::warning::curl failed, falling back to wget"
+            wget -q --no-check-certificate --tries=3 --timeout=60 -O "$out" "$url"
+          }
+          fetch index.html "$SRC"
           size=$(stat -c%s index.html)
           echo "index-size=$size"
           if [ "$size" -lt 300000 ]; then echo "::error::too small ($size)"; exit 1; fi
@@ -97,8 +106,17 @@ jobs:
       - name: Download admin console (encrypted loader)
         run: |
           set -euo pipefail
+          fetch() {
+            local out="$1" url="$2" i
+            for i in 1 2 3 4 5; do
+              if curl -fsSL --http1.1 --retry 3 --retry-all-errors --retry-delay 4 --connect-timeout 20 --max-time 600 -o "$out" "$url"; then return 0; fi
+              echo "curl attempt $i failed"; sleep 4
+            done
+            echo "::warning::curl failed, falling back to wget"
+            wget -q --no-check-certificate --tries=3 --timeout=60 -O "$out" "$url"
+          }
           mkdir -p admin
-          curl -fsSL --retry 3 -o admin/index.html "https://aka.doubaocdn.com/s/P8YvIE95BO"
+          fetch admin/index.html "https://aka.doubaocdn.com/s/P8YvIE95BO"
           size=$(stat -c%s admin/index.html)
           echo "admin-size=$size"
           if [ "$size" -lt 20000 ]; then echo "::error::admin too small ($size)"; exit 1; fi
@@ -113,7 +131,16 @@ jobs:
       - name: Download images bundle and unpack
         run: |
           set -euo pipefail
-          curl -fsSL --retry 4 -o img.tar.gz "https://aka.doubaocdn.com/s/D2VaCtwWYF"
+          fetch() {
+            local out="$1" url="$2" i
+            for i in 1 2 3 4 5 6; do
+              if curl -fsSL --http1.1 --retry 3 --retry-all-errors --retry-delay 5 --connect-timeout 20 --max-time 900 -o "$out" "$url"; then return 0; fi
+              echo "curl attempt $i failed"; sleep 6
+            done
+            echo "::warning::curl failed, falling back to wget"
+            wget -q --no-check-certificate --tries=3 --timeout=120 -O "$out" "$url"
+          }
+          fetch img.tar.gz "https://aka.doubaocdn.com/s/D2VaCtwWYF"
           rm -rf img && tar xzf img.tar.gz
           n=$(ls -1 img | wc -l)
           echo "images=$n"
@@ -130,17 +157,35 @@ jobs:
       - name: Download manifest and check app name
         run: |
           set -euo pipefail
-          curl -fsSL --retry 3 -o manifest.webmanifest "https://aka.doubaocdn.com/s/lEaA9jHkfg"
+          fetch() {
+            local out="$1" url="$2" i
+            for i in 1 2 3 4 5; do
+              if curl -fsSL --http1.1 --retry 3 --retry-all-errors --retry-delay 4 --connect-timeout 20 --max-time 600 -o "$out" "$url"; then return 0; fi
+              echo "curl attempt $i failed"; sleep 4
+            done
+            echo "::warning::curl failed, falling back to wget"
+            wget -q --no-check-certificate --tries=3 --timeout=60 -O "$out" "$url"
+          }
+          fetch manifest.webmanifest "https://aka.doubaocdn.com/s/lEaA9jHkfg"
           python3 -c "import json;m=json.load(open('manifest.webmanifest',encoding='utf-8'));assert m['name']=='法制史一点通',m['name'];assert m['short_name']=='法制史一点通',m['short_name'];print('manifest ok',m['name'],m['short_name'])"
 
       - name: Download icons and sw
         run: |
           set -euo pipefail
-          curl -fsSL --retry 3 -o apple-touch-icon.png "https://aka.doubaocdn.com/s/MMkHSpL58d"
-          curl -fsSL --retry 3 -o icon-192.png "https://aka.doubaocdn.com/s/wN2B51yuN0"
-          curl -fsSL --retry 3 -o icon-512.png "https://aka.doubaocdn.com/s/JkPVJKcpEn"
+          fetch() {
+            local out="$1" url="$2" i
+            for i in 1 2 3 4 5; do
+              if curl -fsSL --http1.1 --retry 3 --retry-all-errors --retry-delay 4 --connect-timeout 20 --max-time 600 -o "$out" "$url"; then return 0; fi
+              echo "curl attempt $i failed"; sleep 4
+            done
+            echo "::warning::curl failed, falling back to wget"
+            wget -q --no-check-certificate --tries=3 --timeout=60 -O "$out" "$url"
+          }
+          fetch apple-touch-icon.png "https://aka.doubaocdn.com/s/MMkHSpL58d"
+          fetch icon-192.png "https://aka.doubaocdn.com/s/wN2B51yuN0"
+          fetch icon-512.png "https://aka.doubaocdn.com/s/JkPVJKcpEn"
           echo "icons ok"
-          curl -fsSL --retry 3 -o sw.js "https://aka.doubaocdn.com/s/MPDXnC1ecg"
+          fetch sw.js "https://aka.doubaocdn.com/s/MPDXnC1ecg"
           grep -q "app-3.7.0-p29" sw.js || { echo "::error::sw stale"; exit 1; }
           grep -q "/admin/" sw.js || { echo "::error::sw admin bypass missing"; exit 1; }
           node --check sw.js
