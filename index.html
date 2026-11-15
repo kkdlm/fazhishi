@@ -333,12 +333,12 @@ h1 em{font-style:normal;color:var(--red)}
 .ln.ind{padding-left:1.1em;text-indent:-1.1em}
 .ln.first{padding-top:8px}
 .ln.mn{font-family:var(--serif);font-size:calc(14.5px * var(--fs));letter-spacing:.06em}
-.cb{color:var(--cc-b)}
-.cr{color:var(--cc-r);font-weight:600}
-.cp{color:var(--cc-p)}
-.co{color:var(--cc-o)}
-.cgr{color:var(--cc-gr)}
-.k{font-weight:600;letter-spacing:.02em;color:color-mix(in srgb, var(--c,#A5342E) 88%, var(--ink))}
+.cb{color:var(--ink-2)}
+.cr{color:var(--ink-2);font-weight:500}
+.cp{color:var(--ink-2)}
+.co{color:var(--ink-2)}
+.cgr{color:var(--ink-2)}
+.k{font-weight:600;letter-spacing:.02em;color:var(--ink)}
 .g{color:var(--ink-3)}
 
 /* 速览正文：小标题 / 列表 / 正文三层 */
@@ -362,6 +362,40 @@ h1 em{font-style:normal;color:var(--red)}
 .bp .pi{display:block;margin:2px 0}
 .bp .pi:first-child{margin-top:0}
 .bp .g,.bl .g{color:var(--ink-3)}
+.ksec{margin:0}
+.ksec+.ksec{margin-top:14px;padding-top:13px;border-top:1px dashed color-mix(in srgb,var(--ink) 17%,transparent)}
+.kh{display:flex;align-items:flex-start;gap:8px;margin:2px 0 8px;
+  font-family:var(--serif);font-size:calc(14.2px * var(--fs));font-weight:700;color:var(--ink);
+  letter-spacing:.03em;line-height:1.45}
+.kn{flex:0 0 19px;height:19px;margin-top:2px;display:flex;align-items:center;justify-content:center;
+  border-radius:6px;background:color-mix(in srgb,var(--c) 86%,#fff);color:#fff;
+  font-family:var(--sans);font-size:calc(11px * var(--fs));font-weight:600;letter-spacing:0}
+.kp{margin:4px 0}
+.kl{margin:7px 0;padding:1px 0 1px 10px;border-left:2px solid color-mix(in srgb,var(--c) 35%,transparent)}
+.kl .pi{margin:2px 0}
+
+.kh .chd{display:inline;font-weight:800;font-size:calc(14.2px * var(--fs));color:#7a3325;margin:0;letter-spacing:.02em}
+.kp .pi{display:block;margin:3px 0}
+.kp .pi:first-child{margin-top:0}
+.nt{display:inline-block;margin-right:6px;padding:0 4px;border-radius:4px;
+  background:color-mix(in srgb,var(--cc-o) 14%,var(--card));color:var(--cc-o);
+  font-size:calc(9.5px * var(--fs));font-weight:600;letter-spacing:.04em;vertical-align:1.5px}
+.kc{margin:15px 0 9px;padding:6px 10px;border-radius:8px;
+  background:color-mix(in srgb,var(--c) 8%,var(--card));border-left:3px solid color-mix(in srgb,var(--c) 60%,transparent);
+  font-family:var(--serif);font-size:calc(13.4px * var(--fs));font-weight:700;color:#7a3325;letter-spacing:.04em}
+.kc+.ksec{margin-top:9px}
+.kc:first-child{margin-top:2px}
+/* 字色图例 */
+.lgd{display:flex;align-items:center;flex-wrap:wrap;gap:9px;margin:2px 0 8px;padding:7px 11px;
+  border:1px solid var(--line);border-radius:9px;background:var(--paper-2);
+  font-size:calc(11px * var(--fs));color:var(--ink-2);letter-spacing:.02em}
+.lgd .lg-t{color:var(--ink-3);letter-spacing:.1em}
+.lg-d{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:-4px}
+.lg-n{display:inline-flex;width:15px;height:15px;border-radius:5px;align-items:center;justify-content:center;
+  background:color-mix(in srgb,var(--c,#A5342E) 86%,#fff);color:#fff;font-size:9px;font-weight:600}
+.lg-h{font-style:normal;font-weight:800;color:#7a3325;font-size:10.5px}
+.lg-k{color:var(--ink);font-weight:600;font-size:10.5px}
+.lgd .lg-x{margin-left:auto;color:var(--ink-3);font-size:calc(12px*var(--fs))}
 /* 统一条目：一条 = 问题（灰）+ 答案（正文），不用气泡、不用缩进层级 */
 .items{margin:2px 0 4px}
 .it{padding:7px 0 8px;border-bottom:1px solid color-mix(in srgb,var(--ink) 8%,transparent)}
@@ -1386,7 +1420,7 @@ const CH = [
 /* ---------- 状态 ---------- */
 const KEY='fzs2027.v1';
 const DEF={status:{},fav:[],due:{},seen:{},last:null,core:true,log:{},theme:'light',fs:'m',mode:'dai',
-  sub:'rec',goal:20,notes:{},quizLog:{},qwrong:[],qdone:[],ient:{},srs:{},today:null,bugLog:[]};
+  sub:'rec',goal:20,notes:{},quizLog:{},qwrong:[],qdone:[],ient:{},srs:{},today:null,bugLog:[],legendOn:true};
 let S=(()=>{
   try{ return Object.assign({},DEF,JSON.parse(localStorage.getItem(KEY)||'{}')); }
   catch(e){ return Object.assign({},DEF); }
@@ -1783,8 +1817,18 @@ function renderList(){
       h+=cardHTML(p);
     });
   }
-  document.getElementById('list').innerHTML = h || `<div class="empty">${q?'没有匹配的考点，换个关键词试试。':'这个分类下还没有内容。'}</div>`;
+  const lgd = S.legendOn===false ? '' : legendHTML();
+  document.getElementById('list').innerHTML = lgd + (h || `<div class="empty">${q?'没有匹配的考点，换个关键词试试。':'这个分类下还没有内容。'}</div>`);
 }
+function legendHTML(){
+  return `<div class="lgd"><span class="lg-t">看板</span>
+    <i class="lg-n">n</i><span>知识点顺序</span>
+    <i class="lg-h">题</i><span>深红加粗＝小节标题</span>
+    <b class="lg-k">字</b><span>加粗＝必背关键词</span>
+    <b class="nt">新修</b><span>近年新增 / 修改</span>
+    <span class="lg-x" onclick="dismissLegend(event)">×</span></div>`;
+}
+function dismissLegend(e){ if(e) e.stopPropagation(); S.legendOn=false; save(); renderList(); }
 function lineHTML(l){
   return l.map(([t,f,cc])=>{
     if(cc) return `<span class="${cc}">${hl(t)}</span>`;
@@ -1813,6 +1857,8 @@ function lineKind(l){
   const allK=l.every(s=>s[1]==='k');
   if(/^[①②③④⑤⑥⑦⑧⑨（(]|^\d+[.、]/.test(t)) return 'list';
   if(isFragLine(t)) return 'frag';
+  // 分号/句号收尾的整句是列举项或正文，不能当小标题（否则会出现连续空标题）
+  if(/；$/.test(t) || (/。$/.test(t) && t.length>10)) return 'para';
   if((allK && t.length<=16) || (/[：？]$/.test(t) && t.length<=20)) return 'head';
   return 'para';
 }
@@ -1911,13 +1957,30 @@ function meetingHTML(p, cover){
 
 function bodyHTML(p){
   if(p.ch==='朝代纵览') return meetingHTML(p,false);
-  const its=itemsOf(p.n);
-  let h;
-  if(its&&its.length){ h=`<div class="items">${its.map(itemHTML).join('')}</div>`; }
-  else{
-    h=cardBlocks(p).map(b=>{
-      if(b.kind==='head') return `<div class="bh">${lineHTML(b.rows[0])}</div>`;
-      return `<div class="bp">${b.rows.map(r=>`<span class="pi">${lineHTML(r)}</span>`).join('')}</div>`;
+  // 统一走 points.json 分块渲染：items.json 是历史残留，内容与 points 等价但分块粒度乱
+  const its=null;
+  let h='';
+  {
+    const secs=[]; let cur=null;
+    for(const b of cardBlocks(p)){
+      if(b.kind==='head'){ cur={h:b.rows[0],blocks:[]}; secs.push(cur); }
+      else{ if(!cur){ cur={h:null,blocks:[]}; secs.push(cur); } cur.blocks.push(b); }
+    }
+    let n=0;
+    h=secs.map(s=>{
+      // 只有标题、没有任何正文的，是讲义大纲里的“章节名”，不占知识点序号
+      if(s.h && !s.blocks.length) return `<div class="kc">${lineHTML(s.h)}</div>`;
+      let idx=0; if(s.h) idx=++n;
+      let out=`<section class="ksec${idx?'':' pre'}">`;
+      if(s.h) out+=`<div class="kh"><i class="kn">${idx}</i><span>${lineHTML(s.h)}</span></div>`;
+      out+=s.blocks.map(b=>{
+        const t=b.rows.map(r=>'<span class="pi">'+lineHTML(r)+'</span>').join('');
+        if(b.kind==='list') return `<div class="kp kl">${t}</div>`;
+        const raw=b.rows.map(r=>r.map(x=>x[0]).join('')).join('');
+        const nx=/（20\d\d\s*(修改|增补|新增|删)/.test(raw);
+        return `<div class="kp${nx?' new':''}">${nx?'<b class="nt">新修</b>':''}${t}</div>`;
+      }).join('');
+      return out+'</section>';
     }).join('');
   }
   if(p.img) h+=`<div class="mapimg"><img src="${p.img}" alt="史纲整体脉络图"></div><div class="mapcap">史纲整体脉络图 · 左右滑动查看</div>`;
@@ -4941,7 +5004,7 @@ migrateSrs();
 applyMode(); chipRow(); renderHome(); renderList(); renderCloze();
 
 const VER='3.5.0';
-const PATCH='7';   /* 同一版本内的补丁号；0 表示版本本体 */
+const PATCH='8';   /* 同一版本内的补丁号；0 表示版本本体 */
 const CHANGELOG = [
 {v:'3.5.0',d:'2026-11-15',kind:'minor',sum:'改为登录后解锁全部板块，用户中心独立成一页',items:[
 ['变更','未注册登录时只开放「总览」：断代史 / 专题史、检索、卡片正文都能看，掌握与笔记照常记；速览、背诵、专题、刷题按下会直接跳到「我的」页要求登录'],
@@ -4954,7 +5017,9 @@ const CHANGELOG = [
 ['新增','「我的」页加「修改密码」：填新密码两次，保存后本机仍在线，别的设备下次要重新登录。用验证码登录建出来、还没有密码的账号，也在这里补一个'],
 ['下线','离线备份 / 备份码按你的要求从界面移除：设置与「我的」页都不再出现这个入口（备份码、导出、导入三个功能代码没删，只是不暴露，将来要恢复改一个按钮即可）。登录后进度走云端同步，不再需要备份码'],
 ['修复','西周「主要立法」卡内容错位：原来第一条只剩「二是指西周的九种刑罚。」（前半句「一是指周朝制定的九篇刑书」被拆到了别的条目里），而卡片最下面又出现一条完整的「九刑／一是指…二是指…」造成上下重复。现把两半合并到第一条「九刑」下，删掉末尾那条重复，并把「刑」这一通名改成教材沿用的「九刑」'],
-['修复','知识点小标题样式统一：以前很多卡片只有第一个小标题是加粗深红，后面对等的小标题被当成正文（灰）或重点句（蓝）显示。本轮把 169 张卡全部按行重判：①被吞进正文的标题（如「中枢行政机构【两府三司制】」「三司会审」）拆出来并升为标题；②本就该是标题却被标成普通文本的 53 处（申明亭、翻异别推制、重其所重、轻其所轻、评价、地方司法机关、家长权力扩大、立法宽简…）统一升为标题；③把正文碎片误标成标题的 13 处（「司是指中央理财机关」「纠纷和轻微的刑事案件」「礼程序」「另设有」等）降为正文并入原句；④修 5 行数据结构损坏（「三司会审」等被写成扁平数组，页面上只显示出第一个字）；⑤另有 2 处标题被吞字：西周婚姻「夫一妻制婚姻原则」→「一夫一妻制婚姻原则」；北洋「权宪法的组织方案」→「五权宪法的政府组织方案」（教材 p203 原文）']] },
+['修复','知识点小标题样式统一：以前很多卡片只有第一个小标题是加粗深红，后面对等的小标题被当成正文（灰）或重点句（蓝）显示。本轮把 169 张卡全部按行重判：①被吞进正文的标题（如「中枢行政机构【两府三司制】」「三司会审」）拆出来并升为标题；②本就该是标题却被标成普通文本的 53 处（申明亭、翻异别推制、重其所重、轻其所轻、评价、地方司法机关、家长权力扩大、立法宽简…）统一升为标题；③把正文碎片误标成标题的 13 处（「司是指中央理财机关」「纠纷和轻微的刑事案件」「礼程序」「另设有」等）降为正文并入原句；④修 5 行数据结构损坏（「三司会审」等被写成扁平数组，页面上只显示出第一个字）；⑤另有 2 处标题被吞字：西周婚姻「夫一妻制婚姻原则」→「一夫一妻制婚姻原则」；北洋「权宪法的组织方案」→「五权宪法的政府组织方案」（教材 p203 原文）'],
+['改版','卡片正文改成“知识点分块”：每个小节自动加序号徽章（深红方块数字）＋块间虚线，只有标题没有正文的讲义大纲名改成浅底章节条、不占序号；「1./2./3.」「（一）（二）」这类列举项单独成块并加左侧竖线，不会再糊成一片；字色收敛成三层——序号＋深红标题、墨色加粗关键词、灰黑正文，原来 5 种说不清含义的彩字全部取消；段落里带「（20xx修改/增补）」的自动挂「新修」标签；速览顶部加一条可关闭的“看板”图例']
+] },
 {v:'3.4.0',d:'2026-11-15',kind:'minor',sum:'加账号与云同步（注册才同步），离线备份降级为兜底',items:[
 ['新增','设置顶部新增「账号与同步」：注册或登录后，掌握、收藏、复习排期、笔记自动同步到云端，换设备登录即接着背。不注册照常能背，只是进度只存本机（访客模式）'],
 ['新增','注册优先用邮箱验证码；邮件一时发不出来，可切到「密码登录」用邮箱+密码注册登录，注册链路不会被邮件卡死'],
