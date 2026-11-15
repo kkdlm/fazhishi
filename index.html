@@ -16,9 +16,9 @@
 <link rel="apple-touch-icon-precomposed" href="apple-touch-icon.png">
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="apple-touch-startup-image" media="(device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3)" href="startup-1290x2796.png">
-<link rel="apple-touch-startup-image" media="(device-width: 393px) and (device-height: 852px) and (-webkit-device-pixel-ratio: 3)" href="startup-1179x2556.png">
-<link rel="apple-touch-startup-image" media="(device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3)" href="startup-1170x2532.png">
+<link rel="apple-touch-startup-image" media="(device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3)" href="https://aka.doubaocdn.com/s/JDVDiq07o8">
+<link rel="apple-touch-startup-image" media="(device-width: 393px) and (device-height: 852px) and (-webkit-device-pixel-ratio: 3)" href="https://aka.doubaocdn.com/s/tKyR23dyIQ">
+<link rel="apple-touch-startup-image" media="(device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3)" href="https://aka.doubaocdn.com/s/XYAU2RvUgj">
 <title>法制史一点通</title>
 <style>
 :root{
@@ -94,6 +94,41 @@ svg{display:block}
   font-family:var(--serif);font-size:16px;letter-spacing:0;
   box-shadow:0 4px 10px -4px rgba(140,44,38,.6), inset 0 0 0 1.5px rgba(255,240,214,.28);
   transform:rotate(-3deg);
+}
+/* ---------- 启动屏：首帧与 iOS 启动图同构，随后简牍展开 ---------- */
+.sp-logo{position:relative;width:96px;height:96px;margin-bottom:26px}
+.sp-seal{position:absolute;inset:0;border-radius:22px;background:var(--bamboo);color:var(--zhu);
+  display:grid;place-items:center;font-family:var(--serif);font-size:50px;font-weight:800;line-height:1;letter-spacing:.04em;
+  box-shadow:0 20px 44px -18px rgba(20,45,32,.55),inset 0 0 0 4px rgba(234,237,225,.92),inset 0 0 0 5px rgba(20,45,32,.26);
+  animation:spSeal .58s cubic-bezier(.3,.8,.3,1) both}
+.sp-slips{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;gap:5px;
+  opacity:0;transform-origin:center;animation:spSlips .92s cubic-bezier(.2,.8,.3,1) .58s both}
+.sp-slips i{display:block;width:11px;height:62px;border-radius:3px;position:relative;overflow:hidden;
+  background:linear-gradient(180deg,#D9CBA6,#BFAF85);
+  box-shadow:inset -1px 0 0 rgba(96,82,52,.38),inset 1px 0 0 rgba(255,250,236,.55),0 4px 10px -5px rgba(60,52,30,.55);
+  transform-origin:top center}
+.sp-slips i:before{content:"";position:absolute;left:50%;top:7px;bottom:7px;width:1px;margin-left:-.5px;background:rgba(96,82,52,.3)}
+.sp-slips i:after{content:"";position:absolute;left:2px;right:2px;top:26px;height:1px;background:rgba(96,82,52,.22)}
+.sp-slips i:nth-child(1){animation-delay:.62s}
+.sp-slips i:nth-child(2){animation-delay:.67s}
+.sp-slips i:nth-child(3){animation-delay:.72s}
+.sp-slips i:nth-child(4){animation-delay:.77s}
+.sp-slips i:nth-child(5){animation-delay:.82s}
+.sp-mark{margin:0 0 10px;font-family:var(--serif);font-size:27px;font-weight:700;letter-spacing:.14em;
+  color:var(--bamboo);animation:spUp .48s ease .86s both}
+.sp-sub{margin:0;font-size:12.5px;letter-spacing:.1em;color:var(--ink-3);animation:spUp .48s ease .96s both}
+.sp-sub #spTotal{color:var(--zhu);font-weight:600}
+.sp-strip{margin-top:20px;display:flex;align-items:center;gap:7px;font-size:11px;letter-spacing:.16em;
+  color:var(--bamboo);opacity:.82;animation:spUp .48s ease 1.06s both}
+.sp-strip s{display:block;width:24px;height:1px;background:var(--bamboo);opacity:.45;text-decoration:none}
+@keyframes spSeal{0%{opacity:0;transform:scale(.96)}20%{opacity:1;transform:scale(1)}
+  62%{opacity:1;transform:scale(1)}
+  100%{opacity:0;transform:scale(.9)}}
+@keyframes spSlips{0%{opacity:0;transform:scaleY(.14)}22%{opacity:1;transform:scaleY(1)}86%{opacity:1;transform:scaleY(1)}100%{opacity:0;transform:scaleY(1)}}
+@keyframes spUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){
+  .sp-seal,.sp-slips,.sp-slips i,.sp-mark,.sp-sub,.sp-strip{animation:none !important}
+  .sp-seal{opacity:1}.sp-slips{display:none}
 }
 /* ---------- 启动屏：简牍展开 ---------- */
 .splash{position:fixed;inset:0;z-index:9999;background:var(--paper);
@@ -1166,7 +1201,15 @@ html[data-theme="night"] .mode-btn{background:var(--card);color:var(--red);borde
 </head>
 <body>
 
-<!-- 页内启动页已移除：主屏幕启动图已负责首帧，再叠一层会出现两次启动画面 -->
+<div class="splash" id="splash" aria-hidden="true">
+  <div class="sp-logo">
+    <div class="sp-seal">史</div>
+    <div class="sp-slips"><i></i><i></i><i></i><i></i><i></i></div>
+  </div>
+  <h1 class="sp-mark">法制史一点通</h1>
+  <p class="sp-sub">2027 法硕非法学 · <span id="spTotal">169 条考点</span></p>
+  <div class="sp-strip"><s></s>断代史 / 专题史 · 背诵一本通<s></s></div>
+</div>
 
 <header class="topbar">
   <div class="wrap">
@@ -1193,7 +1236,7 @@ html[data-theme="night"] .mode-btn{background:var(--card);color:var(--red);borde
     <div class="hero">
       <div class="eyebrow">2027 · 法硕非法学 · 中国法制史</div>
       <h1>法制史<br><em>一点通</em></h1>
-      <div class="hero-sub">169 条考点 · 29 个专题 · 23 个朝代段</div>
+      <div class="hero-sub">209 条考点 · 29 个专题 · 23 个朝代段</div>
       <div class="stamp serif">史</div>
     </div>
 
@@ -5004,21 +5047,23 @@ migrateSrs();
 applyMode(); chipRow(); renderHome(); renderList(); renderCloze();
 
 const VER='3.5.0';
-const PATCH='9';   /* 同一版本内的补丁号；0 表示版本本体 */
+const PATCH='10';   /* 同一版本内的补丁号；0 表示版本本体 */
 const CHANGELOG = [
 {v:'3.5.0',d:'2026-11-15',kind:'minor',sum:'改为登录后解锁全部板块，用户中心独立成一页',items:[
 ['变更','未注册登录时只开放「总览」：断代史 / 专题史、检索、卡片正文都能看，掌握与笔记照常记；速览、背诵、专题、刷题按下会直接跳到「我的」页要求登录'],
 ['新增','底部导航新增第六项「我的」：账号状态、登录 / 注册（验证码为主、密码兜底）、掌握/收藏/笔记三项计数、昵称、同步状态与手动同步/拉取、学习统计、离线备份与备份码、退出登录，全部集中在这一页'],
 ['新增','登录后可设昵称（写入云端 profiles.nickname），换设备登录昵称跟着走'],
 ['优化','设置面板不再塞账号块，只留一个「账号与同步」入口跳到「我的」，设置本身只剩外观、字号、学习、数据'],
-['修复','进入 App 出现两次启动画面：主屏幕启动图之后页面里又叠了一层动画启动页，现把页面内那层移除，只保留系统启动图，冷启动少一次等待'],
+['修复','进入 App 出现两次启动画面：主屏启动图之后页面里又叠一层动画启动页 → 改为页内启动页首帧与主屏启动图同构（米底＋深绿框红「史」），从系统图平滑接上动效，只感知到一次启动（动效见后两条补丁）'],
 ['修复','退出登录后自动回到「总览」，且未登录时底栏被锁的板块变灰，点它会跳到「我的」要求登录'],
 ['调整','登录页重排：默认就是「邮箱 + 密码 + 登录」，下面并排两个按钮「注册新账号 / 验证码登录」。注册时密码与邮箱验证码必须同时给（验证码验过再落密码），注册完以后登录用密码或验证码都行'],
 ['新增','「我的」页加「修改密码」：填新密码两次，保存后本机仍在线，别的设备下次要重新登录。用验证码登录建出来、还没有密码的账号，也在这里补一个'],
 ['下线','离线备份 / 备份码按你的要求从界面移除：设置与「我的」页都不再出现这个入口（备份码、导出、导入三个功能代码没删，只是不暴露，将来要恢复改一个按钮即可）。登录后进度走云端同步，不再需要备份码'],
 ['修复','西周「主要立法」卡内容错位：原来第一条只剩「二是指西周的九种刑罚。」（前半句「一是指周朝制定的九篇刑书」被拆到了别的条目里），而卡片最下面又出现一条完整的「九刑／一是指…二是指…」造成上下重复。现把两半合并到第一条「九刑」下，删掉末尾那条重复，并把「刑」这一通名改成教材沿用的「九刑」'],
 ['修复','知识点小标题样式统一：以前很多卡片只有第一个小标题是加粗深红，后面对等的小标题被当成正文（灰）或重点句（蓝）显示。本轮把 169 张卡全部按行重判：①被吞进正文的标题（如「中枢行政机构【两府三司制】」「三司会审」）拆出来并升为标题；②本就该是标题却被标成普通文本的 53 处（申明亭、翻异别推制、重其所重、轻其所轻、评价、地方司法机关、家长权力扩大、立法宽简…）统一升为标题；③把正文碎片误标成标题的 13 处（「司是指中央理财机关」「纠纷和轻微的刑事案件」「礼程序」「另设有」等）降为正文并入原句；④修 5 行数据结构损坏（「三司会审」等被写成扁平数组，页面上只显示出第一个字）；⑤另有 2 处标题被吞字：西周婚姻「夫一妻制婚姻原则」→「一夫一妻制婚姻原则」；北洋「权宪法的组织方案」→「五权宪法的政府组织方案」（教材 p203 原文）'],
-['改版','卡片正文改成“知识点分块”：每个小节自动加序号徽章（深红方块数字）＋块间虚线，只有标题没有正文的讲义大纲名改成浅底章节条、不占序号；「1./2./3.」「（一）（二）」这类列举项单独成块并加左侧竖线，不会再糊成一片；字色收敛成三层——序号＋深红标题、墨色加粗关键词、灰黑正文，原来 5 种说不清含义的彩字全部取消；段落里带「（20xx修改/增补）」的自动挂「新修」标签；速览顶部加一条可关闭的“看板”图例']
+['改版','卡片正文改成“知识点分块”：每个小节自动加序号徽章（深红方块数字）＋块间虚线，只有标题没有正文的讲义大纲名改成浅底章节条、不占序号；「1./2./3.」「（一）（二）」这类列举项单独成块并加左侧竖线，不会再糊成一片；字色收敛成三层——序号＋深红标题、墨色加粗关键词、灰黑正文，原来 5 种说不清含义的彩字全部取消；段落里带「（20xx修改/增补）」的自动挂「新修」标签；速览顶部加一条可关闭的“看板”图例'],
+['恢复','重新加回进入 App 的动态启动页：首帧与主屏启动图完全同构（米底 #EAEDE1 ＋ 深绿圆角框红「史」），停顿后印章淡出、五片简牍整体展开 → 「法制史一点通」与「169 条考点」淡入 → 约 1.66 秒后整屏淡出，总时长约 2 秒；系统开启「减弱动态效果」时自动降级为静态首帧'],
+['修复','主屏启动图素材过时：图上文字还是改名前的「法制史一图流」和「209 条考点」，已按三个设备尺寸（1290×2796 / 1179×2556 / 1170×2532）重做为「法制史一点通 / 2027 法硕非法学 · 169 条考点」，版式与页内启动页一致']
 ] },
 {v:'3.4.0',d:'2026-11-15',kind:'minor',sum:'加账号与云同步（注册才同步），离线备份降级为兜底',items:[
 ['新增','设置顶部新增「账号与同步」：注册或登录后，掌握、收藏、复习排期、笔记自动同步到云端，换设备登录即接着背。不注册照常能背，只是进度只存本机（访客模式）'],
@@ -5275,6 +5320,20 @@ if('serviceWorker' in navigator){
     }catch(e){}
   });
 }
+
+/* ---------- 启动页：首帧对齐 iOS 启动图，约 1.55s 后淡出 ---------- */
+(function(){
+  const sp=document.getElementById('splash'); if(!sp) return;
+  const tot=document.getElementById('spTotal');
+  try{ if(tot && typeof PTS!=='undefined' && PTS.length) tot.textContent=PTS.length+' 条考点'; }catch(e){}
+  const t0=(performance&&performance.now)?performance.now():Date.now();
+  const hideSp=()=>{
+    const now=(performance&&performance.now)?performance.now():Date.now();
+    const wait=Math.max(220, 1660-(now-t0));
+    setTimeout(()=>{ sp.classList.add('hide'); setTimeout(()=>{ if(sp.parentNode) sp.parentNode.removeChild(sp); },480); }, wait);
+  };
+  if(document.readyState==='complete') hideSp(); else window.addEventListener('load',hideSp,{once:true});
+})();
 </script>
 </body>
 </html>
