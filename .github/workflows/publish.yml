@@ -20,7 +20,7 @@ jobs:
 
       - name: Download single-file app
         env:
-          SRC: https://aka.doubaocdn.com/s/xVlmOrYcu7
+          SRC: https://aka.doubaocdn.com/s/oGAeRsG7RS
         run: |
           set -euo pipefail
           curl -sSL --fail --retry 3 --retry-delay 2 -o index.html "$SRC"
@@ -29,10 +29,9 @@ jobs:
           if [ "$size" -lt 300000 ]; then echo "::error::too small ($size)"; exit 1; fi
           head -c 60 index.html | grep -q "<!DOCTYPE html>" || { echo "::error::not html"; exit 1; }
           test $(grep -c 'rel="apple-touch-icon' index.html) -ge 4 || { echo "::error::touch icons missing"; exit 1; }
-          test $(grep -c 'apple-touch-startup-image' index.html) -ge 3 || { echo "::error::startup images missing"; exit 1; }
+          if grep -q 'apple-touch-startup-image' index.html; then echo "::error::系统启动图未删除"; exit 1; fi
           grep -q "VER='3.7.0'" index.html || { echo "::error::version marker not found"; exit 1; }
-          grep -q "const PATCH='22'" index.html || { echo "::error::patch marker not 22"; exit 1; }
-          grep -q 'xnfEVAar15' index.html || { echo "::error::启动图未换成纯色"; exit 1; }
+          grep -q "const PATCH='23'" index.html || { echo "::error::patch marker not 23"; exit 1; }
           grep -q '"apple-mobile-web-app-title" content="法制史一点通"' index.html || { echo "::error::ios app title missing"; exit 1; }
           grep -q "SB_URL='https://lbykbafnkhwxqtfuaoio.supabase.co'" index.html || { echo "::error::supabase url missing"; exit 1; }
           grep -q "sb_publishable_" index.html || { echo "::error::supabase key missing"; exit 1; }
@@ -74,7 +73,6 @@ jobs:
           grep -Fq "function progCardHTML" index.html || { echo "::error::继续上次卡片缺失"; exit 1; }
           grep -Fq "进度已保存" index.html || { echo "::error::退出一题一存提示缺失"; exit 1; }
           grep -Fq "function cnNum" index.html || { echo "::error::章节目录排序缺失"; exit 1; }
-          grep -Fq "display-mode: standalone" index.html || { echo "::error::主屏 App 单启动页逻辑缺失"; exit 1; }
           v=$(grep -o "VER='[0-9.]*'" index.html | head -1 | sed "s/VER='//;s/'//")
           echo "VER=$v" >> "$GITHUB_ENV"
           p=$(grep -o "const PATCH='[0-9]*'" index.html | head -1 | sed "s/const PATCH='//;s/'//")
@@ -109,24 +107,15 @@ jobs:
           curl -fsSL --retry 3 -o manifest.webmanifest "https://aka.doubaocdn.com/s/lEaA9jHkfg"
           python3 -c "import json;m=json.load(open('manifest.webmanifest',encoding='utf-8'));assert m['name']=='法制史一点通',m['name'];assert m['short_name']=='法制史一点通',m['short_name'];print('manifest ok',m['name'],m['short_name'])"
 
-      - name: Download icons, startup images, sw
+      - name: Download icons and sw
         run: |
           set -euo pipefail
           curl -fsSL --retry 3 -o apple-touch-icon.png "https://aka.doubaocdn.com/s/MMkHSpL58d"
           curl -fsSL --retry 3 -o icon-192.png "https://aka.doubaocdn.com/s/wN2B51yuN0"
           curl -fsSL --retry 3 -o icon-512.png "https://aka.doubaocdn.com/s/JkPVJKcpEn"
-          curl -fsSL --retry 3 -o startup-1290x2796.png "https://aka.doubaocdn.com/s/xnfEVAar15"
-          curl -fsSL --retry 3 -o startup-1179x2556.png "https://aka.doubaocdn.com/s/C4gx5QzRth"
-          curl -fsSL --retry 3 -o startup-1170x2532.png "https://aka.doubaocdn.com/s/lsbwF5xKyv"
-          python3 - <<'PY'
-          import struct
-          for f,w,h in [('startup-1290x2796.png',1290,2796),('startup-1179x2556.png',1179,2556),('startup-1170x2532.png',1170,2532)]:
-              d=open(f,'rb').read(33)
-              got=struct.unpack('>II',d[16:24])
-              assert got==(w,h),(f,got); print(f,'ok',got)
-          PY
-          curl -fsSL --retry 3 -o sw.js "https://aka.doubaocdn.com/s/pJsN3XlXI3"
-          grep -q "app-3.7.0-p22" sw.js || { echo "::error::sw stale"; exit 1; }
+          echo "icons ok"
+          curl -fsSL --retry 3 -o sw.js "https://aka.doubaocdn.com/s/UEjE34xOSl"
+          grep -q "app-3.7.0-p23" sw.js || { echo "::error::sw stale"; exit 1; }
           grep -q "/admin/" sw.js || { echo "::error::sw admin bypass missing"; exit 1; }
           node --check sw.js
 
