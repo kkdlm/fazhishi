@@ -20,7 +20,7 @@ jobs:
 
       - name: Download single-file app
         env:
-          SRC: https://aka.doubaocdn.com/s/w5VAOYixzu
+          SRC: https://aka.doubaocdn.com/s/z1Tshw7XtK
         run: |
           set -euo pipefail
           curl -sSL --fail --retry 3 --retry-delay 2 -o index.html "$SRC"
@@ -31,7 +31,7 @@ jobs:
           test $(grep -c 'rel="apple-touch-icon' index.html) -ge 4 || { echo "::error::touch icons missing"; exit 1; }
           test $(grep -c 'apple-touch-startup-image' index.html) -ge 3 || { echo "::error::startup images missing"; exit 1; }
           grep -q "VER='3.6.0'" index.html || { echo "::error::version marker not found"; exit 1; }
-          grep -q "const PATCH='16'" index.html || { echo "::error::patch marker not 16"; exit 1; }
+          grep -q "const PATCH='17'" index.html || { echo "::error::patch marker not 17"; exit 1; }
           grep -q '"apple-mobile-web-app-title" content="法制史一点通"' index.html || { echo "::error::ios app title missing"; exit 1; }
           grep -q "SB_URL='https://lbykbafnkhwxqtfuaoio.supabase.co'" index.html || { echo "::error::supabase url missing"; exit 1; }
           grep -q "sb_publishable_" index.html || { echo "::error::supabase key missing"; exit 1; }
@@ -110,8 +110,8 @@ jobs:
               got=struct.unpack('>II',d[16:24])
               assert got==(w,h),(f,got); print(f,'ok',got)
           PY
-          curl -fsSL --retry 3 -o sw.js "https://aka.doubaocdn.com/s/rkMF5104FP"
-          grep -q "app-3.6.0-p16" sw.js || { echo "::error::sw stale"; exit 1; }
+          curl -fsSL --retry 3 -o sw.js "https://aka.doubaocdn.com/s/LqdeXPBRmH"
+          grep -q "app-3.6.0-p17" sw.js || { echo "::error::sw stale"; exit 1; }
           grep -q "/admin/" sw.js || { echo "::error::sw admin bypass missing"; exit 1; }
           node --check sw.js
 
