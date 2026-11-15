@@ -20,7 +20,7 @@ jobs:
 
       - name: Download single-file app
         env:
-          SRC: https://aka.doubaocdn.com/s/2wfG7wOVIZ
+          SRC: https://aka.doubaocdn.com/s/te3NJifBN1
         run: |
           set -euo pipefail
           curl -sSL --fail --retry 3 --retry-delay 2 -o index.html "$SRC"
@@ -31,13 +31,14 @@ jobs:
           test $(grep -c 'rel="apple-touch-icon' index.html) -ge 4 || { echo "::error::touch icons missing"; exit 1; }
           test $(grep -c 'apple-touch-startup-image' index.html) -ge 3 || { echo "::error::startup images missing"; exit 1; }
           grep -q "VER='3.5.0'" index.html || { echo "::error::version marker not found"; exit 1; }
-          grep -q "const PATCH='3'" index.html || { echo "::error::patch marker not 3"; exit 1; }
+          grep -q "const PATCH='4'" index.html || { echo "::error::patch marker not 4"; exit 1; }
           grep -q '"apple-mobile-web-app-title" content="法制史一点通"' index.html || { echo "::error::ios app title missing"; exit 1; }
           grep -q "SB_URL='https://lbykbafnkhwxqtfuaoio.supabase.co'" index.html || { echo "::error::supabase url missing"; exit 1; }
           grep -q "sb_publishable_" index.html || { echo "::error::supabase key missing"; exit 1; }
           grep -q "github.com/kkdlm/fazhishi/issues" index.html || { echo "::error::issue repo not renamed"; exit 1; }
           grep -q "kkdlm.github.io/fazhishi<" index.html || { echo "::error::in-app url hint not renamed"; exit 1; }
           grep -q "<title>法制史一点通</title>" index.html || { echo "::error::app title mismatch"; exit 1; }
+          grep -q "一是指周朝制定的九篇刑书" index.html || { echo "::error::西周九刑条缺失"; exit 1; }
           v=$(grep -o "VER='[0-9.]*'" index.html | head -1 | sed "s/VER='//;s/'//")
           echo "VER=$v" >> "$GITHUB_ENV"
           p=$(grep -o "const PATCH='[0-9]*'" index.html | head -1 | sed "s/const PATCH='//;s/'//")
@@ -82,7 +83,7 @@ jobs:
           curl -fsSL --retry 3 -o startup-1179x2556.png "https://aka.doubaocdn.com/s/YtMWhoiMyG"
           curl -fsSL --retry 3 -o startup-1170x2532.png "https://aka.doubaocdn.com/s/s3q9SNSEBy"
           curl -fsSL --retry 3 -o sw.js "https://aka.doubaocdn.com/s/UoUzTwpPKB"
-          grep -q "app-3.5.0-p3" sw.js || { echo "::error::sw stale"; exit 1; }
+          grep -q "app-3.5.0-p4" sw.js || { echo "::error::sw stale"; exit 1; }
           grep -q "/admin/" sw.js || { echo "::error::sw admin bypass missing"; exit 1; }
           node --check sw.js
 
