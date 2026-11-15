@@ -1907,10 +1907,8 @@ function renderList(){
         h+=`<div class="era-h"><b>${esc(ch)}</b><span>${cnt} 条</span></div>`;
         lastEra=ch;
       }
-      let pre='';
-      if(!seenCh.has(ch)){ seenCh.add(ch); pre+=btSecHTML('era',p.ch||'绪论'); }
-      /* 断代史不插“本节·背诵提示”：它来自《背诵一本通》，是专题视角的跨朝代汇总 */
-      h+=pre+cardHTML(p);
+      /* 断代史既不插“本节”也不插“本章”背诵提示：两者都来自《背诵一本通》的专题视角，逐朝放会错位 */
+      h+=cardHTML(p);
     });
   }
   const lgd = S.legendOn===false ? '' : legendHTML();
@@ -5362,7 +5360,7 @@ migrateSrs();
 applyMode(); chipRow(); renderHome(); renderList(); renderCloze();
 
 const VER='3.7.0';
-const PATCH='26';   /* 同一版本内的补丁号；0 表示版本本体 */
+const PATCH='27';   /* 同一版本内的补丁号；0 表示版本本体 */
 const CHANGELOG = [
 {v:'3.5.0',d:'2026-11-15',kind:'minor',sum:'改为登录后解锁全部板块，用户中心独立成一页',items:[
 ['变更','未注册登录时只开放「总览」：断代史 / 专题史、检索、卡片正文都能看，掌握与笔记照常记；速览、背诵、专题、刷题按下会直接跳到「我的」页要求登录'],
