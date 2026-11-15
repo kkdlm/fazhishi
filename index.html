@@ -1115,6 +1115,7 @@ html[data-theme="night"] .mode-btn{background:var(--card);color:var(--red);borde
 .me-row input:focus{border-color:var(--red)}
 .me-row button{flex:0 0 auto;padding:0 14px;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--ink-2);font-size:12.5px;min-height:38px}
 .me-row button.pri{flex:1;background:var(--red);border-color:var(--red);color:#fff}
+.me-two button{flex:1!important;font-size:13px}
 .me-row button:active{border-color:var(--red);color:var(--red)}
 .me-row button.pri:active{color:#fff}
 .me-cap{flex:0 0 auto;display:flex;align-items:center;padding:0 10px;letter-spacing:.18em;font-family:ui-monospace,monospace;font-size:13px;color:var(--ink)}
@@ -4219,7 +4220,7 @@ const SB_ANON='sb_publishable_Jo6sLcvuEpRQEbMJ6nnOHQ_sxA_U5nL'; /* publishable k
 const CARDKEY_ON=false; /* 卡密：先埋着，不启用 */
 
 const AUTHKEY=KEY+':auth';
-let AUTH=null, ACCTAB='otp', OTPLEFT=0, OTPTIMER=null, SYNCING=false, SYNCTIMER=null, SYNCERR='', CAPTCHA='';
+let AUTH=null, ACCTAB='in',   /* in=密码登录（默认） reg=注册 otp=验证码登录 */ OTPLEFT=0, OTPTIMER=null, SYNCING=false, SYNCTIMER=null, SYNCERR='', CAPTCHA='';
 function sbOn(){ return !!(SB_URL && SB_ANON); }
 function loadAuth(){ try{ AUTH=JSON.parse(localStorage.getItem(AUTHKEY)||'null'); }catch(e){ AUTH=null; } return AUTH; }
 function saveAuth(){ try{ if(AUTH&&AUTH.access_token) localStorage.setItem(AUTHKEY,JSON.stringify(AUTH)); else localStorage.removeItem(AUTHKEY); }catch(e){} }
@@ -4275,7 +4276,7 @@ function failCap(){ mtoast('文字验证码不对，照右边那 4 个字再输�
 function coolDown(){ try{ return Math.max(0, (parseInt(localStorage.getItem(KEY+':otpAt')||'0',10)+60000-Date.now())/1000); }catch(e){ return 0; } }
 
 /* ---------- 登录 / 注册 ---------- */
-function setAcctab(t){ ACCTAB=t; newCaptcha(); renderAcct(); }
+function setAcctab(t){ ACCTAB=t; if(t!=='in') newCaptcha(); renderAcct(); window.scrollTo({top:0,behavior:'auto'}); }
 function renderAcct(){
   if(sbOn() && !authOk() && !CAPTCHA) newCaptcha();   /* 首次进「我的」也要有图灵字符 */
   const el=document.getElementById('meBody'); if(el) el.innerHTML=meHTML();
@@ -4287,31 +4288,34 @@ function meHTML(){
   const cnt=(o)=>Object.keys(o||{}).length;
   if(!authOk()){
     const left=Math.max(OTPLEFT,coolDown());
-    const tabs=`<div class="me-tabs">
-      <button class="${ACCTAB==='otp'?'on':''}" onclick="setAcctab('otp')">验证码登录</button>
-      <button class="${ACCTAB==='pwd'?'on':''}" onclick="setAcctab('pwd')">密码登录</button></div>`;
-    const mail=`<div class="me-row"><input id="acctMail" inputmode="email" autocomplete="email" placeholder="邮箱" value="${esc(S.lastMail||'')}"></div>`;
-    const cap=`<div class="me-row"><input id="capIn" maxlength="4" style="text-transform:uppercase" placeholder="照抄右边 4 个字">
+    const mail=`<div class="me-row"><input id="acctMail" inputmode="email" autocomplete="email" placeholder="邮箱"></div>`;
+    const codeRow=`<div class="me-row"><input id="acctCode" inputmode="numeric" maxlength="6" placeholder="邮件里的验证码">
+        <button id="otpBtn" onclick="sendOtp()">${left>0?('重发 '+left+'s'):'发送验证码'}</button></div>`;
+    const capRow=`<div class="me-row"><input id="capIn" maxlength="4" style="text-transform:uppercase" placeholder="照抄右边 4 个字">
         <b id="capShow" class="me-cap">${esc(CAPTCHA)}</b></div>`;
-    let inner;
-    if(ACCTAB==='otp'){
-      inner=`<h3>登录 / 注册</h3>
-        <div class="me-note">现在是访客：只有「总览」可用。登录后解锁速览、背诵、专题、刷题，进度自动同步到云端。</div>
-        ${tabs}${mail}${cap}
-        <div class="me-row"><input id="acctCode" inputmode="numeric" maxlength="6" placeholder="邮件里的验证码">
-          <button id="otpBtn" onclick="sendOtp()">${left>0?('重发 '+left+'s'):'发送验证码'}</button></div>
-        <div class="me-row"><button class="pri" onclick="verifyOtp()">登录 / 注册</button></div>
-        <div class="me-note">没注册过会自动建号；验证码邮件发不出来时，改用「密码登录」注册即可。</div>`;
-    } else {
-      inner=`<h3>密码登录 / 注册</h3>
-        <div class="me-note">邮箱 + 密码，没注册过会新建账号；这是邮件发不出来时的兜底路径。</div>
-        ${tabs}${mail}
-        <div class="me-row"><input id="acctPwd" type="password" autocomplete="current-password" placeholder="密码，至少 6 位"></div>${cap}
-        <div class="me-row"><button class="pri" onclick="pwdGo('in')">登录</button><button onclick="pwdGo('reg')">注册新账号</button></div>
-        <div class="me-note">注册后若收到确认邮件，点一次链接即可激活。</div>`;
+    if(ACCTAB==='reg'){
+      return meCard(`<h3>注册新账号</h3>
+        <div class="me-note">注册要两样一起给：自己设的密码 + 邮箱验证码。注册完之后，以后登录用密码或验证码都行。</div>
+        ${mail}
+        <div class="me-row"><input id="acctPwd" type="password" autocomplete="new-password" placeholder="设置密码，至少 6 位"></div>
+        ${codeRow}${capRow}
+        <div class="me-row"><button class="pri" onclick="regGo()">完成注册</button></div>
+        <div class="me-row me-two"><button onclick="setAcctab('in')">返回登录</button></div>
+        <div class="me-note">这个邮箱注册过的话，这一步会用你新填的密码替换旧密码。</div>`);
     }
-    return meCard(inner) + meCard(`<h3>访客能做什么</h3>
-      <div class="me-note">「总览」的断代史 / 专题史、检索、卡片正文全都能看；掌握、收藏、笔记、复习排期也能记，只是只存在本机、换设备不同步。<br>要跨设备接着背，就需要一个账号。</div>`);
+    if(ACCTAB==='otp'){
+      return meCard(`<h3>验证码登录</h3>
+        <div class="me-note">已注册的邮箱，填验证码就能进；没注册过的邮箱会提示先去注册。</div>
+        ${mail}${codeRow}${capRow}
+        <div class="me-row"><button class="pri" onclick="verifyOtp()">登录</button></div>
+        <div class="me-row me-two"><button onclick="setAcctab('in')">返回登录</button></div>`);
+    }
+    return meCard(`<h3>登录</h3>
+      <div class="me-note">现在是访客：只有「总览」可用。登录后解锁速览、背诵、专题、刷题，进度自动同步到云端。</div>
+      ${mail}
+      <div class="me-row"><input id="acctPwd" type="password" autocomplete="current-password" placeholder="密码，至少 6 位"></div>
+      <div class="me-row"><button class="pri" onclick="pwdGo('in')">登录</button></div>
+      <div class="me-row me-two"><button onclick="setAcctab('reg')">注册新账号</button><button onclick="setAcctab('otp')">验证码登录</button></div>`);
   }
   const rev=parseInt(S.rev||'0',10);
   const nick=esc(S.nick||'');
@@ -4348,14 +4352,15 @@ async function sendOtp(){
   if(!capOk()){ failCap(); return; }
   mtoast('正在发送…');
   try{
-    await sbReq('/auth/v1/otp',{method:'POST',body:{email:e.trim(),create_user:true}});
+    await sbReq('/auth/v1/otp',{method:'POST',body:{email:e.trim(),create_user:(ACCTAB==='reg')}});
     try{ localStorage.setItem(KEY+':otpAt',String(Date.now())); }catch(err){}
     OTPLEFT=60; clearInterval(OTPTIMER);
     OTPTIMER=setInterval(()=>{ OTPLEFT--; const b=document.getElementById('otpBtn'); if(b) b.textContent=OTPLEFT>0?('重发 '+OTPLEFT+'s'):'发送验证码'; if(OTPLEFT<=0) clearInterval(OTPTIMER); },1000);
     mtoast('验证码已发到邮箱，请尽快填入');
     newCaptcha();
   }catch(err){
-    mtoast('邮件没发出去：'+(err.message||'').slice(0,60)+'。可以先改用「密码登录」'); 
+    const m=(err.message||'').slice(0,60);
+    mtoast(ACCTAB==='otp' ? ('这个邮箱好像还没注册（'+m+'），先去「注册新账号」') : ('邮件没发出去：'+m+'。可以先用「登录」里的密码方式')); 
   }
 }
 async function verifyOtp(){
@@ -4365,25 +4370,34 @@ async function verifyOtp(){
   try{
     const j=await sbReq('/auth/v1/verify',{method:'POST',body:{type:'email',email:e,token:c}});
     if(!adoptSession(j)){ mtoast('登录失败：返回里没有会话'); return; }
-    await afterLogin();
+    await afterLogin(); mtoast('验证码登录成功');
   }catch(err){ mtoast('登录失败：'+(err.message||'').slice(0,60)); }
+}
+async function regGo(){
+  const e=((document.getElementById('acctMail')||{}).value||'').trim();
+  const p=((document.getElementById('acctPwd')||{}).value||'').trim();
+  const c=((document.getElementById('acctCode')||{}).value||'').trim();
+  if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e)){ mtoast('邮箱格式不对'); return; }
+  if(p.length<6){ mtoast('密码至少 6 位'); return; }
+  if(!/^\d{4,6}$/.test(c)){ mtoast('先填邮件里的验证码'); return; }
+  if(!capOk()){ failCap(); return; }
+  mtoast('正在注册…');
+  try{
+    const j=await sbReq('/auth/v1/verify',{method:'POST',body:{type:'email',email:e,token:c}});
+    if(!adoptSession(j)){ mtoast('注册失败：验证码不对或已过期'); return; }
+    try{ await sbReq('/auth/v1/user',{method:'PUT',body:{password:p}}); }
+    catch(err){ mtoast('账号已建好，但密码没设上：'+(err.message||'').slice(0,40)); }
+    await afterLogin(); mtoast('注册完成，已登录（下次可用密码或验证码登录）');
+  }catch(err){ mtoast('注册失败：'+(err.message||'').slice(0,60)); }
 }
 async function pwdGo(mode){
   const e=((document.getElementById('acctMail')||{}).value||'').trim();
   const p=((document.getElementById('acctPwd')||{}).value||'').trim();
   if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e)){ mtoast('邮箱格式不对'); return; }
   if(p.length<6){ mtoast('密码至少 6 位'); return; }
-  if(!capOk()){ failCap(); return; }
   try{
-    let j;
-    if(mode==='reg'){
-      j=await sbReq('/auth/v1/signup',{method:'POST',body:{email:e,password:p}});
-      if(!j||!j.access_token){ mtoast('注册成功，但还差一步：去邮箱点确认链接，或到后台关掉 Confirm email'); return; }
-      adoptSession(j);
-    }else{
-      j=await sbReq('/auth/v1/token?grant_type=password',{method:'POST',body:{email:e,password:p}});
-      adoptSession(j);
-    }
+    const j=await sbReq('/auth/v1/token?grant_type=password',{method:'POST',body:{email:e,password:p}});
+    if(!adoptSession(j)){ mtoast('登录失败：返回里没有会话'); return; }
     await afterLogin();
   }catch(err){
     const m=(err.message||'').toLowerCase();
@@ -4909,7 +4923,7 @@ migrateSrs();
 applyMode(); chipRow(); renderHome(); renderList(); renderCloze();
 
 const VER='3.5.0';
-const PATCH='0';   /* 同一版本内的补丁号；0 表示版本本体 */
+const PATCH='1';   /* 同一版本内的补丁号；0 表示版本本体 */
 const CHANGELOG = [
 {v:'3.5.0',d:'2026-11-15',kind:'minor',sum:'改为登录后解锁全部板块，用户中心独立成一页',items:[
 ['变更','未注册登录时只开放「总览」：断代史 / 专题史、检索、卡片正文都能看，掌握与笔记照常记；速览、背诵、专题、刷题按下会直接跳到「我的」页要求登录'],
@@ -4917,7 +4931,8 @@ const CHANGELOG = [
 ['新增','登录后可设昵称（写入云端 profiles.nickname），换设备登录昵称跟着走'],
 ['优化','设置面板不再塞账号块，只留一个「账号与同步」入口跳到「我的」，设置本身只剩外观、字号、学习、数据'],
 ['修复','进入 App 出现两次启动画面：主屏幕启动图之后页面里又叠了一层动画启动页，现把页面内那层移除，只保留系统启动图，冷启动少一次等待'],
-['修复','退出登录后自动回到「总览」，且未登录时底栏被锁的板块变灰，点它会跳到「我的」要求登录']]},
+['修复','退出登录后自动回到「总览」，且未登录时底栏被锁的板块变灰，点它会跳到「我的」要求登录'],
+['调整','登录页重排：默认就是「邮箱 + 密码 + 登录」，下面并排两个按钮「注册新账号 / 验证码登录」。注册时密码与邮箱验证码必须同时给（验证码验过再落密码），注册完以后登录用密码或验证码都行']] },
 {v:'3.4.0',d:'2026-11-15',kind:'minor',sum:'加账号与云同步（注册才同步），离线备份降级为兜底',items:[
 ['新增','设置顶部新增「账号与同步」：注册或登录后，掌握、收藏、复习排期、笔记自动同步到云端，换设备登录即接着背。不注册照常能背，只是进度只存本机（访客模式）'],
 ['新增','注册优先用邮箱验证码；邮件一时发不出来，可切到「密码登录」用邮箱+密码注册登录，注册链路不会被邮件卡死'],
