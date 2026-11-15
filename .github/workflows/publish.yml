@@ -20,7 +20,7 @@ jobs:
 
       - name: Download single-file app
         env:
-          SRC: https://aka.doubaocdn.com/s/SX2NuGBUn1
+          SRC: https://aka.doubaocdn.com/s/V99Z498FFM
         run: |
           set -euo pipefail
           curl -sSL --fail --retry 3 --retry-delay 2 -o index.html "$SRC"
@@ -30,8 +30,8 @@ jobs:
           head -c 60 index.html | grep -q "<!DOCTYPE html>" || { echo "::error::not html"; exit 1; }
           test $(grep -c 'rel="apple-touch-icon' index.html) -ge 4 || { echo "::error::touch icons missing"; exit 1; }
           test $(grep -c 'apple-touch-startup-image' index.html) -ge 3 || { echo "::error::startup images missing"; exit 1; }
-          grep -q "VER='3.4.0'" index.html || { echo "::error::version marker not found"; exit 1; }
-          grep -q "const PATCH='7'" index.html || { echo "::error::patch marker not 7"; exit 1; }
+          grep -q "VER='3.5.0'" index.html || { echo "::error::version marker not found"; exit 1; }
+          grep -q "const PATCH='0'" index.html || { echo "::error::patch marker not 0"; exit 1; }
           grep -q '"apple-mobile-web-app-title" content="法制史一点通"' index.html || { echo "::error::ios app title missing"; exit 1; }
           grep -q "SB_URL='https://lbykbafnkhwxqtfuaoio.supabase.co'" index.html || { echo "::error::supabase url missing"; exit 1; }
           grep -q "sb_publishable_" index.html || { echo "::error::supabase key missing"; exit 1; }
@@ -81,8 +81,8 @@ jobs:
           curl -fsSL --retry 3 -o startup-1290x2796.png "https://aka.doubaocdn.com/s/rWrQ3pW04j"
           curl -fsSL --retry 3 -o startup-1179x2556.png "https://aka.doubaocdn.com/s/YtMWhoiMyG"
           curl -fsSL --retry 3 -o startup-1170x2532.png "https://aka.doubaocdn.com/s/s3q9SNSEBy"
-          curl -fsSL --retry 3 -o sw.js "https://aka.doubaocdn.com/s/agmyrkbdmu"
-          grep -q "app-3.4.0-p7" sw.js || { echo "::error::sw stale"; exit 1; }
+          curl -fsSL --retry 3 -o sw.js "https://aka.doubaocdn.com/s/j8JArpLqOH"
+          grep -q "app-3.5.0-p0" sw.js || { echo "::error::sw stale"; exit 1; }
           grep -q "/admin/" sw.js || { echo "::error::sw admin bypass missing"; exit 1; }
           node --check sw.js
 
