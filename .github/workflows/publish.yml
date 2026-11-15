@@ -20,7 +20,7 @@ jobs:
 
       - name: Download single-file app
         env:
-          SRC: https://aka.doubaocdn.com/s/K6U3UQOx4m
+          SRC: https://aka.doubaocdn.com/s/TK6950GOPd
         run: |
           set -euo pipefail
           curl -sSL --fail --retry 3 --retry-delay 2 -o index.html "$SRC"
@@ -31,7 +31,7 @@ jobs:
           test $(grep -c 'rel="apple-touch-icon' index.html) -ge 4 || { echo "::error::touch icons missing"; exit 1; }
           test $(grep -c 'apple-touch-startup-image' index.html) -ge 3 || { echo "::error::startup images missing"; exit 1; }
           grep -q "VER='3.5.0'" index.html || { echo "::error::version marker not found"; exit 1; }
-          grep -q "const PATCH='12'" index.html || { echo "::error::patch marker not 12"; exit 1; }
+          grep -q "const PATCH='13'" index.html || { echo "::error::patch marker not 13"; exit 1; }
           grep -q '"apple-mobile-web-app-title" content="法制史一点通"' index.html || { echo "::error::ios app title missing"; exit 1; }
           grep -q "SB_URL='https://lbykbafnkhwxqtfuaoio.supabase.co'" index.html || { echo "::error::supabase url missing"; exit 1; }
           grep -q "sb_publishable_" index.html || { echo "::error::supabase key missing"; exit 1; }
@@ -52,6 +52,10 @@ jobs:
           grep -q '.cb{color:var(--cc-b)}' index.html || { echo "::error::正文标色未恢复"; exit 1; }
           grep -q '.co{color:var(--cc-o)}' index.html || { echo "::error::正文标色未恢复(橙)"; exit 1; }
           grep -q '.cgr{color:var(--cc-gr)}' index.html || { echo "::error::正文标色未恢复(绿)"; exit 1; }
+          grep -q ".bt{background:color-mix" index.html || { echo "::error::背诵提示样式缺失"; exit 1; }
+          grep -q "function btCardHTML" index.html || { echo "::error::背诵提示渲染缺失"; exit 1; }
+          grep -q "背诵一本通" index.html || { echo "::error::背诵提示来源缺失"; exit 1; }
+          grep -q "复盘背诵" index.html || { echo "::error::整节复盘提示缺失"; exit 1; }
           v=$(grep -o "VER='[0-9.]*'" index.html | head -1 | sed "s/VER='//;s/'//")
           echo "VER=$v" >> "$GITHUB_ENV"
           p=$(grep -o "const PATCH='[0-9]*'" index.html | head -1 | sed "s/const PATCH='//;s/'//")
@@ -102,8 +106,8 @@ jobs:
               got=struct.unpack('>II',d[16:24])
               assert got==(w,h),(f,got); print(f,'ok',got)
           PY
-          curl -fsSL --retry 3 -o sw.js "https://aka.doubaocdn.com/s/HpTYUsOkXQ"
-          grep -q "app-3.5.0-p12" sw.js || { echo "::error::sw stale"; exit 1; }
+          curl -fsSL --retry 3 -o sw.js "https://aka.doubaocdn.com/s/Lv8YRo247Q"
+          grep -q "app-3.5.0-p13" sw.js || { echo "::error::sw stale"; exit 1; }
           grep -q "/admin/" sw.js || { echo "::error::sw admin bypass missing"; exit 1; }
           node --check sw.js
 
