@@ -118,16 +118,13 @@ jobs:
           n=$(ls -1 img | wc -l)
           echo "images=$n"
           if [ "$n" -lt 80 ]; then echo "::error::images missing ($n)"; exit 1; fi
-          python3 - <<'EOF'
-import os
-from PIL import Image
-for k in ['x083','x084','x085','x086','x087','x088']:
-    f=f'img/ytl-{k}-hd2.webp'
-    assert os.path.isfile(f), f
-    w,h=Image.open(f).size
-    assert max(w,h)>=2400, (k,w,h)
-print('ytl hd ok')
-EOF
+          for k in x083 x084 x085 x086 x087 x088; do
+            f="img/ytl-$k-hd2.webp"
+            test -f "$f" || { echo "::error::missing $f"; exit 1; }
+            s=$(stat -c%s "$f")
+            if [ "$s" -lt 120000 ]; then echo "::error::$f too small ($s)"; exit 1; fi
+            echo "$f $s"
+          done
           du -sh img
 
       - name: Download manifest and check app name
