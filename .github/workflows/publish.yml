@@ -20,7 +20,7 @@ jobs:
 
       - name: Download single-file app
         env:
-          SRC: https://aka.doubaocdn.com/s/oGAeRsG7RS
+          SRC: https://aka.doubaocdn.com/s/Uz2W3gULNh
         run: |
           set -euo pipefail
           curl -sSL --fail --retry 3 --retry-delay 2 -o index.html "$SRC"
@@ -31,7 +31,7 @@ jobs:
           test $(grep -c 'rel="apple-touch-icon' index.html) -ge 4 || { echo "::error::touch icons missing"; exit 1; }
           if grep -q 'apple-touch-startup-image' index.html; then echo "::error::系统启动图未删除"; exit 1; fi
           grep -q "VER='3.7.0'" index.html || { echo "::error::version marker not found"; exit 1; }
-          grep -q "const PATCH='23'" index.html || { echo "::error::patch marker not 23"; exit 1; }
+          grep -q "const PATCH='24'" index.html || { echo "::error::patch marker not 24"; exit 1; }
           grep -q '"apple-mobile-web-app-title" content="法制史一点通"' index.html || { echo "::error::ios app title missing"; exit 1; }
           grep -q "SB_URL='https://lbykbafnkhwxqtfuaoio.supabase.co'" index.html || { echo "::error::supabase url missing"; exit 1; }
           grep -q "sb_publishable_" index.html || { echo "::error::supabase key missing"; exit 1; }
@@ -73,6 +73,11 @@ jobs:
           grep -Fq "function progCardHTML" index.html || { echo "::error::继续上次卡片缺失"; exit 1; }
           grep -Fq "进度已保存" index.html || { echo "::error::退出一题一存提示缺失"; exit 1; }
           grep -Fq "function cnNum" index.html || { echo "::error::章节目录排序缺失"; exit 1; }
+          grep -Fq "async function touchPresence" index.html || { echo "::error::在线心跳缺失"; exit 1; }
+          grep -Fq "async function useBoth" index.html || { echo "::error::云端合并缺失"; exit 1; }
+          grep -Fq "async function sendReset" index.html || { echo "::error::忘记密码入口缺失"; exit 1; }
+          grep -Fq "function signOutAsk" index.html || { echo "::error::退出确认缺失"; exit 1; }
+          grep -Fq "SYNC_RETRY" index.html || { echo "::error::同步重试缺失"; exit 1; }
           v=$(grep -o "VER='[0-9.]*'" index.html | head -1 | sed "s/VER='//;s/'//")
           echo "VER=$v" >> "$GITHUB_ENV"
           p=$(grep -o "const PATCH='[0-9]*'" index.html | head -1 | sed "s/const PATCH='//;s/'//")
@@ -82,13 +87,15 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p admin
-          curl -fsSL --retry 3 -o admin/index.html "https://aka.doubaocdn.com/s/YgWQD3jRve"
+          curl -fsSL --retry 3 -o admin/index.html "https://aka.doubaocdn.com/s/0AfEni5VvW"
           size=$(stat -c%s admin/index.html)
           echo "admin-size=$size"
           if [ "$size" -lt 20000 ]; then echo "::error::admin too small ($size)"; exit 1; fi
           grep -q "noindex" admin/index.html || { echo "::error::admin noindex missing"; exit 1; }
           grep -q "管理后台 · 已锁定" admin/index.html || { echo "::error::admin gate missing"; exit 1; }
           grep -q "const BLOB=" admin/index.html || { echo "::error::admin payload missing"; exit 1; }
+          grep -q "user-scalable=no" admin/index.html || { echo "::error::admin 未禁缩放"; exit 1; }
+          grep -q "srcdoc=html" admin/index.html || { echo "::error::admin unlock broken"; exit 1; }
           if grep -q "sb_publishable_" admin/index.html; then echo "::error::admin must not contain plaintext key"; exit 1; fi
 
       - name: Download images bundle and unpack
@@ -114,8 +121,8 @@ jobs:
           curl -fsSL --retry 3 -o icon-192.png "https://aka.doubaocdn.com/s/wN2B51yuN0"
           curl -fsSL --retry 3 -o icon-512.png "https://aka.doubaocdn.com/s/JkPVJKcpEn"
           echo "icons ok"
-          curl -fsSL --retry 3 -o sw.js "https://aka.doubaocdn.com/s/UEjE34xOSl"
-          grep -q "app-3.7.0-p23" sw.js || { echo "::error::sw stale"; exit 1; }
+          curl -fsSL --retry 3 -o sw.js "https://aka.doubaocdn.com/s/ceVXgLngrE"
+          grep -q "app-3.7.0-p24" sw.js || { echo "::error::sw stale"; exit 1; }
           grep -q "/admin/" sw.js || { echo "::error::sw admin bypass missing"; exit 1; }
           node --check sw.js
 
