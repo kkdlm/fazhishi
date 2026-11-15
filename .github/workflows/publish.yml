@@ -20,7 +20,7 @@ jobs:
 
       - name: Download single-file app
         env:
-          SRC: https://aka.doubaocdn.com/s/z1Tshw7XtK
+          SRC: https://aka.doubaocdn.com/s/NtxPBgNpOS
         run: |
           set -euo pipefail
           curl -sSL --fail --retry 3 --retry-delay 2 -o index.html "$SRC"
@@ -31,7 +31,7 @@ jobs:
           test $(grep -c 'rel="apple-touch-icon' index.html) -ge 4 || { echo "::error::touch icons missing"; exit 1; }
           test $(grep -c 'apple-touch-startup-image' index.html) -ge 3 || { echo "::error::startup images missing"; exit 1; }
           grep -q "VER='3.6.0'" index.html || { echo "::error::version marker not found"; exit 1; }
-          grep -q "const PATCH='17'" index.html || { echo "::error::patch marker not 17"; exit 1; }
+          grep -q "const PATCH='18'" index.html || { echo "::error::patch marker not 18"; exit 1; }
           grep -q '"apple-mobile-web-app-title" content="法制史一点通"' index.html || { echo "::error::ios app title missing"; exit 1; }
           grep -q "SB_URL='https://lbykbafnkhwxqtfuaoio.supabase.co'" index.html || { echo "::error::supabase url missing"; exit 1; }
           grep -q "sb_publishable_" index.html || { echo "::error::supabase key missing"; exit 1; }
@@ -60,6 +60,10 @@ jobs:
           grep -Fq "专题史刷题讲义" index.html || { echo "::error::专题史套题缺失"; exit 1; }
           grep -Fq "function renderQuizSets" index.html || { echo "::error::套题首页缺失"; exit 1; }
           grep -Fq "本套错题重练" index.html || { echo "::error::套题内错题入口缺失"; exit 1; }
+          grep -Fq "const QM =" index.html || { echo "::error::题干知识点匹配表缺失"; exit 1; }
+          grep -Fq "--bad:#C0392B" index.html || { echo "::error::答错红色语义缺失"; exit 1; }
+          grep -Fq "--ok:#2C7A4B" index.html || { echo "::error::答对绿色语义缺失"; exit 1; }
+          grep -Fq "讲义图表 · " index.html || { echo "::error::知识点配图标签缺失"; exit 1; }
           v=$(grep -o "VER='[0-9.]*'" index.html | head -1 | sed "s/VER='//;s/'//")
           echo "VER=$v" >> "$GITHUB_ENV"
           p=$(grep -o "const PATCH='[0-9]*'" index.html | head -1 | sed "s/const PATCH='//;s/'//")
@@ -110,8 +114,8 @@ jobs:
               got=struct.unpack('>II',d[16:24])
               assert got==(w,h),(f,got); print(f,'ok',got)
           PY
-          curl -fsSL --retry 3 -o sw.js "https://aka.doubaocdn.com/s/LqdeXPBRmH"
-          grep -q "app-3.6.0-p17" sw.js || { echo "::error::sw stale"; exit 1; }
+          curl -fsSL --retry 3 -o sw.js "https://aka.doubaocdn.com/s/9f6p3NBmUe"
+          grep -q "app-3.6.0-p18" sw.js || { echo "::error::sw stale"; exit 1; }
           grep -q "/admin/" sw.js || { echo "::error::sw admin bypass missing"; exit 1; }
           node --check sw.js
 
