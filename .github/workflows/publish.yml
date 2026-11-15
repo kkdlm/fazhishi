@@ -20,7 +20,7 @@ jobs:
 
       - name: Download single-file app
         env:
-          SRC: https://aka.doubaocdn.com/s/KntFz9dxJH
+          SRC: https://aka.doubaocdn.com/s/pk7bbdsvcO
         run: |
           set -euo pipefail
           curl -sSL --fail --retry 3 --retry-delay 2 -o index.html "$SRC"
@@ -31,7 +31,7 @@ jobs:
           test $(grep -c 'rel="apple-touch-icon' index.html) -ge 4 || { echo "::error::touch icons missing"; exit 1; }
           test $(grep -c 'apple-touch-startup-image' index.html) -ge 3 || { echo "::error::startup images missing"; exit 1; }
           grep -q "VER='3.5.0'" index.html || { echo "::error::version marker not found"; exit 1; }
-          grep -q "const PATCH='7'" index.html || { echo "::error::patch marker not 7"; exit 1; }
+          grep -q "const PATCH='8'" index.html || { echo "::error::patch marker not 8"; exit 1; }
           grep -q '"apple-mobile-web-app-title" content="法制史一点通"' index.html || { echo "::error::ios app title missing"; exit 1; }
           grep -q "SB_URL='https://lbykbafnkhwxqtfuaoio.supabase.co'" index.html || { echo "::error::supabase url missing"; exit 1; }
           grep -q "sb_publishable_" index.html || { echo "::error::supabase key missing"; exit 1; }
@@ -42,6 +42,8 @@ jobs:
           grep -q "三司会审" index.html || { echo "::error::标题层级修复缺失"; exit 1; }
           grep -q "一夫一妻制婚姻原则" index.html || { echo "::error::婚姻标题首字缺失"; exit 1; }
           grep -q "五权宪法的政府组织方案" index.html || { echo "::error::五权宪法标题缺字"; exit 1; }
+          grep -q "ksec" index.html || { echo "::error::知识点分块渲染缺失"; exit 1; }
+          grep -q "function legendHTML" index.html || { echo "::error::看板图例缺失"; exit 1; }
           v=$(grep -o "VER='[0-9.]*'" index.html | head -1 | sed "s/VER='//;s/'//")
           echo "VER=$v" >> "$GITHUB_ENV"
           p=$(grep -o "const PATCH='[0-9]*'" index.html | head -1 | sed "s/const PATCH='//;s/'//")
@@ -85,8 +87,8 @@ jobs:
           curl -fsSL --retry 3 -o startup-1290x2796.png "https://aka.doubaocdn.com/s/rWrQ3pW04j"
           curl -fsSL --retry 3 -o startup-1179x2556.png "https://aka.doubaocdn.com/s/YtMWhoiMyG"
           curl -fsSL --retry 3 -o startup-1170x2532.png "https://aka.doubaocdn.com/s/s3q9SNSEBy"
-          curl -fsSL --retry 3 -o sw.js "https://aka.doubaocdn.com/s/ltqIU04Qjs"
-          grep -q "app-3.5.0-p7" sw.js || { echo "::error::sw stale"; exit 1; }
+          curl -fsSL --retry 3 -o sw.js "https://aka.doubaocdn.com/s/YdDVuj5PLQ"
+          grep -q "app-3.5.0-p8" sw.js || { echo "::error::sw stale"; exit 1; }
           grep -q "/admin/" sw.js || { echo "::error::sw admin bypass missing"; exit 1; }
           node --check sw.js
 
