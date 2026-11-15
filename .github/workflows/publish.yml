@@ -20,7 +20,7 @@ jobs:
 
       - name: Download single-file app
         env:
-          SRC: https://aka.doubaocdn.com/s/mfk2S4NRHM
+          SRC: https://aka.doubaocdn.com/s/pST325ZJ8H
         run: |
           set -euo pipefail
           curl -sSL --fail --retry 3 --retry-delay 2 -o index.html "$SRC"
@@ -31,7 +31,7 @@ jobs:
           test $(grep -c 'rel="apple-touch-icon' index.html) -ge 4 || { echo "::error::touch icons missing"; exit 1; }
           if grep -q 'apple-touch-startup-image' index.html; then echo "::error::系统启动图未删除"; exit 1; fi
           grep -q "VER='3.7.0'" index.html || { echo "::error::version marker not found"; exit 1; }
-          grep -q "const PATCH='25'" index.html || { echo "::error::patch marker not 25"; exit 1; }
+          grep -q "const PATCH='26'" index.html || { echo "::error::patch marker not 26"; exit 1; }
           grep -q '"apple-mobile-web-app-title" content="法制史一点通"' index.html || { echo "::error::ios app title missing"; exit 1; }
           grep -q "SB_URL='https://lbykbafnkhwxqtfuaoio.supabase.co'" index.html || { echo "::error::supabase url missing"; exit 1; }
           grep -q "sb_publishable_" index.html || { echo "::error::supabase key missing"; exit 1; }
@@ -84,6 +84,9 @@ jobs:
           grep -Fq "class=\"setbar\"" index.html || { echo "::error::套题进度条缺失"; exit 1; }
           grep -Fq "ex-gap" index.html || { echo "::error::多选少选提示缺失"; exit 1; }
           grep -Fq "animation:viewIn" index.html || { echo "::error::视图淡入缺失"; exit 1; }
+          grep -Fq "function zhErr" index.html || { echo "::error::中文错误映射缺失"; exit 1; }
+          grep -Fq "function busyOn" index.html || { echo "::error::按钮忙碌态缺失"; exit 1; }
+          grep -Fq "button[data-busy]" index.html || { echo "::error::忙碌样式缺失"; exit 1; }
           v=$(grep -o "VER='[0-9.]*'" index.html | head -1 | sed "s/VER='//;s/'//")
           echo "VER=$v" >> "$GITHUB_ENV"
           p=$(grep -o "const PATCH='[0-9]*'" index.html | head -1 | sed "s/const PATCH='//;s/'//")
@@ -93,7 +96,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p admin
-          curl -fsSL --retry 3 -o admin/index.html "https://aka.doubaocdn.com/s/x00pUJev2H"
+          curl -fsSL --retry 3 -o admin/index.html "https://aka.doubaocdn.com/s/5Ad0ERAWlK"
           size=$(stat -c%s admin/index.html)
           echo "admin-size=$size"
           if [ "$size" -lt 20000 ]; then echo "::error::admin too small ($size)"; exit 1; fi
@@ -127,8 +130,8 @@ jobs:
           curl -fsSL --retry 3 -o icon-192.png "https://aka.doubaocdn.com/s/wN2B51yuN0"
           curl -fsSL --retry 3 -o icon-512.png "https://aka.doubaocdn.com/s/JkPVJKcpEn"
           echo "icons ok"
-          curl -fsSL --retry 3 -o sw.js "https://aka.doubaocdn.com/s/VprR63SGqx"
-          grep -q "app-3.7.0-p25" sw.js || { echo "::error::sw stale"; exit 1; }
+          curl -fsSL --retry 3 -o sw.js "https://aka.doubaocdn.com/s/tidtZsEHBZ"
+          grep -q "app-3.7.0-p26" sw.js || { echo "::error::sw stale"; exit 1; }
           grep -q "/admin/" sw.js || { echo "::error::sw admin bypass missing"; exit 1; }
           node --check sw.js
 
@@ -157,6 +160,6 @@ jobs:
         run: |
           code=$(curl -sS -o /tmp/pages.json -w '%{http_code}' -X POST "https://api.github.com/repos/$REPO/pages" \
             -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" \
-            -d '{"source":{"branch":"main","path":"/"}}' || echo 000)
+            -d "{\"source\":{\"branch\":\"main\",\"path\":\"/\"}}" || echo 000)
           echo "POST pages -> $code"
           exit 0
