@@ -4336,7 +4336,6 @@ function meHTML(){
       <div class="me-row"><button class="pri" onclick="changePwd()">保存新密码</button></div>`)
    + meCard(`<h3>学习与数据</h3>
       <button class="me-link" onclick="openStats()">学习统计<span>›</span></button>
-      <button class="me-link" onclick="openOldBackup()">离线备份 / 备份码<span>›</span></button>
       <button class="me-link" onclick="openInstall()">安装到主屏<span>›</span></button>`)
    + meCard(`<button class="me-danger" onclick="signOut()">退出登录</button>
       <div class="me-note">退出后回到访客模式：只能看总览，云端进度保留，再登录即恢复。</div>`);
@@ -4575,6 +4574,7 @@ async function redeemCard(){
   }catch(e){ mtoast('兑换失败：'+(e.message||'').slice(0,50)); }
 }
 
+/* 离线备份 / 备份码：按用户要求已从界面下线，代码保留不删，需要时把入口加回 meHTML / openSettings 即可 */
 function openOldBackup(){
   openSheet('离线备份（兜底）',`
     <div class="sheet-sec">
@@ -4598,7 +4598,7 @@ function openSettings(){
   openSheet('设置',`
     <div class="sheet-sec">
       <h4>账号与同步</h4>
-      <button class="opt" onclick="closeSheet();go('me')"><span>${authOk()?'用户中心':'登录 / 注册'}<small>${authOk()?'昵称、同步、备份码、退出':'登录后解锁全部板块并跨设备同步'}</small></span><span class="n">›</span></button>
+      <button class="opt" onclick="closeSheet();go('me')"><span>${authOk()?'用户中心':'登录 / 注册'}<small>${authOk()?'昵称、同步、改密码、退出':'登录后解锁全部板块并跨设备同步'}</small></span><span class="n">›</span></button>
     </div>
     <div class="sheet-sec">
       <h4>外观</h4>
@@ -4623,7 +4623,6 @@ function openSettings(){
     </div>
     <div class="sheet-sec">
       <h4>数据</h4>
-      <button class="opt" onclick="openOldBackup()"><span>离线备份 / 备份码<small>${sbOn()?'不登录或断网时应急用':'导出、导入、备份码都在这里'}</small></span><span class="n">›</span></button>
       <button class="opt" onclick="openBugs()"><span>问题记录<small>随手标记的 bug 与待改处</small></span><span class="n">${Array.isArray(S.bugLog)?S.bugLog.length:0}</span></button>
       <button class="opt" onclick="resetAll()"><span style="color:var(--red)">清空全部记录<small>掌握、收藏、复习计划都会清零</small></span><span class="n">重置</span></button>
     </div>
@@ -4942,7 +4941,7 @@ migrateSrs();
 applyMode(); chipRow(); renderHome(); renderList(); renderCloze();
 
 const VER='3.5.0';
-const PATCH='2';   /* 同一版本内的补丁号；0 表示版本本体 */
+const PATCH='3';   /* 同一版本内的补丁号；0 表示版本本体 */
 const CHANGELOG = [
 {v:'3.5.0',d:'2026-11-15',kind:'minor',sum:'改为登录后解锁全部板块，用户中心独立成一页',items:[
 ['变更','未注册登录时只开放「总览」：断代史 / 专题史、检索、卡片正文都能看，掌握与笔记照常记；速览、背诵、专题、刷题按下会直接跳到「我的」页要求登录'],
@@ -4952,7 +4951,8 @@ const CHANGELOG = [
 ['修复','进入 App 出现两次启动画面：主屏幕启动图之后页面里又叠了一层动画启动页，现把页面内那层移除，只保留系统启动图，冷启动少一次等待'],
 ['修复','退出登录后自动回到「总览」，且未登录时底栏被锁的板块变灰，点它会跳到「我的」要求登录'],
 ['调整','登录页重排：默认就是「邮箱 + 密码 + 登录」，下面并排两个按钮「注册新账号 / 验证码登录」。注册时密码与邮箱验证码必须同时给（验证码验过再落密码），注册完以后登录用密码或验证码都行'],
-['新增','「我的」页加「修改密码」：填新密码两次，保存后本机仍在线，别的设备下次要重新登录。用验证码登录建出来、还没有密码的账号，也在这里补一个']] },
+['新增','「我的」页加「修改密码」：填新密码两次，保存后本机仍在线，别的设备下次要重新登录。用验证码登录建出来、还没有密码的账号，也在这里补一个'],
+['下线','离线备份 / 备份码按你的要求从界面移除：设置与「我的」页都不再出现这个入口（备份码、导出、导入三个功能代码没删，只是不暴露，将来要恢复改一个按钮即可）。登录后进度走云端同步，不再需要备份码']] },
 {v:'3.4.0',d:'2026-11-15',kind:'minor',sum:'加账号与云同步（注册才同步），离线备份降级为兜底',items:[
 ['新增','设置顶部新增「账号与同步」：注册或登录后，掌握、收藏、复习排期、笔记自动同步到云端，换设备登录即接着背。不注册照常能背，只是进度只存本机（访客模式）'],
 ['新增','注册优先用邮箱验证码；邮件一时发不出来，可切到「密码登录」用邮箱+密码注册登录，注册链路不会被邮件卡死'],
