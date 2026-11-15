@@ -95,41 +95,6 @@ svg{display:block}
   box-shadow:0 4px 10px -4px rgba(140,44,38,.6), inset 0 0 0 1.5px rgba(255,240,214,.28);
   transform:rotate(-3deg);
 }
-/* ---------- 启动屏：首帧与 iOS 启动图同构，随后简牍展开 ---------- */
-.sp-logo{position:relative;width:96px;height:96px;margin-bottom:26px}
-.sp-seal{position:absolute;inset:0;border-radius:22px;background:var(--bamboo);color:var(--zhu);
-  display:grid;place-items:center;font-family:var(--serif);font-size:50px;font-weight:800;line-height:1;letter-spacing:.04em;
-  box-shadow:0 20px 44px -18px rgba(20,45,32,.55),inset 0 0 0 4px rgba(234,237,225,.92),inset 0 0 0 5px rgba(20,45,32,.26);
-  animation:spSeal .58s cubic-bezier(.3,.8,.3,1) both}
-.sp-slips{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;gap:5px;
-  opacity:0;transform-origin:center;animation:spSlips .92s cubic-bezier(.2,.8,.3,1) .58s both}
-.sp-slips i{display:block;width:11px;height:62px;border-radius:3px;position:relative;overflow:hidden;
-  background:linear-gradient(180deg,#D9CBA6,#BFAF85);
-  box-shadow:inset -1px 0 0 rgba(96,82,52,.38),inset 1px 0 0 rgba(255,250,236,.55),0 4px 10px -5px rgba(60,52,30,.55);
-  transform-origin:top center}
-.sp-slips i:before{content:"";position:absolute;left:50%;top:7px;bottom:7px;width:1px;margin-left:-.5px;background:rgba(96,82,52,.3)}
-.sp-slips i:after{content:"";position:absolute;left:2px;right:2px;top:26px;height:1px;background:rgba(96,82,52,.22)}
-.sp-slips i:nth-child(1){animation-delay:.62s}
-.sp-slips i:nth-child(2){animation-delay:.67s}
-.sp-slips i:nth-child(3){animation-delay:.72s}
-.sp-slips i:nth-child(4){animation-delay:.77s}
-.sp-slips i:nth-child(5){animation-delay:.82s}
-.sp-mark{margin:0 0 10px;font-family:var(--serif);font-size:27px;font-weight:700;letter-spacing:.14em;
-  color:var(--bamboo);animation:spUp .48s ease .86s both}
-.sp-sub{margin:0;font-size:12.5px;letter-spacing:.1em;color:var(--ink-3);animation:spUp .48s ease .96s both}
-.sp-sub #spTotal{color:var(--zhu);font-weight:600}
-.sp-strip{margin-top:20px;display:flex;align-items:center;gap:7px;font-size:11px;letter-spacing:.16em;
-  color:var(--bamboo);opacity:.82;animation:spUp .48s ease 1.06s both}
-.sp-strip s{display:block;width:24px;height:1px;background:var(--bamboo);opacity:.45;text-decoration:none}
-@keyframes spSeal{0%{opacity:0;transform:scale(.96)}20%{opacity:1;transform:scale(1)}
-  62%{opacity:1;transform:scale(1)}
-  100%{opacity:0;transform:scale(.9)}}
-@keyframes spSlips{0%{opacity:0;transform:scaleY(.14)}22%{opacity:1;transform:scaleY(1)}86%{opacity:1;transform:scaleY(1)}100%{opacity:0;transform:scaleY(1)}}
-@keyframes spUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
-@media (prefers-reduced-motion:reduce){
-  .sp-seal,.sp-slips,.sp-slips i,.sp-mark,.sp-sub,.sp-strip{animation:none !important}
-  .sp-seal{opacity:1}.sp-slips{display:none}
-}
 /* ---------- 启动屏：简牍展开 ---------- */
 .splash{position:fixed;inset:0;z-index:9999;background:var(--paper);
   display:flex;flex-direction:column;align-items:center;justify-content:center;
@@ -1202,13 +1167,13 @@ html[data-theme="night"] .mode-btn{background:var(--card);color:var(--red);borde
 <body>
 
 <div class="splash" id="splash" aria-hidden="true">
-  <div class="sp-logo">
-    <div class="sp-seal">史</div>
-    <div class="sp-slips"><i></i><i></i><i></i><i></i><i></i></div>
+  <div class="splash-inner">
+    <div class="splash-slips"><i></i><i></i><i></i><i></i><i></i></div>
+    <div class="splash-seal">史</div>
+    <h1 class="splash-title">法制史一点通</h1>
+    <p class="splash-sub">2027 法硕非法学 · <b id="spTotal" style="color:var(--zhu);font-weight:600">169 条考点</b></p>
+    <div class="splash-strip"><s></s>断代史 / 专题史 · 背诵一本通<s></s></div>
   </div>
-  <h1 class="sp-mark">法制史一点通</h1>
-  <p class="sp-sub">2027 法硕非法学 · <span id="spTotal">169 条考点</span></p>
-  <div class="sp-strip"><s></s>断代史 / 专题史 · 背诵一本通<s></s></div>
 </div>
 
 <header class="topbar">
@@ -5047,7 +5012,7 @@ migrateSrs();
 applyMode(); chipRow(); renderHome(); renderList(); renderCloze();
 
 const VER='3.5.0';
-const PATCH='10';   /* 同一版本内的补丁号；0 表示版本本体 */
+const PATCH='11';   /* 同一版本内的补丁号；0 表示版本本体 */
 const CHANGELOG = [
 {v:'3.5.0',d:'2026-11-15',kind:'minor',sum:'改为登录后解锁全部板块，用户中心独立成一页',items:[
 ['变更','未注册登录时只开放「总览」：断代史 / 专题史、检索、卡片正文都能看，掌握与笔记照常记；速览、背诵、专题、刷题按下会直接跳到「我的」页要求登录'],
@@ -5329,7 +5294,7 @@ if('serviceWorker' in navigator){
   const t0=(performance&&performance.now)?performance.now():Date.now();
   const hideSp=()=>{
     const now=(performance&&performance.now)?performance.now():Date.now();
-    const wait=Math.max(220, 1660-(now-t0));
+    const wait=Math.max(220, 1420-(now-t0));
     setTimeout(()=>{ sp.classList.add('hide'); setTimeout(()=>{ if(sp.parentNode) sp.parentNode.removeChild(sp); },480); }, wait);
   };
   if(document.readyState==='complete') hideSp(); else window.addEventListener('load',hideSp,{once:true});
