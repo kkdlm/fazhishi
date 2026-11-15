@@ -61,8 +61,8 @@ jobs:
           grep -Fq "function renderQuizSets" index.html || { echo "::error::套题首页缺失"; exit 1; }
           grep -Fq "本套错题重练" index.html || { echo "::error::套题内错题入口缺失"; exit 1; }
           grep -Fq "const QM =" index.html || { echo "::error::题干知识点匹配表缺失"; exit 1; }
-          grep -Fq "--bad:#C0392B" index.html || { echo "::error::答错红色语义缺失"; exit 1; }
-          grep -Fq "--ok:#2C7A4B" index.html || { echo "::error::答对绿色语义缺失"; exit 1; }
+          grep -Fq -- "--bad:#C0392B" index.html || { echo "::error::答错红色语义缺失"; exit 1; }
+          grep -Fq -- "--ok:#2C7A4B" index.html || { echo "::error::答对绿色语义缺失"; exit 1; }
           grep -Fq "讲义图表 · " index.html || { echo "::error::知识点配图标签缺失"; exit 1; }
           v=$(grep -o "VER='[0-9.]*'" index.html | head -1 | sed "s/VER='//;s/'//")
           echo "VER=$v" >> "$GITHUB_ENV"
