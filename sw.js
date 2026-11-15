@@ -1,4 +1,4 @@
-const CACHE='app-3.7.0-p21';
+const CACHE='app-3.7.0-p22';
 const CORE=['manifest.webmanifest','icon-192.png','icon-512.png','apple-touch-icon.png'];
 
 self.addEventListener('install',e=>{
