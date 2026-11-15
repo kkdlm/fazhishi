@@ -393,7 +393,7 @@ h1 em{font-style:normal;color:var(--red)}
 .lg-d{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:-4px}
 .lg-n{display:inline-flex;width:15px;height:15px;border-radius:5px;align-items:center;justify-content:center;
   background:color-mix(in srgb,var(--c,#A5342E) 86%,#fff);color:#fff;font-size:9px;font-weight:600}
-.lg-h{font-style:normal;font-weight:800;color:#7a3325;font-size:10.5px}
+.lg-h{font-weight:800;color:#7a3325;font-size:10.5px;font-family:var(--serif)}
 .lg-k{color:var(--ink);font-weight:600;font-size:10.5px}
 .lgd .lg-x{margin-left:auto;color:var(--ink-3);font-size:calc(12px*var(--fs))}
 /* 统一条目：一条 = 问题（灰）+ 答案（正文），不用气泡、不用缩进层级 */
@@ -1823,8 +1823,8 @@ function renderList(){
 function legendHTML(){
   return `<div class="lgd"><span class="lg-t">看板</span>
     <i class="lg-n">n</i><span>知识点顺序</span>
-    <i class="lg-h">题</i><span>深红加粗＝小节标题</span>
-    <b class="lg-k">字</b><span>加粗＝必背关键词</span>
+    <b class="lg-h">小节</b><span>深红加粗＝标题</span>
+    <b class="lg-k">重点</b><span>正文加粗＝关键词</span>
     <b class="nt">新修</b><span>近年新增 / 修改</span>
     <span class="lg-x" onclick="dismissLegend(event)">×</span></div>`;
 }
@@ -5004,7 +5004,7 @@ migrateSrs();
 applyMode(); chipRow(); renderHome(); renderList(); renderCloze();
 
 const VER='3.5.0';
-const PATCH='8';   /* 同一版本内的补丁号；0 表示版本本体 */
+const PATCH='9';   /* 同一版本内的补丁号；0 表示版本本体 */
 const CHANGELOG = [
 {v:'3.5.0',d:'2026-11-15',kind:'minor',sum:'改为登录后解锁全部板块，用户中心独立成一页',items:[
 ['变更','未注册登录时只开放「总览」：断代史 / 专题史、检索、卡片正文都能看，掌握与笔记照常记；速览、背诵、专题、刷题按下会直接跳到「我的」页要求登录'],
