@@ -809,7 +809,8 @@ html[data-theme="night"] mark.hl{background:#8a6d2f;color:#fff}
   background:var(--nav);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
   border-top:1px solid var(--line);
 }
-.nav .inner{max-width:600px;margin:0 auto;display:grid;grid-template-columns:repeat(5,1fr)}
+.nav .inner{max-width:600px;margin:0 auto;display:grid;grid-template-columns:repeat(6,1fr)}
+.nav button.lock{opacity:.5}
 .nav button{padding:7px 0 6px;display:flex;flex-direction:column;align-items:center;gap:3px;
   color:var(--ink-3);font-size:10px;letter-spacing:.1em;border-radius:10px}
 .nav button svg{width:18px;height:18px;opacity:.55;transition:.2s}
@@ -1102,19 +1103,35 @@ html[data-theme="night"] .mode-btn{background:var(--card);color:var(--red);borde
 .era-h{display:flex;align-items:baseline;gap:8px;margin:14px 2px 6px;padding-bottom:5px;border-bottom:1px solid var(--line-2)}
 .era-h b{font-family:var(--serif);font-size:16px;letter-spacing:.05em;color:var(--ink)}
 .era-h span{font-size:11px;color:var(--ink-3)}
+/* ---------- 用户中心整页 ---------- */
+.me-card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 14px 12px;margin:12px 0}
+.me-card h3{font-family:var(--serif);font-size:15px;font-weight:600;margin:0 0 8px;color:var(--ink);letter-spacing:.04em}
+.me-note{font-size:11px;color:var(--ink-3);line-height:1.75;margin:8px 0 0}
+.me-tabs{display:flex;gap:8px;margin:10px 0 2px}
+.me-tabs button{flex:1;padding:9px 0;border-radius:10px;border:1px solid var(--line);background:var(--paper-2);color:var(--ink-2);font-size:12px}
+.me-tabs button.on{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.me-row{display:flex;gap:8px;margin:9px 0 0;align-items:stretch}
+.me-row input{flex:1;min-width:0;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:var(--paper-2);color:var(--ink);font-size:13px;outline:none;font-family:inherit}
+.me-row input:focus{border-color:var(--red)}
+.me-row button{flex:0 0 auto;padding:0 14px;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--ink-2);font-size:12.5px;min-height:38px}
+.me-row button.pri{flex:1;background:var(--red);border-color:var(--red);color:#fff}
+.me-row button:active{border-color:var(--red);color:var(--red)}
+.me-row button.pri:active{color:#fff}
+.me-cap{flex:0 0 auto;display:flex;align-items:center;padding:0 10px;letter-spacing:.18em;font-family:ui-monospace,monospace;font-size:13px;color:var(--ink)}
+.me-kpi{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:10px 0 0}
+.me-kpi div{background:var(--paper-2);border:1px solid var(--line-2);border-radius:10px;padding:8px 0;text-align:center}
+.me-kpi b{display:block;font-family:var(--serif);font-size:17px;color:var(--ink)}
+.me-kpi span{font-size:10.5px;color:var(--ink-3)}
+.me-link{display:flex;width:100%;justify-content:space-between;align-items:center;padding:11px 2px;border:0;border-bottom:1px solid var(--line-2);background:none;color:var(--ink);font-size:13px}
+.me-link:last-child{border-bottom:0}
+.me-link span{color:var(--ink-3)}
+.me-danger{width:100%;padding:11px;border-radius:10px;border:1px solid var(--line);background:var(--paper-2);color:var(--ink-2);font-size:13px}
+
 </style>
 </head>
 <body>
 
-<div id="splash" class="splash">
-  <div class="splash-inner">
-    <div class="splash-slips" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
-    <div class="splash-seal serif">史</div>
-    <h1 class="splash-title serif">法制史一点通</h1>
-    <p class="splash-sub">2027 法硕非法学 · 断代 + 专题 双线</p>
-    <div class="splash-strip"><s></s>夏 商 周 秦 汉 唐 宋 元 明 清<s></s></div>
-  </div>
-</div>
+<!-- 页内启动页已移除：主屏幕启动图已负责首帧，再叠一层会出现两次启动画面 -->
 
 <header class="topbar">
   <div class="wrap">
@@ -1199,7 +1216,7 @@ html[data-theme="night"] .mode-btn{background:var(--card);color:var(--red);borde
       <p>彩色词就是考点本身：法典名、罪名、刑名、机构名、原则名。灰黑部分读过去，先把彩色的记住。</p>
       <div class="src">—— 正文逐条校对《2027 法硕背诵一本通·法制史》（龚成思）；题库取自讲义配套真题</div>
     </div>
-    <div class="tip">学习记录默认只存在本机；登录账号后（设置 → 账号与同步）可跨设备自动同步。</div>
+    <div class="tip">未登录只能用「总览」；注册登录后解锁速览、背诵、专题、刷题，并把进度同步到云端（底部「我的」）。</div>
     <div style="height:20px"></div>
   </div>
 </section>
@@ -1293,6 +1310,12 @@ html[data-theme="night"] .mode-btn{background:var(--card);color:var(--red);borde
   </div>
 </section>
 
+<section class="view" id="v-me">
+  <div class="wrap stage">
+    <div id="meBody"></div>
+  </div>
+</section>
+
 </main>
 
 <nav class="nav">
@@ -1312,6 +1335,9 @@ html[data-theme="night"] .mode-btn{background:var(--card);color:var(--red);borde
     <button data-v="quiz" onclick="go('quiz')">
       <svg viewBox="0 0 20 20"><path d="M5 3h9a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a1 1 0 0 1 1-1z" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M7 7h6M7 10h6M7 13h3.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
       <span>刷题</span></button>
+    <button data-v="me" onclick="go('me')">
+      <svg viewBox="0 0 20 20"><circle cx="10" cy="7" r="3.2" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M4 16.5c1.4-3 3.6-4.3 6-4.3s4.6 1.3 6 4.3" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+      <span>我的</span></button>
   </div>
 </nav>
 
@@ -4249,8 +4275,71 @@ function failCap(){ mtoast('文字验证码不对，照右边那 4 个字再输�
 function coolDown(){ try{ return Math.max(0, (parseInt(localStorage.getItem(KEY+':otpAt')||'0',10)+60000-Date.now())/1000); }catch(e){ return 0; } }
 
 /* ---------- 登录 / 注册 ---------- */
-function setAcctab(t){ ACCTAB=t; openSettings(); }
-function renderAcct(){ const el=document.getElementById('acctBox'); if(el) el.innerHTML=accountHTML(); }
+function setAcctab(t){ ACCTAB=t; newCaptcha(); renderAcct(); }
+function renderAcct(){
+  if(sbOn() && !authOk() && !CAPTCHA) newCaptcha();   /* 首次进「我的」也要有图灵字符 */
+  const el=document.getElementById('meBody'); if(el) el.innerHTML=meHTML();
+  markLocked();
+}
+function meCard(inner){ return '<div class="me-card">'+inner+'</div>'; }
+function meHTML(){
+  if(!sbOn()) return meCard('<h3>账号</h3><div class="me-note">服务端还没配置，暂时只能访客使用。</div>');
+  const cnt=(o)=>Object.keys(o||{}).length;
+  if(!authOk()){
+    const left=Math.max(OTPLEFT,coolDown());
+    const tabs=`<div class="me-tabs">
+      <button class="${ACCTAB==='otp'?'on':''}" onclick="setAcctab('otp')">验证码登录</button>
+      <button class="${ACCTAB==='pwd'?'on':''}" onclick="setAcctab('pwd')">密码登录</button></div>`;
+    const mail=`<div class="me-row"><input id="acctMail" inputmode="email" autocomplete="email" placeholder="邮箱" value="${esc(S.lastMail||'')}"></div>`;
+    const cap=`<div class="me-row"><input id="capIn" maxlength="4" style="text-transform:uppercase" placeholder="照抄右边 4 个字">
+        <b id="capShow" class="me-cap">${esc(CAPTCHA)}</b></div>`;
+    let inner;
+    if(ACCTAB==='otp'){
+      inner=`<h3>登录 / 注册</h3>
+        <div class="me-note">现在是访客：只有「总览」可用。登录后解锁速览、背诵、专题、刷题，进度自动同步到云端。</div>
+        ${tabs}${mail}${cap}
+        <div class="me-row"><input id="acctCode" inputmode="numeric" maxlength="6" placeholder="邮件里的验证码">
+          <button id="otpBtn" onclick="sendOtp()">${left>0?('重发 '+left+'s'):'发送验证码'}</button></div>
+        <div class="me-row"><button class="pri" onclick="verifyOtp()">登录 / 注册</button></div>
+        <div class="me-note">没注册过会自动建号；验证码邮件发不出来时，改用「密码登录」注册即可。</div>`;
+    } else {
+      inner=`<h3>密码登录 / 注册</h3>
+        <div class="me-note">邮箱 + 密码，没注册过会新建账号；这是邮件发不出来时的兜底路径。</div>
+        ${tabs}${mail}
+        <div class="me-row"><input id="acctPwd" type="password" autocomplete="current-password" placeholder="密码，至少 6 位"></div>${cap}
+        <div class="me-row"><button class="pri" onclick="pwdGo('in')">登录</button><button onclick="pwdGo('reg')">注册新账号</button></div>
+        <div class="me-note">注册后若收到确认邮件，点一次链接即可激活。</div>`;
+    }
+    return meCard(inner) + meCard(`<h3>访客能做什么</h3>
+      <div class="me-note">「总览」的断代史 / 专题史、检索、卡片正文全都能看；掌握、收藏、笔记、复习排期也能记，只是只存在本机、换设备不同步。<br>要跨设备接着背，就需要一个账号。</div>`);
+  }
+  const rev=parseInt(S.rev||'0',10);
+  const nick=esc(S.nick||'');
+  return meCard(`<h3>${esc(AUTH.email||'已登录')}</h3>
+    <div class="me-note">云端同步已开启 · ${esc(syncTimeText())}${rev?' · rev '+rev:''}</div>
+    <div class="me-kpi">
+      <div><b>${cnt(S.status)}</b><span>已掌握</span></div>
+      <div><b>${(S.fav||[]).length}</b><span>收藏</span></div>
+      <div><b>${cnt(S.notes)}</b><span>笔记</span></div>
+    </div>
+    <div class="me-row"><input id="nickIn" maxlength="24" placeholder="昵称（可留空）" value="${nick}"><button onclick="saveNick()">保存</button></div>
+    <div class="me-note">${esc(SYNCERR?('上次没同步上：'+SYNCERR):'改一点就会自动同步；切回前台也会补推')}</div>
+    <div class="me-row"><button class="pri" onclick="syncNow()">立即同步</button><button onclick="pullCloud(true)">从云端拉取</button></div>`)
+   + meCard(`<h3>学习与数据</h3>
+      <button class="me-link" onclick="openStats()">学习统计<span>›</span></button>
+      <button class="me-link" onclick="openOldBackup()">离线备份 / 备份码<span>›</span></button>
+      <button class="me-link" onclick="openInstall()">安装到主屏<span>›</span></button>`)
+   + meCard(`<button class="me-danger" onclick="signOut()">退出登录</button>
+      <div class="me-note">退出后回到访客模式：只能看总览，云端进度保留，再登录即恢复。</div>`);
+}
+async function saveNick(){
+  if(!authOk()){ mtoast('先登录'); return; }
+  const el=document.getElementById('nickIn'); const v=((el&&el.value)||'').trim().slice(0,24);
+  try{
+    await sbReq('/rest/v1/profiles?uid=eq.'+AUTH.uid,{method:'PATCH',prefer:'return=minimal',body:{nickname:v,last_seen:nowISO()}});
+    S.nick=v; save(); renderAcct(); mtoast(v?'昵称已保存':'昵称已清空');
+  }catch(e){ mtoast('保存失败：'+(e.message||'').slice(0,40)); }
+}
 async function sendOtp(){
   if(!sbOn()) return;
   if(OTPLEFT>0) return;
@@ -4304,7 +4393,7 @@ async function pwdGo(mode){
 }
 async function signOut(){
   try{ await sbReq('/auth/v1/logout',{method:'POST'}); }catch(e){}
-  AUTH=null; saveAuth(); renderAcct(); mtoast('已退出，回到访客模式（云端进度保留，本机继续可用）');
+  AUTH=null; saveAuth(); S.nick=''; renderAcct(); go('home'); mtoast('已退出，回到访客模式：只保留总览，云端进度仍在');
 }
 
 /* ---------- 登录之后：建档 + 拉云端进度 + 冲突处理 ---------- */
@@ -4474,7 +4563,10 @@ function openOldBackup(){
 function openSettings(){
   if(sbOn() && !authOk()) newCaptcha();
   openSheet('设置',`
-    ${accountHTML()}
+    <div class="sheet-sec">
+      <h4>账号与同步</h4>
+      <button class="opt" onclick="closeSheet();go('me')"><span>${authOk()?'用户中心':'登录 / 注册'}<small>${authOk()?'昵称、同步、备份码、退出':'登录后解锁全部板块并跨设备同步'}</small></span><span class="n">›</span></button>
+    </div>
     <div class="sheet-sec">
       <h4>外观</h4>
       <div class="seg-row">
@@ -4667,7 +4759,23 @@ function bindSwipe(el,handlers){
 
 /* ---------- 路由 ---------- */
 const SCROLLMEM={};
+function blocked(){ return sbOn() && !authOk(); }
+function askLogin(){
+  document.querySelectorAll('.view').forEach(x=>x.classList.remove('on'));
+  const el=document.getElementById('v-me'); if(el) el.classList.add('on');
+  document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('on',b.dataset.v==='me'));
+  renderAcct();
+  window.scrollTo({top:0,behavior:'auto'});
+  mtoast('登录后才能用速览、背诵、专题、刷题；总览不用登录');
+}
+function markLocked(){
+  const b=blocked();
+  document.querySelectorAll('.nav button').forEach(x=>{
+    x.classList.toggle('lock', b && x.dataset.v!=='home' && x.dataset.v!=='me');
+  });
+}
 function setSub(m){
+  if(blocked()){ askLogin(); return; }
   S.sub=m; save();
   document.querySelectorAll('.view').forEach(x=>x.classList.remove('on'));
   const tgt=document.getElementById(m==='clo'?'v-cloze':'v-recite');
@@ -4684,6 +4792,7 @@ function setSub(m){
   requestAnimationFrame(()=>window.scrollTo({top:0,behavior:'auto'}));
 }
 function go(v){
+  if(v!=='home' && v!=='me' && blocked()){ askLogin(); return; }
   if(v==='recite'){ setSub('rec'); return; }
   if(v==='cloze'){ setSub('clo'); return; }
   const cur=document.querySelector('.view.on');
@@ -4696,6 +4805,7 @@ function go(v){
   if(v==='browse'){ chipRow(); renderList(); }
   if(v==='topic') setTopic(TOPIC);
   if(v==='quiz'){ if(!QZ) renderQuizSetup(); else renderQuiz(); }
+  if(v==='me'){ renderAcct(); }
   // 渲染完成后恢复该视图上次的滚动位置
   requestAnimationFrame(()=>window.scrollTo({top:SCROLLMEM[v]||0,behavior:'auto'}));
 }
@@ -4793,30 +4903,21 @@ window.addEventListener('scroll',()=>{
   const t=document.getElementById('totop');
   if(t) t.classList.toggle('show', window.scrollY>420);
 },{passive:true});
-(function setupSplash(){
-  const el=document.getElementById('splash');
-  if(!el) return;
-  if(sessionStorage.getItem('splashShown')==='1'){ el.remove(); return; }
-  sessionStorage.setItem('splashShown','1');
-  let gone=false;
-  const EV=['touchstart','pointerdown','mousedown','click','keydown','wheel'];
-  const off=()=>EV.forEach(ev=>document.removeEventListener(ev,onAny,true));
-  const hide=()=>{ if(gone) return; gone=true; off();
-    el.classList.add('hide');
-    el.addEventListener('transitionend',e=>{ if(e.propertyName==='opacity') el.remove(); });
-    setTimeout(()=>{ if(el.parentNode) el.remove(); },560); };
-  const onAny=e=>{ if(e.cancelable) e.preventDefault(); e.stopPropagation(); hide(); };
-  EV.forEach(ev=>document.addEventListener(ev,onAny,true));
-  setTimeout(hide,3000);                       /* 主路径：停满 3 秒再淡出 */
-  setTimeout(()=>{ if(!gone){ gone=true; off(); if(el.parentNode) el.remove(); } },3800); /* 兜底：任何异常也不卡在启动页 */
-})();
+/* 页内启动页已移除（见顶部注释） */
 normalizeState();
 migrateSrs();
 applyMode(); chipRow(); renderHome(); renderList(); renderCloze();
 
-const VER='3.4.0';
-const PATCH='7';   /* 同一版本内的补丁号；0 表示版本本体 */
+const VER='3.5.0';
+const PATCH='0';   /* 同一版本内的补丁号；0 表示版本本体 */
 const CHANGELOG = [
+{v:'3.5.0',d:'2026-11-15',kind:'minor',sum:'改为登录后解锁全部板块，用户中心独立成一页',items:[
+['变更','未注册登录时只开放「总览」：断代史 / 专题史、检索、卡片正文都能看，掌握与笔记照常记；速览、背诵、专题、刷题按下会直接跳到「我的」页要求登录'],
+['新增','底部导航新增第六项「我的」：账号状态、登录 / 注册（验证码为主、密码兜底）、掌握/收藏/笔记三项计数、昵称、同步状态与手动同步/拉取、学习统计、离线备份与备份码、退出登录，全部集中在这一页'],
+['新增','登录后可设昵称（写入云端 profiles.nickname），换设备登录昵称跟着走'],
+['优化','设置面板不再塞账号块，只留一个「账号与同步」入口跳到「我的」，设置本身只剩外观、字号、学习、数据'],
+['修复','进入 App 出现两次启动画面：主屏幕启动图之后页面里又叠了一层动画启动页，现把页面内那层移除，只保留系统启动图，冷启动少一次等待'],
+['修复','退出登录后自动回到「总览」，且未登录时底栏被锁的板块变灰，点它会跳到「我的」要求登录']]},
 {v:'3.4.0',d:'2026-11-15',kind:'minor',sum:'加账号与云同步（注册才同步），离线备份降级为兜底',items:[
 ['新增','设置顶部新增「账号与同步」：注册或登录后，掌握、收藏、复习排期、笔记自动同步到云端，换设备登录即接着背。不注册照常能背，只是进度只存本机（访客模式）'],
 ['新增','注册优先用邮箱验证码；邮件一时发不出来，可切到「密码登录」用邮箱+密码注册登录，注册链路不会被邮件卡死'],
@@ -5039,7 +5140,9 @@ function bootVer(){
 setTimeout(bootVer,600);
 /* 账号：恢复会话，登录态下拉一次云端 */
 loadAuth();
+renderAcct();
 if(authOk()) setTimeout(()=>{ pullCloud(false); },1800);
+else if(sbOn()) setTimeout(()=>{ markLocked(); },0);
 </script>
 <div id="boxZoom"><div class="bz-bar"><span id="bzTitle">原页图示（左右滑动看全）</span><button class="bz-close" onclick="closeBoxZoom()">关闭</button></div><div class="bz-body" id="bzBody"></div></div>
 
