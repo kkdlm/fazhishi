@@ -333,11 +333,11 @@ h1 em{font-style:normal;color:var(--red)}
 .ln.ind{padding-left:1.1em;text-indent:-1.1em}
 .ln.first{padding-top:8px}
 .ln.mn{font-family:var(--serif);font-size:calc(14.5px * var(--fs));letter-spacing:.06em}
-.cb{color:var(--ink-2)}
-.cr{color:var(--ink-2);font-weight:500}
-.cp{color:var(--ink-2)}
-.co{color:var(--ink-2)}
-.cgr{color:var(--ink-2)}
+.cb{color:var(--cc-b)}
+.cr{color:var(--cc-r);font-weight:600}
+.cp{color:var(--cc-p)}
+.co{color:var(--cc-o)}
+.cgr{color:var(--cc-gr)}
 .k{font-weight:600;letter-spacing:.02em;color:var(--ink)}
 .g{color:var(--ink-3)}
 
@@ -390,6 +390,7 @@ h1 em{font-style:normal;color:var(--red)}
   border:1px solid var(--line);border-radius:9px;background:var(--paper-2);
   font-size:calc(11px * var(--fs));color:var(--ink-2);letter-spacing:.02em}
 .lgd .lg-t{color:var(--ink-3);letter-spacing:.1em}
+.lgd .lg-c{width:14px;height:14px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:0;flex:0 0 14px;background:linear-gradient(135deg,var(--cc-b) 0 33%,var(--cc-o) 33% 66%,var(--cc-gr) 66% 100%)}
 .lg-d{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:-4px}
 .lg-n{display:inline-flex;width:15px;height:15px;border-radius:5px;align-items:center;justify-content:center;
   background:color-mix(in srgb,var(--c,#A5342E) 86%,#fff);color:#fff;font-size:9px;font-weight:600}
@@ -1834,6 +1835,7 @@ function legendHTML(){
     <b class="lg-h">小节</b><span>深红加粗＝标题</span>
     <b class="lg-k">重点</b><span>正文加粗＝关键词</span>
     <b class="nt">新修</b><span>近年新增 / 修改</span>
+    <i class="lg-c">彩</i><span>彩色字＝讲义原文标色</span>
     <span class="lg-x" onclick="dismissLegend(event)">×</span></div>`;
 }
 function dismissLegend(e){ if(e) e.stopPropagation(); S.legendOn=false; save(); renderList(); }
@@ -5012,7 +5014,7 @@ migrateSrs();
 applyMode(); chipRow(); renderHome(); renderList(); renderCloze();
 
 const VER='3.5.0';
-const PATCH='11';   /* 同一版本内的补丁号；0 表示版本本体 */
+const PATCH='12';   /* 同一版本内的补丁号；0 表示版本本体 */
 const CHANGELOG = [
 {v:'3.5.0',d:'2026-11-15',kind:'minor',sum:'改为登录后解锁全部板块，用户中心独立成一页',items:[
 ['变更','未注册登录时只开放「总览」：断代史 / 专题史、检索、卡片正文都能看，掌握与笔记照常记；速览、背诵、专题、刷题按下会直接跳到「我的」页要求登录'],
