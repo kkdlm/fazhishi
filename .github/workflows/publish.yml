@@ -56,10 +56,10 @@ jobs:
           grep -q "function btCardHTML" index.html || { echo "::error::背诵提示渲染缺失"; exit 1; }
           grep -q "背诵一本通" index.html || { echo "::error::背诵提示来源缺失"; exit 1; }
           grep -q "复盘背诵" index.html || { echo "::error::整节复盘提示缺失"; exit 1; }
-          grep -q "QSETS=[" index.html || { echo "::error::套题结构缺失"; exit 1; }
-          grep -q "专题史刷题讲义" index.html || { echo "::error::专题史套题缺失"; exit 1; }
-          grep -q "function renderQuizSets" index.html || { echo "::error::套题首页缺失"; exit 1; }
-          grep -q "本套错题重练" index.html || { echo "::error::套题内错题入口缺失"; exit 1; }
+          grep -Fq "const QSETS=" index.html || { echo "::error::套题结构缺失"; exit 1; }
+          grep -Fq "专题史刷题讲义" index.html || { echo "::error::专题史套题缺失"; exit 1; }
+          grep -Fq "function renderQuizSets" index.html || { echo "::error::套题首页缺失"; exit 1; }
+          grep -Fq "本套错题重练" index.html || { echo "::error::套题内错题入口缺失"; exit 1; }
           v=$(grep -o "VER='[0-9.]*'" index.html | head -1 | sed "s/VER='//;s/'//")
           echo "VER=$v" >> "$GITHUB_ENV"
           p=$(grep -o "const PATCH='[0-9]*'" index.html | head -1 | sed "s/const PATCH='//;s/'//")
