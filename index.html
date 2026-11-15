@@ -4329,12 +4329,31 @@ function meHTML(){
     <div class="me-row"><input id="nickIn" maxlength="24" placeholder="昵称（可留空）" value="${nick}"><button onclick="saveNick()">保存</button></div>
     <div class="me-note">${esc(SYNCERR?('上次没同步上：'+SYNCERR):'改一点就会自动同步；切回前台也会补推')}</div>
     <div class="me-row"><button class="pri" onclick="syncNow()">立即同步</button><button onclick="pullCloud(true)">从云端拉取</button></div>`)
+   + meCard(`<h3>修改密码</h3>
+      <div class="me-note">至少 6 位。改完这台设备仍然保持登录，别的设备下次要重新登录。</div>
+      <div class="me-row"><input id="newPwd" type="password" autocomplete="new-password" placeholder="新密码，至少 6 位"></div>
+      <div class="me-row"><input id="newPwd2" type="password" autocomplete="new-password" placeholder="再输一次确认"></div>
+      <div class="me-row"><button class="pri" onclick="changePwd()">保存新密码</button></div>`)
    + meCard(`<h3>学习与数据</h3>
       <button class="me-link" onclick="openStats()">学习统计<span>›</span></button>
       <button class="me-link" onclick="openOldBackup()">离线备份 / 备份码<span>›</span></button>
       <button class="me-link" onclick="openInstall()">安装到主屏<span>›</span></button>`)
    + meCard(`<button class="me-danger" onclick="signOut()">退出登录</button>
       <div class="me-note">退出后回到访客模式：只能看总览，云端进度保留，再登录即恢复。</div>`);
+}
+async function changePwd(){
+  if(!authOk()){ mtoast('先登录'); return; }
+  const a=((document.getElementById('newPwd')||{}).value||'').trim();
+  const b=((document.getElementById('newPwd2')||{}).value||'').trim();
+  if(a.length<6){ mtoast('新密码至少 6 位'); return; }
+  if(a!==b){ mtoast('两次输入不一致，再核对一下'); return; }
+  try{
+    await sbReq('/auth/v1/user',{method:'PUT',body:{password:a}});
+    try{ localStorage.removeItem(KEY+':pwdSet'); }catch(e){}
+    mtoast('密码已更新：以后可以用新密码登录');
+  }catch(err){
+    mtoast('改密码失败：'+(err.message||'').slice(0,50)+(err.status===401?'（登录可能已过期，退出后重新登录再改）':''));
+  }
 }
 async function saveNick(){
   if(!authOk()){ mtoast('先登录'); return; }
@@ -4923,7 +4942,7 @@ migrateSrs();
 applyMode(); chipRow(); renderHome(); renderList(); renderCloze();
 
 const VER='3.5.0';
-const PATCH='1';   /* 同一版本内的补丁号；0 表示版本本体 */
+const PATCH='2';   /* 同一版本内的补丁号；0 表示版本本体 */
 const CHANGELOG = [
 {v:'3.5.0',d:'2026-11-15',kind:'minor',sum:'改为登录后解锁全部板块，用户中心独立成一页',items:[
 ['变更','未注册登录时只开放「总览」：断代史 / 专题史、检索、卡片正文都能看，掌握与笔记照常记；速览、背诵、专题、刷题按下会直接跳到「我的」页要求登录'],
@@ -4932,7 +4951,8 @@ const CHANGELOG = [
 ['优化','设置面板不再塞账号块，只留一个「账号与同步」入口跳到「我的」，设置本身只剩外观、字号、学习、数据'],
 ['修复','进入 App 出现两次启动画面：主屏幕启动图之后页面里又叠了一层动画启动页，现把页面内那层移除，只保留系统启动图，冷启动少一次等待'],
 ['修复','退出登录后自动回到「总览」，且未登录时底栏被锁的板块变灰，点它会跳到「我的」要求登录'],
-['调整','登录页重排：默认就是「邮箱 + 密码 + 登录」，下面并排两个按钮「注册新账号 / 验证码登录」。注册时密码与邮箱验证码必须同时给（验证码验过再落密码），注册完以后登录用密码或验证码都行']] },
+['调整','登录页重排：默认就是「邮箱 + 密码 + 登录」，下面并排两个按钮「注册新账号 / 验证码登录」。注册时密码与邮箱验证码必须同时给（验证码验过再落密码），注册完以后登录用密码或验证码都行'],
+['新增','「我的」页加「修改密码」：填新密码两次，保存后本机仍在线，别的设备下次要重新登录。用验证码登录建出来、还没有密码的账号，也在这里补一个']] },
 {v:'3.4.0',d:'2026-11-15',kind:'minor',sum:'加账号与云同步（注册才同步），离线备份降级为兜底',items:[
 ['新增','设置顶部新增「账号与同步」：注册或登录后，掌握、收藏、复习排期、笔记自动同步到云端，换设备登录即接着背。不注册照常能背，只是进度只存本机（访客模式）'],
 ['新增','注册优先用邮箱验证码；邮件一时发不出来，可切到「密码登录」用邮箱+密码注册登录，注册链路不会被邮件卡死'],
