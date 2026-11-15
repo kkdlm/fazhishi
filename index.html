@@ -1106,6 +1106,8 @@ html[data-theme="night"] .setno{background:color-mix(in srgb,var(--zhu) 78%,#000
 html[data-theme="night"] .setbar{background:rgba(255,255,255,.12)}
 .ex-gap{margin:5px 0 2px;font-size:11.5px;color:var(--ink-2);letter-spacing:.01em}
 .ex-gap b{color:var(--bad);font-family:var(--serif)}
+button[data-busy]{opacity:.82;cursor:progress}
+button[data-busy]:active{transform:none}
 </style>
 <style>
 .by-card{background:#fff;border:1px solid #E7DED2;border-radius:10px;padding:13px 14px;margin:10px 0}
@@ -1907,7 +1909,7 @@ function renderList(){
       }
       let pre='';
       if(!seenCh.has(ch)){ seenCh.add(ch); pre+=btSecHTML('era',p.ch||'绪论'); }
-      if(p.sub && !seenSub.has(p.sub)){ seenSub.add(p.sub); pre+=btSecHTML('sub',p.sub); }
+      /* 断代史不插“本节·背诵提示”：它来自《背诵一本通》，是专题视角的跨朝代汇总 */
       h+=pre+cardHTML(p);
     });
   }
@@ -4603,7 +4605,7 @@ function meHTML(){
     const left=Math.max(OTPLEFT,coolDown());
     const mail=`<div class="me-row"><input id="acctMail" inputmode="email" autocomplete="email" placeholder="邮箱"></div>`;
     const codeRow=`<div class="me-row"><input id="acctCode" inputmode="numeric" maxlength="6" placeholder="邮件里的验证码">
-        <button id="otpBtn" onclick="sendOtp()">${left>0?('重发 '+left+'s'):'发送验证码'}</button></div>`;
+        <button id="otpBtn" onclick="sendOtp(this)">${left>0?('重发 '+left+'s'):'发送验证码'}</button></div>`;
     const capRow=`<div class="me-row"><input id="capIn" maxlength="4" style="text-transform:uppercase" placeholder="照抄右边 4 个字">
         <b id="capShow" class="me-cap">${esc(CAPTCHA)}</b></div>`;
     if(ACCTAB==='reg'){
@@ -4612,7 +4614,7 @@ function meHTML(){
         ${mail}
         <div class="me-row"><input id="acctPwd" type="password" autocomplete="new-password" placeholder="设置密码，至少 6 位"></div>
         ${codeRow}${capRow}
-        <div class="me-row"><button class="pri" onclick="regGo()">完成注册</button></div>
+        <div class="me-row"><button class="pri" onclick="regGo(this)">完成注册</button></div>
         <div class="me-row me-two"><button onclick="setAcctab('in')">返回登录</button></div>
         <div class="me-note">这个邮箱注册过的话，这一步会用你新填的密码替换旧密码。</div>`);
     }
@@ -4620,16 +4622,16 @@ function meHTML(){
       return meCard(`<h3>验证码登录</h3>
         <div class="me-note">已注册的邮箱，填验证码就能进；没注册过的邮箱会提示先去注册。</div>
         ${mail}${codeRow}${capRow}
-        <div class="me-row"><button class="pri" onclick="verifyOtp()">登录</button></div>
+        <div class="me-row"><button class="pri" onclick="verifyOtp(this)">登录</button></div>
         <div class="me-row me-two"><button onclick="setAcctab('in')">返回登录</button></div>`);
     }
     return meCard(`<h3>登录</h3>
       <div class="me-note">现在是访客：只有「总览」可用。登录后解锁速览、背诵、专题、刷题，进度自动同步到云端。</div>
       ${mail}
       <div class="me-row"><input id="acctPwd" type="password" autocomplete="current-password" placeholder="密码，至少 6 位"></div>
-      <div class="me-row"><button class="pri" onclick="pwdGo('in')">登录</button></div>
+      <div class="me-row"><button class="pri" onclick="pwdGo('in',this)">登录</button></div>
       <div class="me-row me-two"><button onclick="setAcctab('reg')">注册新账号</button><button onclick="setAcctab('otp')">验证码登录</button></div>
-      <div class="me-row me-two"><button onclick="sendReset()">忘记密码</button><button onclick="openInstall()">装到主屏</button></div>`);
+      <div class="me-row me-two"><button onclick="sendReset(this)">忘记密码</button><button onclick="openInstall()">装到主屏</button></div>`);
   }
   const rev=parseInt(S.rev||'0',10);
   const nick=esc(S.nick||'');
@@ -4647,7 +4649,7 @@ function meHTML(){
       <div class="me-note">至少 6 位。改完这台设备仍然保持登录，别的设备下次要重新登录。</div>
       <div class="me-row"><input id="newPwd" type="password" autocomplete="new-password" placeholder="新密码，至少 6 位"></div>
       <div class="me-row"><input id="newPwd2" type="password" autocomplete="new-password" placeholder="再输一次确认"></div>
-      <div class="me-row"><button class="pri" onclick="changePwd()">保存新密码</button></div>`)
+      <div class="me-row"><button class="pri" onclick="changePwd(this)">保存新密码</button></div>`)
    + meCard(`<h3>学习与数据</h3>
       <button class="me-link" onclick="openStats()">学习统计<span>›</span></button>
       <button class="me-link" onclick="openInstall()">安装到主屏<span>›</span></button>`)
@@ -4665,7 +4667,7 @@ async function changePwd(){
     try{ localStorage.removeItem(KEY+':pwdSet'); }catch(e){}
     mtoast('密码已更新：以后可以用新密码登录');
   }catch(err){
-    mtoast('改密码失败：'+(err.message||'').slice(0,50)+(err.status===401?'（登录可能已过期，退出后重新登录再改）':''));
+    mtoast('改密码没成功：'+zhErr(err));
   }
 }
 async function saveNick(){
@@ -4674,24 +4676,57 @@ async function saveNick(){
   try{
     await sbReq('/rest/v1/profiles?uid=eq.'+AUTH.uid,{method:'PATCH',prefer:'return=minimal',body:{nickname:v,last_seen:nowISO()}});
     S.nick=v; save(); renderAcct(); mtoast(v?'昵称已保存':'昵称已清空');
-  }catch(e){ mtoast('保存失败：'+(e.message||'').slice(0,40)); }
+  }catch(e){ mtoast('昵称没存上：'+zhErr(e)); }
 }
-async function sendReset(){
+async function sendReset(btn){
   const e=((document.getElementById('acctMail')||{}).value||'').trim();
   if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e)){ mtoast('先在邮箱框里填好邮箱，再点忘记密码'); return; }
+  const done=busyOn(btn,'发送中…'); haptic();
   mtoast('正在发送重置邮件…');
   try{
     await sbReq('/auth/v1/recover',{method:'POST',body:{email:e}});
     mtoast('重置邮件已发到 '+e+'，点邮件里的链接设新密码；收不到就用验证码登录');
-  }catch(err){ mtoast('发送失败：'+(err.message||'').slice(0,50)); }
+    if(done) done();
+  }catch(err){ mtoast('重置邮件没发出去：'+zhErr(err)); if(done) done(); }
 }
-async function sendOtp(){
+/* 把 Supabase 的英文报错翻成中文，并说明下一步 */
+function zhErr(err){
+  const m=((err&&err.message)||'').toLowerCase(), st=(err&&err.status)||0;
+  if(typeof navigator!=='undefined' && navigator.onLine===false) return '网络没连上，检查网络再试';
+  if(m.indexOf('invalid login credentials')>=0||m.indexOf('invalid_grant')>=0) return '邮箱或密码不对';
+  if(m.indexOf('email not confirmed')>=0) return '这个邮箱还没验证过：改用「验证码登录」，或去邮箱点一次确认链接';
+  if(m.indexOf('user already registered')>=0) return '这个邮箱已经注册过，直接用密码登录';
+  if(m.indexOf('signups not allowed')>=0) return '这个邮箱还没注册，先点「注册新账号」';
+  if(m.indexOf('for security purposes')>=0||m.indexOf('only request this after')>=0) return '发得太频繁了，等一分钟再点';
+  if(m.indexOf('rate limit')>=0||m.indexOf('too many requests')>=0||st===429) return '操作太频繁，稍等一会儿再试';
+  if(m.indexOf('token has expired')>=0||m.indexOf('otp_expired')>=0||(m.indexOf('invalid')>=0&&m.indexOf('token')>=0)) return '验证码不对或已过期，重新发一次';
+  if(m.indexOf('password should be at least')>=0) return '密码太短，至少 6 位';
+  if(m.indexOf('unable to validate email')>=0||m.indexOf('invalid email')>=0) return '邮箱格式不对，检查一下拼写';
+  if(m.indexOf('user not found')>=0) return '这个邮箱还没注册';
+  if(m.indexOf('failed to fetch')>=0||m.indexOf('network')>=0||m.indexOf('timeout')>=0) return '连不上服务器，网络不稳时换个网络再试';
+  if(st===401) return '登录状态过期了，重新登录再操作';
+  if(st>=500) return '服务暂时不可用，过一会儿再试';
+  return '没成功，检查网络后再试一次';
+}
+/* 点了立刻有变化：处理中 + 禁用防连点，结束后复原 */
+function busyOn(btn,label){
+  if(!btn||!btn.tagName) return null;
+  const old=btn.textContent;
+  btn.disabled=true; btn.textContent=label||'处理中…'; btn.setAttribute('data-busy','1');
+  let freed=false;
+  return function(keepText){
+    if(freed) return; freed=true; btn.disabled=false; btn.removeAttribute('data-busy');
+    if(!keepText) btn.textContent=old;
+  };
+}
+async function sendOtp(btn){
   if(!sbOn()) return;
   if(OTPLEFT>0) return;
   const e=(document.getElementById('acctMail')||{}).value||'';
   if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e.trim())){ mtoast('邮箱格式不对'); return; }
   if(!capOk()){ failCap(); return; }
-  mtoast('正在发送…');
+  const done=busyOn(btn,'发送中…'); haptic();
+  mtoast('正在发送验证码…');
   try{
     await sbReq('/auth/v1/otp',{method:'POST',body:{email:e.trim(),create_user:(ACCTAB==='reg')}});
     try{ localStorage.setItem(KEY+':otpAt',String(Date.now())); }catch(err){}
@@ -4699,22 +4734,24 @@ async function sendOtp(){
     OTPTIMER=setInterval(()=>{ OTPLEFT--; const b=document.getElementById('otpBtn'); if(b) b.textContent=OTPLEFT>0?('重发 '+OTPLEFT+'s'):'发送验证码'; if(OTPLEFT<=0) clearInterval(OTPTIMER); },1000);
     mtoast('验证码已发到邮箱，请尽快填入');
     newCaptcha();
+    if(done) done(true);
   }catch(err){
-    const m=(err.message||'').slice(0,60);
-    mtoast(ACCTAB==='otp' ? ('这个邮箱好像还没注册（'+m+'），先去「注册新账号」') : ('邮件没发出去：'+m+'。可以先用「登录」里的密码方式')); 
+    mtoast('邮件没发出去：'+zhErr(err));
+    if(done) done();
   }
 }
-async function verifyOtp(){
+async function verifyOtp(btn){
   const e=((document.getElementById('acctMail')||{}).value||'').trim();
   const c=((document.getElementById('acctCode')||{}).value||'').trim();
   if(!e||!/^\d{4,6}$/.test(c)){ mtoast('邮箱 + 验证码，缺一个都不行'); return; }
+  const done=busyOn(btn,'登录中…'); haptic();
   try{
     const j=await sbReq('/auth/v1/verify',{method:'POST',body:{type:'email',email:e,token:c}});
-    if(!adoptSession(j)){ mtoast('登录失败：返回里没有会话'); return; }
-    await afterLogin(); mtoast('验证码登录成功');
-  }catch(err){ mtoast('登录失败：'+(err.message||'').slice(0,60)); }
+    if(!adoptSession(j)){ mtoast('登录没成功：服务端没返回登录凭证，再试一次'); if(done) done(); return; }
+    await afterLogin(); mtoast('验证码登录成功'); if(done) done();
+  }catch(err){ mtoast(zhErr(err)); if(done) done(); }
 }
-async function regGo(){
+async function regGo(btn){
   const e=((document.getElementById('acctMail')||{}).value||'').trim();
   const p=((document.getElementById('acctPwd')||{}).value||'').trim();
   const c=((document.getElementById('acctCode')||{}).value||'').trim();
@@ -4722,28 +4759,38 @@ async function regGo(){
   if(p.length<6){ mtoast('密码至少 6 位'); return; }
   if(!/^\d{4,6}$/.test(c)){ mtoast('先填邮件里的验证码'); return; }
   if(!capOk()){ failCap(); return; }
-  mtoast('正在注册…');
+  const done=busyOn(btn,'注册中…'); haptic();
   try{
     const j=await sbReq('/auth/v1/verify',{method:'POST',body:{type:'email',email:e,token:c}});
     if(!adoptSession(j)){ mtoast('注册失败：验证码不对或已过期'); return; }
     try{ await sbReq('/auth/v1/user',{method:'PUT',body:{password:p}}); }
-    catch(err){ mtoast('账号已建好，但密码没设上：'+(err.message||'').slice(0,40)); }
-    await afterLogin(); mtoast('注册完成，已登录（下次可用密码或验证码登录）');
-  }catch(err){ mtoast('注册失败：'+(err.message||'').slice(0,60)); }
+    catch(err){ mtoast('账号建好了，但密码没设上，先用验证码登录'); }
+    await afterLogin(); mtoast('注册完成，已登录（下次可用密码或验证码登录）'); if(done) done();
+  }catch(err){ mtoast(zhErr(err)); if(done) done(); }
 }
-async function pwdGo(mode){
+async function pwdGo(mode,btn){
   const e=((document.getElementById('acctMail')||{}).value||'').trim();
   const p=((document.getElementById('acctPwd')||{}).value||'').trim();
-  if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e)){ mtoast('邮箱格式不对'); return; }
+  if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e)){ mtoast('邮箱格式不对，检查一下拼写'); return; }
   if(p.length<6){ mtoast('密码至少 6 位'); return; }
+  const done=busyOn(btn, mode==='reg'?'注册中…':'登录中…'); haptic();
   try{
+    if(mode==='reg'){
+      const j=await sbReq('/auth/v1/signup',{method:'POST',body:{email:e,password:p}});
+      if(j&&j.access_token){ adoptSession(j); await afterLogin(); mtoast('注册完成，已登录'); }
+      else if(j&&j.user){ mtoast('账号建好了：先去邮箱点确认链接，之后用密码登录'); }
+      else mtoast('注册没成功，稍后再试一次');
+      if(done) done();
+      return;
+    }
     const j=await sbReq('/auth/v1/token?grant_type=password',{method:'POST',body:{email:e,password:p}});
-    if(!adoptSession(j)){ mtoast('登录失败：返回里没有会话'); return; }
-    await afterLogin();
+    if(!adoptSession(j)){ mtoast('登录没成功：服务端没返回登录凭证，再试一次'); if(done) done(); return; }
+    await afterLogin(); if(done) done();
   }catch(err){
-    const m=(err.message||'').toLowerCase();
-    if(m.indexOf('invalid')>=0||m.indexOf('credentials')>=0) mtoast('邮箱或密码不对');
-    else mtoast('没成功：'+(err.message||'').slice(0,60));
+    const m=((err&&err.message)||'').toLowerCase();
+    if(mode==='reg' && m.indexOf('already')>=0) mtoast('这个邮箱已经注册过：直接点「登录」');
+    else mtoast(zhErr(err));
+    if(done) done();
   }
 }
 function signOutAsk(){
@@ -4913,14 +4960,14 @@ function accountHTML(){
     if(ACCTAB==='otp'){
       return head+cap+`
         <div class="keyrow"><input id="acctCode" inputmode="numeric" maxlength="6" placeholder="邮件里的验证码">
-          <button id="otpBtn" style="flex:0 0 auto" onclick="sendOtp()">${left>0?('重发 '+left+'s'):'发送验证码'}</button></div>
-        <div class="keyrow"><button style="flex:1" onclick="verifyOtp()">登录 / 注册</button></div>
+          <button id="otpBtn" style="flex:0 0 auto" onclick="sendOtp(this)">${left>0?('重发 '+left+'s'):'发送验证码'}</button></div>
+        <div class="keyrow"><button style="flex:1" onclick="verifyOtp(this)">登录 / 注册</button></div>
         <div class="fine">没注册过会自动建号；验证码邮件发不出来时，改用「密码登录」注册即可。</div>`+tail+cardKeyHTML();
     }
     return head+`
       <div class="keyrow"><input id="acctPwd" type="password" autocomplete="current-password" placeholder="密码，至少 6 位"></div>`+cap+`
-      <div class="keyrow"><button style="flex:1" onclick="pwdGo('in')">登录</button>
-        <button style="flex:1" onclick="pwdGo('reg')">注册新账号</button></div>
+      <div class="keyrow"><button style="flex:1" onclick="pwdGo('in',this)">登录</button>
+        <button style="flex:1" onclick="pwdGo('reg',this)">注册新账号</button></div>
       <div class="fine">注册后如果收到确认邮件，点一次链接即可；想直接可用可在 Supabase 后台关掉 Confirm email。</div>`+tail+cardKeyHTML();
   }
   return `<div class="sheet-sec"><h4>账号与同步</h4>
@@ -5315,7 +5362,7 @@ migrateSrs();
 applyMode(); chipRow(); renderHome(); renderList(); renderCloze();
 
 const VER='3.7.0';
-const PATCH='25';   /* 同一版本内的补丁号；0 表示版本本体 */
+const PATCH='26';   /* 同一版本内的补丁号；0 表示版本本体 */
 const CHANGELOG = [
 {v:'3.5.0',d:'2026-11-15',kind:'minor',sum:'改为登录后解锁全部板块，用户中心独立成一页',items:[
 ['变更','未注册登录时只开放「总览」：断代史 / 专题史、检索、卡片正文都能看，掌握与笔记照常记；速览、背诵、专题、刷题按下会直接跳到「我的」页要求登录'],
