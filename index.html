@@ -4596,7 +4596,8 @@ function meHTML(){
       ${mail}
       <div class="me-row"><input id="acctPwd" type="password" autocomplete="current-password" placeholder="密码，至少 6 位"></div>
       <div class="me-row"><button class="pri" onclick="pwdGo('in')">登录</button></div>
-      <div class="me-row me-two"><button onclick="setAcctab('reg')">注册新账号</button><button onclick="setAcctab('otp')">验证码登录</button></div>`);
+      <div class="me-row me-two"><button onclick="setAcctab('reg')">注册新账号</button><button onclick="setAcctab('otp')">验证码登录</button></div>
+      <div class="me-row me-two"><button onclick="sendReset()">忘记密码</button><button onclick="openInstall()">装到主屏</button></div>`);
   }
   const rev=parseInt(S.rev||'0',10);
   const nick=esc(S.nick||'');
@@ -4618,7 +4619,7 @@ function meHTML(){
    + meCard(`<h3>学习与数据</h3>
       <button class="me-link" onclick="openStats()">学习统计<span>›</span></button>
       <button class="me-link" onclick="openInstall()">安装到主屏<span>›</span></button>`)
-   + meCard(`<button class="me-danger" onclick="signOut()">退出登录</button>
+   + meCard(`<button class="me-danger" onclick="signOutAsk()">退出登录</button>
       <div class="me-note">退出后回到访客模式：只能看总览，云端进度保留，再登录即恢复。</div>`);
 }
 async function changePwd(){
@@ -4642,6 +4643,15 @@ async function saveNick(){
     await sbReq('/rest/v1/profiles?uid=eq.'+AUTH.uid,{method:'PATCH',prefer:'return=minimal',body:{nickname:v,last_seen:nowISO()}});
     S.nick=v; save(); renderAcct(); mtoast(v?'昵称已保存':'昵称已清空');
   }catch(e){ mtoast('保存失败：'+(e.message||'').slice(0,40)); }
+}
+async function sendReset(){
+  const e=((document.getElementById('acctMail')||{}).value||'').trim();
+  if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e)){ mtoast('先在邮箱框里填好邮箱，再点忘记密码'); return; }
+  mtoast('正在发送重置邮件…');
+  try{
+    await sbReq('/auth/v1/recover',{method:'POST',body:{email:e}});
+    mtoast('重置邮件已发到 '+e+'，点邮件里的链接设新密码；收不到就用验证码登录');
+  }catch(err){ mtoast('发送失败：'+(err.message||'').slice(0,50)); }
 }
 async function sendOtp(){
   if(!sbOn()) return;
@@ -4704,14 +4714,25 @@ async function pwdGo(mode){
     else mtoast('没成功：'+(err.message||'').slice(0,60));
   }
 }
+function signOutAsk(){
+  const up=S.syncAt?'最近同步 '+syncTimeText():'本机还没同步过';
+  openSheet('退出登录？',`
+    <div class="sheet-sec">
+      <div class="fine">${esc(up)}。退出后回到访客模式：本机进度保留，云端进度也保留；用同一个邮箱再登录会合并回来。</div>
+      <div class="keyrow"><button style="flex:1" onclick="closeSheet()">先不退</button>
+        <button style="flex:1" onclick="closeSheet();signOut()">确认退出</button></div>
+    </div>`);
+}
 async function signOut(){
   try{ await sbReq('/auth/v1/logout',{method:'POST'}); }catch(e){}
-  AUTH=null; saveAuth(); S.nick=''; renderAcct(); go('home'); mtoast('已退出，回到访客模式：只保留总览，云端进度仍在');
+  AUTH=null; saveAuth(); S.nick=''; PRESENT_AT=0; SYNC_RETRY=0;
+  renderAcct(); go('home'); mtoast('已退出，回到访客模式：只保留总览，云端进度仍在');
 }
 
 /* ---------- 登录之后：建档 + 拉云端进度 + 冲突处理 ---------- */
 async function afterLogin(){
   await ensureToken();
+  touchPresence(true);
   try{ await sbReq('/rest/v1/profiles',{method:'POST',prefer:'resolution=merge-duplicates,return=minimal',
     body:{uid:AUTH.uid,email:AUTH.email,last_seen:nowISO(),ua:(navigator.userAgent||'').slice(0,120)}}); }catch(e){}
   let row=null;
@@ -4720,8 +4741,11 @@ async function afterLogin(){
     Object.keys(S.notes||{}).length>0;
   if(!row){ await pushCloud(true); renderAcct(); mtoast('已登录：本机进度已上传到云端'); return; }
   if(!localHas){ applyCloud(row); renderAcct(); mtoast('已登录：已载入云端进度'); return; }
-  const cloudNewer=(Date.parse(row.updated_at||0)||0)>(S.localAt||0)+60000;
-  if(!cloudNewer){ await pushCloud(true); renderAcct(); mtoast('已登录：本机较新，已合并上传'); return; }
+  /* 判断要不要弹冲突：本机有进度 + （从没同步过 或 云端比本机上次同步更新）→ 让用户选，绝不静默覆盖 */
+  const cloudTs=Date.parse(row.updated_at||0)||0;
+  const lastSync=parseInt(S.syncAt||0,10)||0;
+  const conflict = !lastSync || cloudTs > lastSync+60000;
+  if(!conflict){ await pushCloud(true); renderAcct(); mtoast('已登录：本机较新，已上传'); return; }
   askConflict(row);
 }
 function askConflict(row){
@@ -4732,7 +4756,8 @@ function askConflict(row){
       <div class="fine">云端那份更新（${esc(when)}，掌握 ${n} 条）。选一份留下来，不会两边都丢着不管。</div>
       <div class="keyrow"><button style="flex:1" onclick="useCloud()">用云端覆盖本机</button>
         <button style="flex:1" onclick="useLocal()">用本机覆盖云端</button></div>
-      <div class="fine">选错了还能再进设置换一次，两个方向都会留下时间戳。</div>
+      <div class="keyrow"><button style="flex:1" onclick="useBoth()">两边合并（推荐）</button></div>
+      <div class="fine">合并会把两边掌握到的考点并起来，复习排期取更晚的一次；选错了还能再进设置换一次。</div>
     </div>`);
   window.__conflictRow=row;
 }
@@ -4741,6 +4766,26 @@ function useCloud(){
   closeSheet(); renderAcct(); mtoast('已载入云端进度');
 }
 async function useLocal(){ closeSheet(); await pushCloud(true); renderAcct(); mtoast('已用本机进度覆盖云端'); }
+async function useBoth(){
+  const r=window.__conflictRow; closeSheet();
+  if(!r){ mtoast('没拿到云端那份，先重新登录试试'); return; }
+  const d=(r&&r.data)||{};
+  ['status','due','seen','ient','notes','quizLog','qdone'].forEach(function(k){
+    S[k]=Object.assign({},(d[k]||{}),(S[k]||{}));
+  });
+  S.fav=Array.from(new Set([].concat(d.fav||[],S.fav||[])));
+  S.qwrong=Array.from(new Set([].concat(d.qwrong||[],S.qwrong||[])));
+  ['srs','log'].forEach(function(k){
+    const a=d[k]||{}, b=S[k]||{}, o={};
+    Object.keys(a).concat(Object.keys(b)).forEach(function(x){ o[x]=Math.max(Number(a[x])||0,Number(b[x])||0); });
+    S[k]=o;
+  });
+  if(d.today&&!S.today) S.today=d.today;
+  if(d.qprog&&(!S.qprog||(Number(d.qprog.at)||0)>(Number(S.qprog.at)||0))) S.qprog=d.qprog;
+  EMAP=null; renderAll(); applyPrefs&&applyPrefs();
+  const ok=await pushCloud(true); renderAcct();
+  mtoast(ok?('已合并并上传：掌握 '+Object.keys(S.status||{}).length+' 条'):'合并完成，但没传上去，稍后自动重试');
+}
 function applyCloud(row){
   const d=(row&&row.data)||{};
   ['status','fav','due','seen','log','ient','srs','notes','quizLog','qwrong','qdone','qprog'].forEach(k=>{ if(d[k]!==undefined) S[k]=d[k]; });
@@ -4757,6 +4802,15 @@ function cloudPack(){
   return {status:S.status,fav:S.fav,due:S.due,seen:S.seen,log:S.log,ient:S.ient,srs:S.srs,
     notes:S.notes,quizLog:S.quizLog,qwrong:S.qwrong,qdone:S.qdone,today:S.today,qprog:S.qprog};
 }
+/* 在线心跳：后台靠 profiles.last_seen 算 DAU；打开一次、每 30 分钟最多写一次 */
+let PRESENT_AT=0, SYNC_RETRY=0;
+async function touchPresence(force){
+  if(guestMode()) return;
+  if(!force && Date.now()-PRESENT_AT<30*60*1000) return;
+  PRESENT_AT=Date.now();
+  if(!(await ensureToken())) return;
+  try{ await sbReq('/rest/v1/profiles?uid=eq.'+AUTH.uid,{method:'PATCH',prefer:'return=minimal',body:{last_seen:nowISO()}}); }catch(e){}
+}
 function scheduleSync(){
   if(guestMode()) return;
   clearTimeout(SYNCTIMER);
@@ -4772,13 +4826,18 @@ async function pushCloud(force){
     const at=nowISO();
     await sbReq('/rest/v1/progress',{method:'POST',prefer:'resolution=merge-duplicates,return=minimal',
       body:{uid:AUTH.uid,data:cloudPack(),rev:S.rev,updated_at:at}});
-    S.syncAt=Date.parse(at); S.localAt=Date.parse(at); SYNCERR='';
+    S.syncAt=Date.parse(at); S.localAt=Date.parse(at); SYNCERR=''; SYNC_RETRY=0;
     try{ localStorage.setItem(KEY,JSON.stringify(S)); }catch(e){}
     const tip=document.getElementById('syncTip'); if(tip) tip.textContent='已同步 · '+syncTimeText();
     return true;
   }catch(e){
     SYNCERR=(e.message||'同步失败').slice(0,60);
-    const tip=document.getElementById('syncTip'); if(tip) tip.textContent='这次没同步上：'+SYNCERR;
+    const tip=document.getElementById('syncTip'); if(tip) tip.textContent='这次没同步上：'+SYNCERR+'（会自动重试）';
+    if(SYNC_RETRY<3){
+      const wait=[30,120,300][SYNC_RETRY]*1000;
+      SYNC_RETRY++;
+      setTimeout(function(){ pushCloud(false); },wait);
+    }
     return false;
   }finally{ SYNCING=false; }
 }
@@ -4800,7 +4859,9 @@ function syncTimeText(){
   return (same?'今天 ':((d.getMonth()+1)+'/'+d.getDate()+' '))+p(d.getHours())+':'+p(d.getMinutes());
 }
 /* 回到前台补推一次：离线期间攒的改动在这里上传 */
-document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible'&&authOk()&&!guestMode()) scheduleSync(); });
+document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible'&&authOk()&&!guestMode()){ scheduleSync(); touchPresence(); } });
+window.addEventListener('online',()=>{ if(authOk()&&!guestMode()){ SYNCERR=''; pushCloud(false); } });
+setInterval(function(){ if(authOk()&&!guestMode()) touchPresence(); },10*60*1000);
 
 /* ---------- 账号面板 ---------- */
 function accountHTML(){
@@ -4835,7 +4896,7 @@ function accountHTML(){
     <div id="syncTip" class="fine">${esc(SYNCERR?'上次没同步上：'+SYNCERR:'改一点就会自动同步；切回前台也会补推')}</div>
     <div class="keyrow"><button style="flex:1" onclick="syncNow()">立即同步</button>
       <button style="flex:1" onclick="pullCloud(true)">从云端拉取</button></div>
-    <button class="opt" onclick="signOut()"><span>退出登录<small>退出后回到访客模式，云端记录保留</small></span><span class="n">退</span></button>
+    <button class="opt" onclick="signOutAsk()"><span>退出登录<small>退出后回到访客模式，云端记录保留</small></span><span class="n">退</span></button>
   </div>`+cardKeyHTML();
 }
 function cardKeyHTML(){
@@ -5222,7 +5283,7 @@ migrateSrs();
 applyMode(); chipRow(); renderHome(); renderList(); renderCloze();
 
 const VER='3.7.0';
-const PATCH='23';   /* 同一版本内的补丁号；0 表示版本本体 */
+const PATCH='24';   /* 同一版本内的补丁号；0 表示版本本体 */
 const CHANGELOG = [
 {v:'3.5.0',d:'2026-11-15',kind:'minor',sum:'改为登录后解锁全部板块，用户中心独立成一页',items:[
 ['变更','未注册登录时只开放「总览」：断代史 / 专题史、检索、卡片正文都能看，掌握与笔记照常记；速览、背诵、专题、刷题按下会直接跳到「我的」页要求登录'],
