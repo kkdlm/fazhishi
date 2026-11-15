@@ -3041,6 +3041,8 @@ function renderQuizSets(){
     '</div>'+
     '<div class="tip">真题总库 '+qOfSet('old').length+' 题、断代史刷题讲义 '+qOfSet('dd').length+' 题、专题史刷题讲义 '+qOfSet('zhuanti').length+' 题。三套都按讲义原书目录（编 · 章 · 节）组织：先选做哪一套，再选第几章、第几节。</div>';
 }
+function cnNum(x){ var m=/第([一二三四五六七八九十]+)/.exec(x||''); if(!m) return 0; var mp={'一':1,'二':2,'三':3,'四':4,'五':5,'六':6,'七':7,'八':8,'九':9,'十':10}; var t=m[1]; if(t==='十') return 10; if(t.length===2){ if(t[0]==='十') return 10+(mp[t[1]]||0); if(t[1]==='十') return (mp[t[0]]||0)*10; } return mp[t]||0; }
+function bianOrd(b){ if(!b) return 0; if(b.indexOf('绪论')===0) return 0; if(b.indexOf('上编')===0) return 1; if(b.indexOf('下编')===0) return 2; return 3; }
 function briefChap(c){ var m=/(第[一二三四五六七八九十]+章)\s*(.*)$/.exec(c||''); return m?(m[1]+(m[2]?' '+m[2].replace(/（[^）]*）$/,'').slice(0,9):'')):(c||''); }
 function briefSec(x){ var m=/(第[一二三四五六七八九十]+节)\s*(.*)$/.exec(x||''); return m?(m[1]+' '+m[2].replace(/（[^）]*）$/,'').slice(0,9)):(x||''); }
 function renderQuizSetup(){
@@ -3055,6 +3057,9 @@ function renderQuizSetup(){
   var bianOpts=[['all','全部 '+all.length]];
   bians.forEach(function(b){ bianOpts.push([b, b+' '+all.filter(function(q){return q.bian===b}).length]); });
   var chOpts=[['all','全部 '+inBian.length]];
+  var bmap={};
+  all.forEach(function(q){ var c=q.chap||q.ch||''; if(c&&!bmap[c]) bmap[c]=q.bian||''; });
+  chs.sort(function(a,b){ var oa=bianOrd(bmap[a]), ob=bianOrd(bmap[b]); return oa-ob || cnNum(a)-cnNum(b); });
   chs.forEach(function(c){
     var pre='';
     if(bians.length>1 && QF.bian==='all'){
@@ -3068,6 +3073,7 @@ function renderQuizSetup(){
   if(QF.chap!=='all'){
     all.forEach(function(q){ var x=q.sec||q.sub||''; if((q.chap||q.ch)===QF.chap && x && !ss[x]){ ss[x]=1; subs.push(x); } });
   }
+  subs.sort(function(a,b){ return cnNum(a)-cnNum(b); });
   var subOpts=[['all','全部 '+all.filter(function(q){return (q.chap||q.ch)===QF.chap}).length]];
   subs.forEach(function(sb){ subOpts.push([sb, briefSec(sb)+' '+all.filter(function(q){return (q.chap||q.ch)===QF.chap&&(q.sec||q.sub)===sb}).length]); });
   var n=filteredQuestions().length;
@@ -5219,7 +5225,7 @@ migrateSrs();
 applyMode(); chipRow(); renderHome(); renderList(); renderCloze();
 
 const VER='3.7.0';
-const PATCH='19';   /* 同一版本内的补丁号；0 表示版本本体 */
+const PATCH='20';   /* 同一版本内的补丁号；0 表示版本本体 */
 const CHANGELOG = [
 {v:'3.5.0',d:'2026-11-15',kind:'minor',sum:'改为登录后解锁全部板块，用户中心独立成一页',items:[
 ['变更','未注册登录时只开放「总览」：断代史 / 专题史、检索、卡片正文都能看，掌握与笔记照常记；速览、背诵、专题、刷题按下会直接跳到「我的」页要求登录'],
