@@ -47,7 +47,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p admin
-          curl -fsSL --retry 3 -o admin/index.html "https://aka.doubaocdn.com/s/tTLYVxNm4T"
+          curl -fsSL --retry 3 -o admin/index.html "https://aka.doubaocdn.com/s/iVIgfrnruD"
           size=$(stat -c%s admin/index.html)
           echo "admin-size=$size"
           if [ "$size" -lt 20000 ]; then echo "::error::admin too small ($size)"; exit 1; fi
