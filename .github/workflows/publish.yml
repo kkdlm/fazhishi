@@ -82,7 +82,7 @@ jobs:
           curl -fsSL --retry 3 -o startup-1290x2796.png "https://aka.doubaocdn.com/s/rWrQ3pW04j"
           curl -fsSL --retry 3 -o startup-1179x2556.png "https://aka.doubaocdn.com/s/YtMWhoiMyG"
           curl -fsSL --retry 3 -o startup-1170x2532.png "https://aka.doubaocdn.com/s/s3q9SNSEBy"
-          curl -fsSL --retry 3 -o sw.js "https://aka.doubaocdn.com/s/UoUzTwpPKB"
+          curl -fsSL --retry 3 -o sw.js "https://aka.doubaocdn.com/s/aUxAavkUvy"
           grep -q "app-3.5.0-p4" sw.js || { echo "::error::sw stale"; exit 1; }
           grep -q "/admin/" sw.js || { echo "::error::sw admin bypass missing"; exit 1; }
           node --check sw.js
