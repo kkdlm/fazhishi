@@ -20,6 +20,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Publish
+        continue-on-error: true
         run: |
           set -e
           curl -fsSL --http1.1 -L --retry 5 --retry-all-errors --retry-delay 3 --max-time 300 -o index.new "$SRC"
