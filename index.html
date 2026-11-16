@@ -2196,6 +2196,13 @@ function chipRow(){
     `<button class="chip ${FLT==='fav'?'on':''}" onclick="filterCh('fav')">★ 收藏<span class="n">${(S.fav||[]).length}</span></button>` +
     `<button class="chip ${FLT==='wrong'?'on':''}" onclick="filterCh('wrong')">错题<span class="n">${PTS.filter(p=>S.status[p.n]==='no').length}</span></button>` +
     `<button class="chip ${FLT==='todo'?'on':''}" onclick="filterCh('todo')">未掌握<span class="n">${PTS.filter(p=>S.status[p.n]!=='ok').length}</span></button>`;
+  const integMode = (S.mode==='zhuan' && S.ztsrc!=='book');
+  if(integMode){
+    document.getElementById('chips').innerHTML=INTEG.map(x=>
+      `<button class="chip ${ITG===x.k?'on':''}" onclick="setInteg('${x.k}')">${esc(x.sh||x.n)}<span class="n">${integBlocks(x)}</span></button>`).join('');
+    centerChips();
+    return;
+  }
   const bookMode = (S.mode==='zhuan' && S.ztsrc==='book');
   if(bookMode){
     const chs=BTOPIC.chs.map(c=>{
@@ -2228,11 +2235,64 @@ function setZtSrc(v){
   S.ztsrc=(v==='book'?'book':'card'); save();
   if(S.mode!=='zhuan'){ S.mode='zhuan'; }
   applyMode(); chipRow(); renderList(); centerChips();
-  mtoast(S.ztsrc==='book'?'已切到背诵一本通：整本书原文':'已切回整合版：169 张考点卡');
+  mtoast(S.ztsrc==='book'?'已切到背诵一本通：整本书原文':'已切回整合版：按纵向专题串起来');
 }
 function setVTBook(k){ VT=k; chipRow(); renderList(); window.scrollTo({top:0}); }
+/* ===== 整合版：按《法制史纵向梳理计划》的纵向专题，把书的正文重新串起来（文字全部取自书的原文，不新增一字） ===== */
+const BSEC={};
+(BTOPIC.chs||[]).forEach(c=>(c.secs||[]).forEach(s=>{ BSEC[s.k]=s; }));
+const INTEG=[
+ {k:'I0', sh:'绪论', n:'绪论', src:['XUs1','XUs2','XUs3','XUs4','XUs5']},
+ {k:'I1', sh:'立法思想', n:'一、立法指导思想', src:['L1s1']},
+ {k:'I2', sh:'主要立法', n:'二、主要立法', src:['L1s3']},
+ {k:'I3', sh:'法律形式', n:'三、主要法律形式', src:['L1s2']},
+ {k:'I4', sh:'刑法原则', n:'四、刑法原则', src:['L2s3']},
+ {k:'I5', sh:'罪名', n:'五、罪名', src:['L2s1']},
+ {k:'I6', sh:'刑罚', n:'六、刑罚', src:['L2s2']},
+ {k:'I7', sh:'司法制度', n:'七、司法制度', src:['L6s2']},
+ {k:'I8', sh:'司法机构', n:'八、司法机构', src:['L6s1']},
+ {k:'I9', sh:'官制监察', n:'九、官制与监察', src:['L3s1']},
+ {k:'I10', sh:'行政制度', n:'十、行政制度', src:['L3s2','L3s3']},
+ {k:'I11', sh:'民事立法', n:'十一、民事立法', src:['L4s1','L4s2','L4s3']},
+ {k:'I12', sh:'婚姻', n:'十二、婚姻家庭', src:['L4s4']},
+ {k:'I13', sh:'继承', n:'十三、继承', src:['L4s5']},
+ {k:'I14', sh:'经济', n:'十四、经济立法', src:['L5s1','L5s2','L5s3']},
+ {k:'I15', sh:'宪法文件', n:'近代 · 宪法性文件', src:['M2s1','M2s2','M2s3','M2s4','M2s5']},
+ {k:'I16', sh:'近代立法', n:'近代 · 立法概况', src:['M1s1','M1s2','M1s3','M1s4']},
+ {k:'I17', sh:'近代民商', n:'近代 · 民商立法', src:['M4s1','M4s2','M4s3','M4s4']},
+ {k:'I18', sh:'近代刑事', n:'近代 · 刑事立法', src:['M3s1','M3s2','M3s3','M3s4']},
+ {k:'I19', sh:'近代司法', n:'近代 · 司法机构', src:['M5s1']},
+ {k:'I20', sh:'近代诉讼', n:'近代 · 诉讼审判', src:['M5s2']},
+ {k:'I21', sh:'附录', n:'附录 · 速查清单', src:['AP1','AP2','AP3']}
+];
+let ITG='I1';
+function integCur(){ return INTEG.find(x=>x.k===ITG)||INTEG[0]; }
+function integSecs(x){ return (x.src||[]).map(k=>BSEC[k]).filter(Boolean); }
+function integPgs(x){
+  const ss=integSecs(x); if(!ss.length) return '';
+  const a=String(ss[0].pgs||'').split('–')[0];
+  const b=String(ss[ss.length-1].pgs||'').split('–').pop();
+  return a===b?a:a+'–'+b;
+}
+function integBlocks(x){ return integSecs(x).reduce((a,s)=>a+((s.blocks||[]).length),0); }
+function setInteg(k){ ITG=k; chipRow(); renderList(); window.scrollTo({top:0}); }
+function integBodyHTML(){
+  const x=integCur(), ss=integSecs(x);
+  let h=`<div class="vt-book">${esc(x.n)}<span class="bk-pg">书 P${esc(integPgs(x))} · ${ss.length} 节 ${integBlocks(x)} 块</span></div>`;
+  if(ss.length<=1){
+    h+=ss.map(s=>`<div class="bk-itg-body">${s.blocks.map(bkBlock).join('')}</div>`).join('');
+    return h;
+  }
+  h+=ss.map(s=>`<div class="vt-sec"><div class="vt-sec-h"><b>${esc(s.n)}</b><span>书 P${esc(s.pgs||'')}</span><button class="bk-fold" onclick="bkFold(this)">展开</button></div>
+      <div class="bk-secs-body" style="display:none">${s.blocks.map(bkBlock).join('')}</div></div>`).join('');
+  return h;
+}
+const TH2ITG={lf:'I2',xf:'I5',sf:'I7',xz:'I9',ms:'I11',jj:'I14'};
 function filterCh(k){
-  if(S.mode==='zhuan' && S.ztsrc==='book' && k!=='all'){ S.ztsrc='card'; save(); applyMode(); }
+  if(S.mode==='zhuan'){
+    if(S.ztsrc==='book' && k!=='all'){ S.ztsrc='card'; save(); applyMode(); }
+    if(k.indexOf('T:')===0 && TH2ITG[k.slice(2)]) ITG=TH2ITG[k.slice(2)];
+  }
   FLT=k; chipRow(); renderList(); centerChips();
 }
 function centerChips(){
@@ -2357,6 +2417,12 @@ const SEQ=(()=>{const m={};PTS.slice().sort(sortPts).forEach((p,i)=>{m[p.n]=i+1;
 function pnum(n){ return SEQ[n]||n; }
 function eraRank(ch){ const i=ERA_ORD.indexOf(ch); return i<0?900:i; }
 function renderList(){
+  if(S.mode==='zhuan' && S.ztsrc!=='book'){
+    const x=integCur();
+    document.getElementById('qCount').textContent = '整合版 · '+x.n+' · 书 P'+integPgs(x)+' · '+integBlocks(x)+' 块';
+    document.getElementById('list').innerHTML = integBodyHTML();
+    return;
+  }
   if(S.mode==='zhuan' && S.ztsrc==='book'){
     const ch=BTOPIC.chs.find(x=>x.k===VT)||BTOPIC.chs[0];
     if(VT!==ch.k) VT=ch.k;
@@ -4929,7 +4995,7 @@ function applyMode(){
   if(seg) seg.style.display = (S.mode==='zhuan')?'flex':'none';
   document.querySelectorAll('#srcSeg button').forEach(b=>b.classList.toggle('on', (b.dataset.z||'card')===(zb?'book':'card')));
   const sr=document.querySelector('#v-browse .search');
-  if(sr) sr.style.display = (S.mode==='zhuan'&&zb)?'none':'';
+  if(sr) sr.style.display = (S.mode==='zhuan')?'none':'';
 }
 function setTopic(t){
   TOPIC=t||'tl';
@@ -6188,9 +6254,15 @@ normalizeState();
 migrateSrs();
 applyMode(); chipRow(); renderHome(); renderList(); renderCloze();
 
-const VER='3.10.0';
-const PATCH='3';   /* 同一版本内的补丁号；0 表示版本本体 */
+const VER='3.11.0';
+const PATCH='1';   /* 同一版本内的补丁号；0 表示版本本体 */
 const CHANGELOG = [
+{v:'3.11.0',ps:'1',d:'2026-11-17',kind:'minor',sum:'整合版重写：按《法制史纵向梳理计划》的纵向专题串书，文字全取书的原文',items:[
+['重构','整合版不再用 169 张考点卡，改成二十二条纵向专题：绪论／立法指导思想／主要立法／主要法律形式／刑法原则／罪名／刑罚／司法制度／司法机构／官制与监察／行政制度／民事立法／婚姻家庭／继承／经济立法＋近代宪法性文件／立法概况／民商立法／刑事立法／司法机构／诉讼审判＋附录速查，顺序与专题名按《法制史纵向梳理计划（古代）》《（近代）》两份文件的目录'],
+['新增','每条专题直接调《背诵一本通》对应章节的原文块（立法指导思想＝书 P11–16、主要立法＝P24–41、罪名＝P42–58…），一字不改；同一段原文只存一份，整合版按专题引用，两档永远同源'],
+['说明','监察制度在书里并入第三章第一节「中央官制」（御史台、都察院与官制写在同一张表里，硬拆会把表拆碎），所以整合版这条叫「官制与监察」，内容就是书 P90–94 全节；婚姻、继承按书第四节、第五节各自成条，对应纵向计划里的「婚姻演变」「继承演变」'],
+['优化','专题内多节的（民事立法、行政制度、宪法性文件等）先列节名与页码，点「展开」看原文；只有一节的专题直接铺开，不再多一层节标题'],
+['变更','整合版顶部不再显示搜索框（旧搜索是搜 169 张卡的，现在这条线是书的原文）；首页「专题掌握」里点立法沿革／罪名刑罚／司法制度／行政监察／民事婚姻继承／经济土地，会跳到整合版对应的那条专题']]},
 {v:'3.10.0',ps:'1–3',d:'2026-11-16',kind:'minor',sum:'速览的专题史两个来源：整合版（169 张考点卡）与背诵一本通（整本书原文），一键切换',items:[
 ['新增','速览 → 专题史顶部加「原版 · 考点卡／书版 · 书原文」两档，和「断代史／专题史」一样一键切：原版仍是 169 张考点卡，书版直接是《背诵一本通》专题史正文（13 章 47 节 2038 块）'],
 ['新增','书版下按书的章给 chip（绪论 70／立法 317／刑事 449／行政 155／民事 215／经济 23／司法 185／下编五章／附录 371），点一下换章，不用先进专题页；每节仍可整节收起'],
