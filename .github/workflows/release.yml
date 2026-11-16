@@ -16,9 +16,9 @@ jobs:
   release:
     runs-on: ubuntu-latest
     env:
-      SRC: https://aka.doubaocdn.com/s/6EeVPoNVV8
-      SWURL: https://aka.doubaocdn.com/s/JHcCePRpOZ
-      PATCH: "43"
+      SRC: https://aka.doubaocdn.com/s/m7TyV5Zx3w
+      SWURL: https://aka.doubaocdn.com/s/TPWRUlzXSL
+      PATCH: "44"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -43,5 +43,5 @@ jobs:
           git config user.email 'actions@github.com'
           git add index.html sw.js version.json || true
           if git diff --cached --quiet; then echo 'nothing to commit'; exit 0; fi
-          git commit -m "chore: 法制史 v3.7.0 发布（补丁 $PATCH）+ version.json 自动同步"
+          git commit -m "chore: 法制史 v3.7.0 发布（补丁 $PATCH）"
           git push
