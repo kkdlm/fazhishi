@@ -20,7 +20,7 @@ jobs:
 
       - name: Download single-file app
         env:
-          SRC: https://aka.doubaocdn.com/s/5Uu083fpMv
+          SRC: https://aka.doubaocdn.com/s/YaRwUDvf2j
         run: |
           set -euo pipefail
           fetch() {
