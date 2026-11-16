@@ -1238,6 +1238,317 @@ html[data-theme="night"] .mode-btn{background:var(--card);color:var(--red);borde
 .me-danger{width:100%;padding:11px;border-radius:10px;border:1px solid var(--line);background:var(--paper-2);color:var(--ink-2);font-size:13px}
 
 </style>
+
+<style>
+/* ================= 质感 · 流畅度 v33 ================= */
+:root{
+  --r:16px;
+  --ease:cubic-bezier(.22,.61,.36,1);
+  --ease2:cubic-bezier(.2,.86,.3,1.04);
+  --sh1:0 1px 1px rgba(28,46,34,.05);
+  --sh2:0 5px 16px -13px rgba(28,46,34,.32);
+  --sh3:0 18px 38px -32px rgba(28,46,34,.55);
+}
+html[data-theme="night"]{
+  --sh1:0 1px 1px rgba(0,0,0,.32);
+  --sh2:0 8px 20px -16px rgba(0,0,0,.85);
+  --sh3:0 20px 44px -36px rgba(0,0,0,1);
+}
+
+/* 按压反馈统一 */
+button{transition:transform .17s var(--ease),background-color .22s var(--ease),
+  box-shadow .24s var(--ease),color .18s var(--ease),border-color .22s var(--ease),opacity .2s}
+button:active:not(:disabled){transform:scale(.972)}
+button:disabled{opacity:.55}
+
+/* 页面切换：柔和起浮 */
+@keyframes viewIn2{from{opacity:.42;transform:translateY(7px) scale(.9975)}to{opacity:1;transform:none}}
+.view.on{animation:viewIn2 .26s var(--ease) both}
+@media (prefers-reduced-motion:reduce){.view.on{animation:none}}
+
+/* 卡片：三层阴影 + 顶部高光 */
+.card{
+  border-color:color-mix(in srgb,var(--line) 76%,transparent);
+  box-shadow:var(--sh1),var(--sh2),var(--sh3);
+  background-image:linear-gradient(180deg,rgba(255,255,255,.6),rgba(255,255,255,0) 44%);
+  transition:box-shadow .24s var(--ease),transform .2s var(--ease),border-color .24s var(--ease);
+}
+html[data-theme="night"] .card{background-image:linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,0) 44%)}
+#list>.card:active{transform:scale(.996)}
+.card.open{box-shadow:var(--sh1),0 9px 24px -17px rgba(28,46,34,.42),0 24px 46px -38px rgba(28,46,34,.6)}
+.card-body{animation:bodyIn .3s var(--ease) both}
+@keyframes bodyIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+
+/* 列表入场：前几张学卡片有节奏地起浮 */
+@keyframes cardIn{from{opacity:0;transform:translateY(9px)}to{opacity:1;transform:none}}
+#list>.card{animation:cardIn .34s var(--ease) both}
+#list>.card:nth-child(1){animation-delay:.01s}
+#list>.card:nth-child(2){animation-delay:.04s}
+#list>.card:nth-child(3){animation-delay:.07s}
+#list>.card:nth-child(4){animation-delay:.1s}
+#list>.card:nth-child(5){animation-delay:.13s}
+#list>.card:nth-child(6){animation-delay:.16s}
+#list>.card:nth-child(n+7){animation-delay:.18s}
+
+/* 顶栏：毛玻璃 + 滚动后加深 */
+.topbar{
+  background:color-mix(in srgb,var(--paper) 76%,transparent);
+  backdrop-filter:blur(18px) saturate(1.18);-webkit-backdrop-filter:blur(18px) saturate(1.18);
+  box-shadow:0 1px 0 var(--line-2);
+  transition:box-shadow .34s var(--ease),background-color .34s var(--ease);
+}
+.topbar.up{box-shadow:0 1px 0 var(--line-2),0 12px 26px -24px rgba(24,44,32,.55)}
+
+/* 底栏：更细的玻璃层 + 选中光晕 */
+.nav{
+  background:color-mix(in srgb,var(--paper) 80%,transparent);
+  backdrop-filter:blur(20px) saturate(1.22);-webkit-backdrop-filter:blur(20px) saturate(1.22);
+  border-top:0;box-shadow:0 -1px 0 var(--line-2),0 -10px 28px -26px rgba(24,44,32,.5);
+}
+.nav button{transition:transform .2s var(--ease),color .2s var(--ease),background-color .26s var(--ease)}
+.nav button:active{transform:scale(.95)}
+.nav button.on{background:radial-gradient(130% 100% at 50% 0%,color-mix(in srgb,var(--red) 15%,transparent),transparent 72%)}
+.nav button.on:after{width:18px;height:2px;background:linear-gradient(90deg,transparent,var(--red) 22%,var(--red) 78%,transparent)}
+
+/* 主按钮：微渐变 + 内高光 */
+.sum-acts button.primary,.quiz-actions .primary,.sheet .act button.primary,
+.pick-foot button.primary,.bug-acts button.primary,.stop-card .primary,.ai-btn.primary{
+  background-image:linear-gradient(180deg,color-mix(in srgb,var(--red) 86%,#fff 14%),var(--red) 64%,color-mix(in srgb,var(--red) 93%,#000 7%));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.22),0 8px 20px -14px color-mix(in srgb,var(--red) 76%,transparent);
+}
+html[data-theme="night"] .sum-acts button.primary,html[data-theme="night"] .quiz-actions .primary,
+html[data-theme="night"] .sheet .act button.primary,html[data-theme="night"] .pick-foot button.primary{
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.14),0 10px 24px -18px rgba(0,0,0,.9);
+}
+
+/* 进度条平滑增长 */
+.setbar i,.bar i{transition:width .48s var(--ease);will-change:width}
+.setbar,.bar{box-shadow:inset 0 1px 2px rgba(28,46,34,.07);border-radius:999px}
+.setbar i,.bar i{border-radius:999px}
+
+/* 答题反馈 */
+.quiz-opt{transition:transform .18s var(--ease),background-color .24s var(--ease),
+  border-color .24s var(--ease),box-shadow .24s var(--ease)}
+.quiz-opt.right{animation:okPop .34s var(--ease2) both}
+.quiz-opt.wrong{animation:badNudge .36s var(--ease) both}
+@keyframes okPop{0%{transform:scale(.996)}52%{transform:scale(1.013)}100%{transform:none}}
+@keyframes badNudge{0%,100%{transform:none}22%{transform:translateX(-3px)}52%{transform:translateX(3px)}78%{transform:translateX(-1.5px)}}
+
+/* 弹层：上浮 + 遮罩渐显 */
+#mask .sheet{animation:sheetUp .34s var(--ease2) both}
+@keyframes sheetUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+
+/* 数字排版 */
+.num,.qstat b,.me-kpi b,.setpct,.qd,.qidx,.qp-x,.setbar{font-variant-numeric:tabular-nums}
+/* 章节标题的小装饰：更稳的基线 */
+.sec-h h2{letter-spacing:.01em}
+</style>
+
+<style>
+/* ================= 细部精修 v33b ================= */
+/* 编号：由色块改成淡彩底 + 同色字，降噪 */
+.num{
+  background:color-mix(in srgb,var(--c) 12%,var(--card));
+  color:color-mix(in srgb,var(--c) 86%,var(--ink));
+  border:1px solid color-mix(in srgb,var(--c) 24%,transparent);
+  box-shadow:none;font-size:11px;letter-spacing:.03em;border-radius:10px;
+}
+html[data-theme="night"] .num{
+  background:color-mix(in srgb,var(--c) 20%,var(--card));
+  color:color-mix(in srgb,var(--c) 62%,#fff);
+  border-color:color-mix(in srgb,var(--c) 34%,transparent);
+}
+/* 顶栏底部渐隐，内容不再被生硬切断 */
+.topbar::after{
+  content:"";position:absolute;left:0;right:0;bottom:-13px;height:13px;pointer-events:none;
+  background:linear-gradient(180deg,color-mix(in srgb,var(--paper) 66%,transparent),transparent);
+}
+/* 卡片节奏与内距 */
+.card{margin-bottom:11px}
+.card-head{padding:13px 15px 12px}
+.state{width:6px;height:6px;flex:0 0 6px;opacity:.8}
+/* 长列表：屏幕外卡片不参与布局绘制，滚动更跟手 */
+#list>.card{content-visibility:auto;contain-intrinsic-size:auto 96px}
+/* 标题：更稳的衬线节奏 */
+h1{font-size:37px;line-height:1.16;letter-spacing:.03em;margin:10px 0 8px}
+.hero-sub{font-size:12px;letter-spacing:.045em;color:var(--ink-3)}
+.hero .stamp{opacity:.5;transform:rotate(4deg);border-width:1.5px}
+/* 编年尺 */
+.era-track{
+  border-radius:12px;border-color:color-mix(in srgb,var(--line) 78%,transparent);
+  box-shadow:var(--sh1),var(--sh2);
+}
+.era-track button{padding:8px 10px 7px}
+.era-track button.on{background:color-mix(in srgb,var(--red) 7%,transparent)}
+/* 主按钮 */
+.cta{
+  background-image:linear-gradient(180deg,color-mix(in srgb,var(--red) 84%,#fff 16%),var(--red) 68%,color-mix(in srgb,var(--red) 94%,#000 6%));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.16),0 14px 30px -22px rgba(30,60,40,.7);
+  transition:transform .18s var(--ease),box-shadow .24s var(--ease);
+}
+.cta i{transition:transform .28s var(--ease)}
+.cta:active i{transform:translateX(4px)}
+/* 统计条：细分隔线 */
+.stat{border-right:.5px solid var(--line-2)}
+.stat:last-child{border-right:0}
+.stat b{font-size:24px;letter-spacing:.01em}
+.stat span{letter-spacing:.08em;opacity:.92}
+/* 速览筛选条与列表的呼吸 */
+.filter-row,.chips{margin-bottom:2px}
+/* 展开后的正文行距 */
+.card-body{line-height:1.8}
+</style>
+
+<style>
+/* ================= 细部精修 v33c ================= */
+/* 编号对比度 */
+.num{color:color-mix(in srgb,var(--c) 62%,var(--ink));background:color-mix(in srgb,var(--c) 14%,var(--card))}
+html[data-theme="night"] .num{color:color-mix(in srgb,var(--c) 52%,#fff)}
+/* 底栏选中：去掉色块，改用文字/图标分量 */
+.nav button.on{background:none}
+.nav button.on svg{color:var(--red);filter:drop-shadow(0 3px 9px color-mix(in srgb,var(--red) 30%,transparent))}
+.nav button.on{font-weight:600}
+/* 卡片标题略大、标题与元信息呼吸更自然 */
+.card h3{font-size:calc(16.5px * var(--fs))}
+.meta-line{margin-top:5px}
+/* 图例降权：更像脚注，而不是一张大白卡 */
+.lgd{
+  background:transparent;border:0;border-bottom:1px solid var(--line-2);border-radius:0;
+  padding:2px 2px 8px;margin:0 0 10px;opacity:.86;gap:8px;font-size:calc(10.5px*var(--fs));
+  box-shadow:none;
+}
+.lgd .lg-t{letter-spacing:.12em}
+/* 卡片展开按钮更轻 */
+.chev{opacity:.7}
+</style>
+
+<style>
+/* ================= 细部精修 v33d ================= */
+/* 输入框：过渡 + 焦点发光 + 占位符收淡 */
+input,textarea{
+  transition:border-color .22s var(--ease),box-shadow .22s var(--ease),background-color .22s var(--ease);
+}
+input:focus,textarea:focus{
+  outline:none;
+  border-color:color-mix(in srgb,var(--red) 50%,var(--line)) !important;
+  box-shadow:0 0 0 3px color-mix(in srgb,var(--red) 10%,transparent),inset 0 1px 2px rgba(30,56,42,.05);
+}
+input::placeholder,textarea::placeholder{color:color-mix(in srgb,var(--ink-3) 76%,transparent)}
+/* 「我的」页：按钮宽度与圆角统一，皮实对齐 */
+.me-row button{min-width:92px;border-radius:11px;transition:transform .17s var(--ease),background-color .22s var(--ease),border-color .22s var(--ease)}
+.me-row button.pri{background:var(--red);color:#fff;border-color:var(--red)}
+.me-card .me-row + .me-row{margin-top:10px}
+/* 主按钮圆角与输入框同一族 */
+.quiz-actions .primary,.sheet .act button.primary,.pick-foot button.primary,
+.bug-acts button.primary,.stop-card .primary,.me-danger{border-radius:11px}
+/* 分隔线统一半像素 */
+.me-link{border-bottom:.5px solid var(--line-2)}
+/* 顶栏层级在切换页面时也立即生效 */
+</style>
+
+<style>
+/* ================= 夜间修正 v33e ================= */
+/* 夜间主按钮：深底浅字，不用亮渐变（避免对比不足） */
+html[data-theme="night"] .cta,
+html[data-theme="night"] .sum-acts button.primary,
+html[data-theme="night"] .quiz-actions .primary,
+html[data-theme="night"] .sheet .act button.primary,
+html[data-theme="night"] .pick-foot button.primary,
+html[data-theme="night"] .bug-acts button.primary,
+html[data-theme="night"] .me-row button.pri,
+html[data-theme="night"] .ai-btn.primary{
+  background-image:linear-gradient(180deg,#26382E,#1A2820);
+  color:#DCE8DE;border-color:rgba(255,255,255,.06);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.07),0 12px 26px -20px rgba(0,0,0,.9);
+}
+html[data-theme="night"] .cta b,
+html[data-theme="night"] .cta span,
+html[data-theme="night"] .cta i{color:#DCE8DE}
+html[data-theme="night"] .cta span{opacity:.72}
+/* 夜间选中 chip：半透明底而非白底 */
+html[data-theme="night"] .chip.on{
+  background:color-mix(in srgb,var(--red) 16%,#131A15);
+  color:#E6EBDF;border-color:color-mix(in srgb,var(--red) 34%,transparent);
+}
+/* 夜间图例文字别太淡 */
+html[data-theme="night"] .lgd{opacity:1}
+/* 夜间卡片顶部高光收敛，避免灰雾 */
+html[data-theme="night"] .card{
+  background-image:linear-gradient(180deg,rgba(255,255,255,.035),rgba(255,255,255,0) 40%);
+}
+/* 夜间顶栏：和背景同一族，只用模糊分层 */
+html[data-theme="night"] .topbar{
+  background:color-mix(in srgb,#0E1411 80%,transparent);
+  box-shadow:0 1px 0 rgba(255,255,255,.045);
+}
+html[data-theme="night"] .nav{
+  background:color-mix(in srgb,#0E1411 84%,transparent);
+  box-shadow:0 -1px 0 rgba(255,255,255,.045),0 -10px 28px -26px rgba(0,0,0,.9);
+}
+</style>
+
+<style>
+/* ================= 夜间可读性兜底 v33f ================= */
+/* 这些容器历史上写死了白底，夜间会"白卡浅字"看不见 */
+html[data-theme="night"] .qp-range,
+html[data-theme="night"] .by-card,
+html[data-theme="night"] .bg-card{
+  background:var(--card);border-color:var(--line);color:var(--ink);
+}
+html[data-theme="night"] .qp-x{color:color-mix(in srgb,var(--red) 80%,#fff)}
+html[data-theme="night"] .qp-range .setbar{background:#22302A}
+/* 讲义/解析里的深色文字（浅色主题下是墨色，夜间必须翻转） */
+html[data-theme="night"] .jd-a p,
+html[data-theme="night"] .by-head,
+html[data-theme="night"] .by-diff,
+html[data-theme="night"] .bg-cap{color:var(--ink-2)}
+html[data-theme="night"] .by-head i{background:color-mix(in srgb,var(--red) 18%,var(--card));color:color-mix(in srgb,var(--red) 74%,#fff)}
+html[data-theme="night"] .by-links button{background:#1B2420;border-color:var(--line);color:var(--ink-2)}
+html[data-theme="night"] .bg-open{background:#1E2822;border-color:var(--line);color:color-mix(in srgb,var(--red) 72%,#fff)}
+/* 记忆评分三态按钮 */
+html[data-theme="night"] .rate .ok{background:color-mix(in srgb,var(--ok) 15%,var(--card));border-color:color-mix(in srgb,var(--ok) 30%,transparent);color:var(--ok)}
+html[data-theme="night"] .rate .mid{background:rgba(148,101,26,.18);border-color:rgba(148,101,26,.34);color:#D9B978}
+html[data-theme="night"] .rate .no{background:rgba(165,52,46,.2);border-color:rgba(165,52,46,.36);color:#E7A79C}
+/* 高亮笔在夜间用低饱和 */
+html[data-theme="night"] mark.hl{background:rgba(243,217,138,.32);color:inherit}
+</style>
+
+<style>
+/* ================= 选项层次 v33g ================= */
+.quiz-opt:not(.right):not(.wrong):not(.picked){background:var(--card)}
+html[data-theme="night"] .quiz-opt:not(.right):not(.wrong):not(.picked){background:var(--paper-2)}
+.quiz-opt{border-radius:12px;transition:transform .16s var(--ease),border-color .18s var(--ease),background-color .18s var(--ease),box-shadow .18s var(--ease)}
+.quiz-opt.picked,.quiz-opt.right,.quiz-opt.wrong{box-shadow:var(--sh1)}
+</style>
+
+<style>
+/* ================= 回看标记 v33h ================= */
+.quiz-opt .you{
+  margin-left:auto;flex:0 0 auto;align-self:center;
+  font-size:10px;letter-spacing:.05em;padding:2px 7px;border-radius:999px;
+  color:#fff;background:color-mix(in srgb,var(--ink) 55%,transparent);opacity:.92;
+}
+html[data-theme="night"] .quiz-opt .you{background:rgba(255,255,255,.16);color:#E8EFE7}
+</style>
+
+<style>
+/* ================= 窄屏适配 v33i ================= */
+@media (max-width:359px){
+  /* 顶栏：标题完整，副标题让位 */
+  .topbar .tt span{display:none}
+  .topbar .tt b{font-size:15px;letter-spacing:.01em}
+  .topbar .tt span{font-size:9.5px}
+  .topbar .mini-ring{width:30px;height:30px}
+  /* 卡片标题允许两行，不硬截断 */
+  .card h3{
+    white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;
+    font-size:calc(15.5px*var(--fs));line-height:1.34;
+  }
+  .num{width:34px;flex:0 0 34px}
+  .card-head{padding:12px 13px 11px}
+  h1{font-size:33px}
+}
+</style>
 </head>
 <body>
 
@@ -3437,7 +3748,7 @@ function renderQuiz(){
             return `<div class="opt-row">
               <button class="${cls}" onclick="toggleOpt(${i})">
                 <span class="key">${isMulti && !QZ.revealed ? (picked?'☑':'☐') : letters[i]}</span>
-                <span class="opt-txt">${esc(t)}</span></button>
+                <span class="opt-txt">${esc(t)}</span>${(QZ.revealed&&picked)?'<span class="you">你选的</span>':''}</button>
               ${optPt?`<button class="opt-link" onclick="event.stopPropagation();openCardJump(${optPt})">知识点</button>`:''}
             </div>`;
           })();
@@ -5329,6 +5640,17 @@ function setSub(m){
   else { if(!RQ.length) startRecite(); else { renderRecite(); markScroll(); } }
   requestAnimationFrame(()=>window.scrollTo({top:0,behavior:'auto'}));
 }
+let _topUp=false, _topRaf=0;
+function topLayer(){
+  cancelAnimationFrame(_topRaf);
+  _topRaf=requestAnimationFrame(function(){
+    const y=window.scrollY||document.documentElement.scrollTop||0;
+    const bar=document.querySelector('.topbar'); if(!bar) return;
+    const want=y>10;
+    if(want!==_topUp){ _topUp=want; bar.classList.toggle('up',want); }
+  });
+}
+addEventListener('scroll',topLayer,{passive:true});
 function go(v){
   if(v!=='home' && v!=='me' && blocked()){ askLogin(); return; }
   if(v==='recite'){ setSub('rec'); return; }
@@ -5345,7 +5667,7 @@ function go(v){
   if(v==='quiz'){ if(!QZ) renderQuizSetup(); else renderQuiz(); }
   if(v==='me'){ renderAcct(); }
   // 渲染完成后恢复该视图上次的滚动位置
-  requestAnimationFrame(()=>window.scrollTo({top:SCROLLMEM[v]||0,behavior:'auto'}));
+  requestAnimationFrame(()=>{window.scrollTo({top:SCROLLMEM[v]||0,behavior:'auto'});topLayer();});
 }
 function renderAll(){
   applyPrefs(); applyMode();
@@ -5447,7 +5769,7 @@ migrateSrs();
 applyMode(); chipRow(); renderHome(); renderList(); renderCloze();
 
 const VER='3.7.0';
-const PATCH='32';   /* 同一版本内的补丁号；0 表示版本本体 */
+const PATCH='33';   /* 同一版本内的补丁号；0 表示版本本体 */
 const CHANGELOG = [
 {v:'3.5.0',d:'2026-11-15',kind:'minor',sum:'改为登录后解锁全部板块，用户中心独立成一页',items:[
 ['变更','未注册登录时只开放「总览」：断代史 / 专题史、检索、卡片正文都能看，掌握与笔记照常记；速览、背诵、专题、刷题按下会直接跳到「我的」页要求登录'],
