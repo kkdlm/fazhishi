@@ -1137,6 +1137,12 @@ button[data-busy]:active{transform:none}
 .bg-grid{display:grid;grid-template-columns:1fr;gap:10px}
 .bg-card{background:#fff;border:1px solid #E7DED2;border-radius:10px;padding:8px 10px}
 .bg-card img{width:100%;display:block;border-radius:6px}
+.qp-range{background:#fff;border:1px solid #E7DED2;border-radius:10px;padding:10px 12px;margin:0 0 10px;display:block}
+.qp-range b{font-size:13px;color:var(--ink)}
+.qp-n{font-size:12px;color:var(--ink-2);margin-left:6px}
+.qp-x{float:right;font-size:12px;color:var(--red);font-weight:600}
+.qp-range .setbar{display:block;height:5px;background:var(--line-2,#EFE7DC);border-radius:4px;overflow:hidden;margin-top:8px}
+.qp-range .setbar i{display:block;height:100%;background:var(--red);border-radius:4px}
 .bg-part{margin:8px 0 10px}
 .bg-pl{display:inline-block;margin:0 0 5px 1px;background:rgba(142,39,35,.92);color:#fff;
  font-size:10.5px;padding:2px 8px;border-radius:6px;letter-spacing:.02em}
@@ -3076,6 +3082,9 @@ function renderQuizSets(){
     '</div>'+
     '<div class="tip">真题总库 '+qOfSet('old').length+' 题、断代史刷题讲义 '+qOfSet('dd').length+' 题、专题史刷题讲义 '+qOfSet('zhuanti').length+' 题。三套都按讲义原书目录（编 · 章 · 节）组织：先选做哪一套，再选第几章、第几节。</div>';
 }
+function qDoneSet(){ return S.qdone||[]; }
+function qDoneN(list){ var d=qDoneSet(), n=0; list.forEach(function(q){ if(d.indexOf(q.id)>=0) n++; }); return n; }
+function qProgTag(list){ var n=qDoneN(list), T=list.length; return T?(n+'/'+T+(n>=T?' ✓':'')):'0'; }
 function cnNum(x){ var m=/第([一二三四五六七八九十]+)/.exec(x||''); if(!m) return 0; var mp={'一':1,'二':2,'三':3,'四':4,'五':5,'六':6,'七':7,'八':8,'九':9,'十':10}; var t=m[1]; if(t==='十') return 10; if(t.length===2){ if(t[0]==='十') return 10+(mp[t[1]]||0); if(t[1]==='十') return (mp[t[0]]||0)*10; } return mp[t]||0; }
 function bianOrd(b){ if(!b) return 0; if(b.indexOf('绪论')===0) return 0; if(b.indexOf('上编')===0) return 1; if(b.indexOf('下编')===0) return 2; return 3; }
 function briefChap(c){ var m=/(第[一二三四五六七八九十]+章)\s*(.*)$/.exec(c||''); return m?(m[1]+(m[2]?' '+m[2].replace(/（[^）]*）$/,'').slice(0,9):'')):(c||''); }
@@ -3102,7 +3111,8 @@ function renderQuizSetup(){
       var b0=bs2[0]||'';
       pre=(b0.indexOf('上编')===0?'上·':(b0.indexOf('下编')===0?'下·':(b0==='绪论'?'绪·':'')));
     }
-    chOpts.push([c, pre+briefChap(c)+' '+all.filter(function(q){return (q.chap||q.ch)===c}).length]);
+    var cList=all.filter(function(q){return (q.chap||q.ch)===c});
+    chOpts.push([c, pre+briefChap(c)+' '+qProgTag(cList)]);
   });
   var subs=[], ss={};
   if(QF.chap!=='all'){
@@ -3110,7 +3120,10 @@ function renderQuizSetup(){
   }
   subs.sort(function(a,b){ return cnNum(a)-cnNum(b); });
   var subOpts=[['all','全部 '+all.filter(function(q){return (q.chap||q.ch)===QF.chap}).length]];
-  subs.forEach(function(sb){ subOpts.push([sb, briefSec(sb)+' '+all.filter(function(q){return (q.chap||q.ch)===QF.chap&&(q.sec||q.sub)===sb}).length]); });
+  subs.forEach(function(sb){
+    var sList=all.filter(function(q){return (q.chap||q.ch)===QF.chap&&(q.sec||q.sub)===sb});
+    subOpts.push([sb, briefSec(sb)+' '+qProgTag(sList)]);
+  });
   var n=filteredQuestions().length;
   var wrongN=all.filter(function(q){return (S.qwrong||[]).indexOf(q.id)>=0}).length;
   var doneN=all.filter(function(q){return (S.qdone||[]).indexOf(q.id)>=0}).length;
@@ -3124,6 +3137,9 @@ function renderQuizSetup(){
       '<div class="qstat"><b>'+doneN+'</b><span>已做 · 正确率'+acc+'%</span></div>'+
       '<div class="qstat"><b>'+wrongN+'</b><span>本套错题</span></div>'+
     '</div>'+
+    '<div class="qp-range"><b>当前范围</b><span class="qp-n">'+(QF.chap==='all'?'全部章节':briefChap(QF.chap))+(QF.sec!=='all'?' · '+briefSec(QF.sec):'')+'</span>'+
+      '<span class="qp-x">已做 '+qDoneN(filteredQuestions())+' / '+filteredQuestions().length+'</span>'+
+      '<span class="setbar"><i style="width:'+(filteredQuestions().length?Math.round(qDoneN(filteredQuestions())/filteredQuestions().length*100):0)+'%"></i></span></div>'+
     '<div class="filter-card">'+
       (bians.length>1?qChip('编', 'bian', bianOpts):'')+
       qChip('章', 'chap', chOpts)+
@@ -3132,25 +3148,42 @@ function renderQuizSetup(){
       qChip('题量','num',[['10','10 题'],['20','20 题'],['30','30 题'],['50','50 题'],['all','全部']])+
     '</div>'+
     '<div class="quiz-setup">'+
-      '<button class="opt" onclick="startRealQuiz(\'filtered\')"><span><b>顺序作答</b><small>按当前筛选条件，一题一题往下做</small></span><span class="n">'+shown+'</span></button>'+
+      '<button class="opt" onclick="startRealQuiz(\'filtered\')"><span><b>继续做题</b><small>从这一范围第一道没做的题开始</small></span><span class="n">'+shown+'</span></button>'+
+      '<button class="opt" onclick="startRealQuiz(\'full\')"><span><b>从头过一遍</b><small>不管做没做过，从第 1 题重做</small></span><span class="n">'+shown+'</span></button>'+
       '<button class="opt" onclick="startRealQuiz(\'random\')"><span><b>随机抽题</b><small>打乱当前筛选题目顺序</small></span><span class="n">'+shown+'</span></button>'+
       '<button class="opt" onclick="startRealQuiz(\'wrong\')"><span><b>本套错题重练</b><small>只练本套题里答错的题</small></span><span class="n">'+wrongN+'</span></button>'+
     '</div>'+
     '<div class="tip">当前套题：'+setName+'（'+all.length+' 题）。题干、选项、答案照原讲义；专题史讲义原书未附解析，答案与正确选项高亮直接给。</div>';
 }
 function startRealQuiz(mode){
-  let list;
+  let list, notice='';
   if(mode==='wrong'){
     list=REALQ.filter(q=>(S.qwrong||[]).includes(q.id)&&(!QF.set||q.set===QF.set));
     if(!list.length){ mtoast('还没有错题，先去做题吧'); return; }
   }else{
-    list=filteredQuestions();
-    if(!list.length){ mtoast('当前筛选没有题目'); return; }
-    if(mode==='random') list=shuffle(list.slice());
-    if(QF.num && QF.num!=='all') list=list.slice(0,Number(QF.num));
+    const all=filteredQuestions();
+    if(!all.length){ mtoast('当前筛选没有题目'); return; }
+    const cap=(QF.num && QF.num!=='all')?Number(QF.num):all.length;
+    if(mode==='random'){
+      list=shuffle(all.slice()).slice(0,cap);
+    }else if(mode==='full'){
+      list=all.slice(0,cap);
+    }else{
+      const d=S.qdone||[];
+      const rest=all.filter(q=>d.indexOf(q.id)<0);
+      if(!rest.length){
+        list=all.slice(0,cap); notice='这一范围已经全部做完，从头再练一遍';
+      }else{
+        list=rest.slice(0,cap);
+        const skipped=all.length-rest.length;
+        if(skipped) notice='已跳过 '+skipped+' 道做过的题，从第一道没做的开始';
+        if(rest.length>cap) notice+='（本轮只做 '+cap+' 道）';
+      }
+    }
   }
   QZ={mode,list,idx:0,sel:[],revealed:false,right:0,wrong:0};
   go('quiz'); renderQuiz();
+  if(notice) mtoast(notice);
 }
 function ansIdx(q){ return q.ans.map(a=>'ABCD'.indexOf(a)); }
 function mainPt(q){ return q.src==='xiao8' ? (q.mainPoint||null) : (q.point||null); }
@@ -5376,7 +5409,7 @@ migrateSrs();
 applyMode(); chipRow(); renderHome(); renderList(); renderCloze();
 
 const VER='3.7.0';
-const PATCH='30';   /* 同一版本内的补丁号；0 表示版本本体 */
+const PATCH='31';   /* 同一版本内的补丁号；0 表示版本本体 */
 const CHANGELOG = [
 {v:'3.5.0',d:'2026-11-15',kind:'minor',sum:'改为登录后解锁全部板块，用户中心独立成一页',items:[
 ['变更','未注册登录时只开放「总览」：断代史 / 专题史、检索、卡片正文都能看，掌握与笔记照常记；速览、背诵、专题、刷题按下会直接跳到「我的」页要求登录'],
