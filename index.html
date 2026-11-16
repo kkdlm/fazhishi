@@ -793,6 +793,7 @@ html[data-theme="night"] mark.hl{background:#8a6d2f;color:#fff}
 .stop-t{display:flex;flex-direction:column;gap:3px;margin-bottom:8px}
 .stop-t b{font-size:15px;color:var(--ink)}
 .stop-t span{font-size:12.5px;color:var(--muted)}
+.stop-t .stop-set{color:var(--ink);opacity:.82;font-weight:600}
 .stop-btns{display:flex;gap:8px}
 .quiz-setup{display:flex;flex-direction:column;gap:9px}
 .quiz-setup .opt{display:flex;justify-content:space-between;align-items:center;background:var(--card);
@@ -1815,7 +1816,7 @@ const CH = [
 /* ---------- 状态 ---------- */
 const KEY='fzs2027.v1';
 const DEF={status:{},fav:[],due:{},seen:{},last:null,core:true,log:{},theme:'light',fs:'m',mode:'dai',
-  sub:'rec',goal:20,notes:{},quizLog:{},qwrong:[],qdone:[],ient:{},srs:{},today:null,bugLog:[],legendOn:true,qprog:null};
+  sub:'rec',goal:20,notes:{},quizLog:{},qwrong:[],qdone:[],ient:{},srs:{},today:null,bugLog:[],legendOn:true,qprog:null,qprogBySet:{}};
 let S=(()=>{
   try{ return Object.assign({},DEF,JSON.parse(localStorage.getItem(KEY)||'{}')); }
   catch(e){ return Object.assign({},DEF); }
@@ -1829,6 +1830,13 @@ function normalizeState(){
   S.log=normObj(S.log); S.notes=normObj(S.notes); S.quizLog=normObj(S.quizLog);
   S.qwrong=normArr(S.qwrong); S.qdone=normArr(S.qdone); S.ient=normObj(S.ient);
   S.qprog=(S.qprog&&typeof S.qprog==='object'&&Array.isArray(S.qprog.ids)&&S.qprog.ids.length)?S.qprog:null;
+  if(!S.qprogBySet||typeof S.qprogBySet!=='object') S.qprogBySet={};
+  Object.keys(S.qprogBySet).forEach(function(k){ var v=S.qprogBySet[k];
+    if(!(v&&Array.isArray(v.ids)&&v.ids.length)) delete S.qprogBySet[k]; });
+  if(S.qprog&&S.qprog.ids&&S.qprog.ids.length){
+    var k0=S.qprog.set||((REALQ.find(function(q){return q.id===S.qprog.ids[0]})||{}).set||'');
+    if(k0 && !S.qprogBySet[k0]) S.qprogBySet[k0]=S.qprog;
+  }
   S.srs=normObj(S.srs); S.bugLog=normArr(S.bugLog);
   /* 今日任务结构兜底：字段缺失/类型不对时重建，不让坏存档卡住背诵 */
   const td=S.today;
@@ -3388,7 +3396,7 @@ function renderQuizSets(){
   }).join('');
   box.innerHTML=
     '<div class="sec-h" style="margin:2px 0 10px"><h2>刷题</h2><span class="more">共 '+REALQ.length+' 题 · '+QSETS.length+' 套题</span></div>'+
-    progCardHTML()+
+    progCardHTML('')+
     '<div class="qstat-grid">'+
       '<div class="qstat"><b>'+QSETS.length+'</b><span>套题</span></div>'+
       '<div class="qstat"><b>'+doneN+'</b><span>已做 · 正确率'+acc+'%</span></div>'+
@@ -3456,7 +3464,7 @@ function renderQuizSetup(){
       '<div class="qstat"><b>'+doneN+'</b><span>已做 · 正确率'+acc+'%</span></div>'+
       '<div class="qstat"><b>'+wrongN+'</b><span>本套错题</span></div>'+
     '</div>'+
-    progCardHTML()+
+    progCardHTML(QF.set)+
     '<div class="qp-range"><b>当前范围</b><span class="qp-n">'+(QF.chap==='all'?'全部章节':briefChap(QF.chap))+(QF.sec!=='all'?' · '+briefSec(QF.sec):'')+'</span>'+
       '<span class="qp-x">已做 '+qDoneN(filteredQuestions())+' / '+filteredQuestions().length+'</span>'+
       '<span class="setbar"><i style="width:'+(filteredQuestions().length?Math.round(qDoneN(filteredQuestions())/filteredQuestions().length*100):0)+'%"></i></span></div>'+
@@ -3669,21 +3677,50 @@ function qzRecount(){
   (QZ.cur||[]).forEach(function(x){ if(x&&x.revealed){ x.correct?rt++:wr++; } });
   QZ.right=rt; QZ.wrong=wr;
 }
+function progKey(p){
+  return (p&&p.set)||((p&&p.ids&&p.ids[0])?((REALQ.find(function(q){return q.id===p.ids[0]})||{}).set||''):'');
+}
 function saveQuizProgress(){
   if(!QZ || QZ.mode==='ai' || !QZ.list || QZ.list.length<2) return;
-  if(QZ.idx>=QZ.list.length){ S.qprog=null; save(); return; }
+  const k=(QZ.list[0]&&QZ.list[0].set)||'';
+  if(QZ.idx>=QZ.list.length){ clearProg(k); return; }
   var next=0, cur=QZ.cur||[];
   for(var i=0;i<QZ.list.length;i++){ if(!(cur[i]&&cur[i].revealed)){ next=i; break; } next=i+1; }
-  S.qprog={mode:QZ.mode, idx:QZ.idx, next:next, ids:QZ.list.map(function(q){return q.id}),
-           cur:cur.slice(), right:QZ.right|0, wrong:QZ.wrong|0,
-           set:(QZ.list[0]&&QZ.list[0].set)||'', scope:(QZ.scope||''), at:Date.now()};
+  const prog={mode:QZ.mode, idx:QZ.idx, next:next, ids:QZ.list.map(function(q){return q.id}),
+              cur:cur.slice(), right:QZ.right|0, wrong:QZ.wrong|0,
+              set:k, scope:(QZ.scope||''), at:Date.now()};
+  if(!S.qprogBySet) S.qprogBySet={};
+  S.qprogBySet[k]=prog;      /* 每套题各存一份，互不干扰 */
+  S.qprog=prog;              /* 保留「最近一次」，供刷题首页提示与云端兼容 */
   save();
 }
-function progInfo(){ const p=S.qprog; return (p&&p.ids&&p.ids.length)?p:null; }
-function resumeQuiz(){
-  const p=progInfo(); if(!p) return;
+function clearProg(set){
+  if(!S.qprogBySet) S.qprogBySet={};
+  if(!set){ S.qprog=null; save(); return; }
+  delete S.qprogBySet[set];
+  if(S.qprog && progKey(S.qprog)===set) S.qprog=null;
+  save();
+}
+function progAll(){
+  const out=[], m=S.qprogBySet||{};
+  Object.keys(m).forEach(function(k){ const p=m[k]; if(p&&p.ids&&p.ids.length) out.push(p); });
+  return out;
+}
+function progInfo(set){
+  if(!set) return progAll().sort(function(a,b){return (Number(b.at)||0)-(Number(a.at)||0)})[0]||null;
+  const m=S.qprogBySet||{};
+  if(m[set]&&m[set].ids&&m[set].ids.length) return m[set];
+  const g=S.qprog;
+  if(g&&g.ids&&g.ids.length&&progKey(g)===set) return g;
+  return null;
+}
+function setLabelOf(id){ const x=(typeof QSETS!=='undefined'?QSETS:[]).filter(function(v){return v.id===id})[0]; return x?x.name:(id||'这套题'); }
+function resumeQuiz(set){
+  const p=progInfo(set===undefined?'':set); if(!p) return;
+  const key=progKey(p);
+  if(key){ QF.set=key; QF.bian='all'; QF.chap='all'; QF.sec='all'; QF.era='all'; }
   const list=p.ids.map(function(id){ return REALQ.find(function(q){return q.id===id}) }).filter(Boolean);
-  if(!list.length){ S.qprog=null; save(); mtoast('上次的题目已不在题库'); renderQuizSetup(); return; }
+  if(!list.length){ clearProg(key); mtoast('上次的题目已不在题库'); renderQuizSetup(); return; }
   var start=(p.next!=null&&p.next>=0)?Number(p.next):Math.min(Number(p.idx)||0, list.length-1);
   start=Math.min(Math.max(0,start), list.length-1);
   QZ={mode:p.mode||'filtered', list:list, idx:start,
@@ -3691,15 +3728,23 @@ function resumeQuiz(){
   qzRecount(); qzLoad(QZ.idx); go('quiz'); renderQuiz(); window.scrollTo({top:0});
   haptic();
 }
-function restartQuiz(){ S.qprog=null; save(); if(QF.set) renderQuizSetup(); else renderQuizSets(); }
-function progCardHTML(){
-  const p=progInfo(); if(!p) return '';
+function restartQuizCur(){ const k=(QZ&&QZ.list&&QZ.list[0]&&QZ.list[0].set)||''; restartQuiz(k); }
+function restartQuiz(set){
+  if(set===undefined){ const p0=progInfo(''); set=p0?progKey(p0):''; }
+  clearProg(set||'');
+  if(QF.set) renderQuizSetup(); else renderQuizSets();
+}
+function progCardHTML(set){
+  const p=progInfo(set===undefined?'':set); if(!p) return '';
   const n=p.ids.length, nx=(p.next!=null?Number(p.next):(Number(p.idx)||0)), i=Math.min(nx+1, n);
   const done=(p.cur||[]).filter(function(x){return x&&x.revealed}).length;
+  const key=progKey(p);
+  const showSet=(set===undefined||set==='');
+  const tag=showSet?('<em class="stop-set">「'+esc(setLabelOf(key))+'」</em> '):'';
   return '<div class="stop-card">'+
-    '<div class="stop-t"><b>有未做完的一轮</b><span>下一题从第 '+i+' / '+n+' 题接着做 · 已答 '+done+' 题 · 对 '+(p.right|0)+' 错 '+(p.wrong|0)+'</span></div>'+
-    '<div class="stop-btns"><button class="primary sm" onclick="resumeQuiz()">继续上次</button>'+
-    '<button class="ghost sm" onclick="restartQuiz()">重新开始</button></div></div>';
+    '<div class="stop-t"><b>有未做完的一轮</b><span>'+tag+'下一题从第 '+i+' / '+n+' 题接着做 · 已答 '+done+' 题 · 对 '+(p.right|0)+' 错 '+(p.wrong|0)+'</span></div>'+
+    '<div class="stop-btns"><button class="primary sm" onclick="resumeQuiz(\''+esc(key)+'\')">继续上次</button>'+
+    '<button class="ghost sm" onclick="restartQuiz(\''+esc(key)+'\')">重新开始</button></div></div>';
 }
 function renderQuiz(){
   const box=document.getElementById('quizBody');
@@ -3808,7 +3853,7 @@ function confirmAnswer(){
 }
 function nextRealQ(){
   qzSync(); QZ.idx++;
-  if(QZ.idx>=QZ.list.length){ S.qprog=null; save(); }
+  if(QZ.idx>=QZ.list.length){ clearProg((QZ.list[0]&&QZ.list[0].set)||''); }
   else saveQuizProgress();
   qzLoad(QZ.idx); renderQuiz(); window.scrollTo({top:0});
 }
@@ -3841,7 +3886,7 @@ function quizExit(){
     '<div class="quiz-setup">'+
     '<button class="opt" onclick="closeSheet()"><span><b>继续做题</b><small>不退出，回到第 '+at+' 题</small></span></button>'+
     '<button class="opt" onclick="closeSheet();quizHome()"><span><b>保存并退出</b><small>下次从第 '+at+' 题接着做</small></span></button>'+
-    '<button class="opt" onclick="closeSheet();restartQuiz();quizHome()"><span><b>退出并清空这一轮</b><small>已做过的题目记录不删，只丢这一轮的进度</small></span></button>'+
+    '<button class="opt" onclick="closeSheet();restartQuizCur();quizHome()"><span><b>退出并清空这一轮</b><small>已做过的题目记录不删，只丢这一轮的进度</small></span></button>'+
     '</div></div>');
 }
 /* ---------- 错题本：直接翻题＋答案＋解析，不用重做 ---------- */
@@ -5261,9 +5306,20 @@ async function useBoth(){
   const ok=await pushCloud(true); renderAcct();
   mtoast(ok?('已合并并上传：掌握 '+Object.keys(S.status||{}).length+' 条'):'合并完成，但没传上去，稍后自动重试');
 }
+/* 云端与本地的「每套题未完成进度」合并：同一套题取更晚的那份 */
+function mergeProgBySet(remote){
+  if(!remote||typeof remote!=='object') return;
+  if(!S.qprogBySet) S.qprogBySet={};
+  Object.keys(remote).forEach(function(k){
+    const r=remote[k], l=S.qprogBySet[k];
+    if(!(r&&r.ids&&r.ids.length)) return;
+    if(!l || (Number(r.at)||0)>(Number(l.at)||0)) S.qprogBySet[k]=r;
+  });
+}
 function applyCloud(row){
   const d=(row&&row.data)||{};
-  ['status','fav','due','seen','log','ient','srs','notes','quizLog','qwrong','qdone','qprog'].forEach(k=>{ if(d[k]!==undefined) S[k]=d[k]; });
+  ['status','fav','due','seen','log','ient','srs','notes','quizLog','qwrong','qdone','qprog','qprogBySet'].forEach(k=>{ if(d[k]!==undefined) S[k]=d[k]; });
+  mergeProgBySet(d.qprogBySet);
   if(d.today!==undefined) S.today=d.today;
   S.rev=parseInt(row&&row.rev||'0',10)||0;
   S.syncAt=Date.parse(row&&row.updated_at||'')||0;
@@ -5275,7 +5331,7 @@ function applyCloud(row){
 /* ---------- 推送 / 拉取 ---------- */
 function cloudPack(){
   return {status:S.status,fav:S.fav,due:S.due,seen:S.seen,log:S.log,ient:S.ient,srs:S.srs,
-    notes:S.notes,quizLog:S.quizLog,qwrong:S.qwrong,qdone:S.qdone,today:S.today,qprog:S.qprog};
+    notes:S.notes,quizLog:S.quizLog,qwrong:S.qwrong,qdone:S.qdone,today:S.today,qprog:S.qprog,qprogBySet:S.qprogBySet};
 }
 /* 在线心跳：后台靠 profiles.last_seen 算 DAU；打开一次、每 30 分钟最多写一次 */
 let PRESENT_AT=0, SYNC_RETRY=0;
@@ -5769,7 +5825,7 @@ migrateSrs();
 applyMode(); chipRow(); renderHome(); renderList(); renderCloze();
 
 const VER='3.7.0';
-const PATCH='35';   /* 同一版本内的补丁号；0 表示版本本体 */
+const PATCH='36';   /* 同一版本内的补丁号；0 表示版本本体 */
 const CHANGELOG = [
 {v:'3.5.0',d:'2026-11-15',kind:'minor',sum:'改为登录后解锁全部板块，用户中心独立成一页',items:[
 ['变更','未注册登录时只开放「总览」：断代史 / 专题史、检索、卡片正文都能看，掌握与笔记照常记；速览、背诵、专题、刷题按下会直接跳到「我的」页要求登录'],
