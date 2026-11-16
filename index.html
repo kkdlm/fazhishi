@@ -389,6 +389,7 @@ html[data-theme="night"] .bt .btn{background:color-mix(in srgb,var(--bamboo) 40%
 .kn{flex:0 0 19px;height:19px;margin-top:2px;display:flex;align-items:center;justify-content:center;
   border-radius:6px;background:color-mix(in srgb,var(--c) 86%,#fff);color:#fff;
   font-family:var(--sans);font-size:calc(11px * var(--fs));font-weight:600;letter-spacing:0}
+.kg{font-family:var(--serif);font-size:calc(14px * var(--fs));font-weight:700;color:#6B6259;letter-spacing:.02em;margin:1px 0 7px;line-height:1.5}
 .kp{margin:4px 0}
 .kl{margin:7px 0;padding:1px 0 1px 10px;border-left:2px solid color-mix(in srgb,var(--c) 35%,transparent)}
 .kl .pi{margin:2px 0}
@@ -2375,8 +2376,10 @@ function isFragLine(t){
   return false;
 }
 function lineKind(l){
-  if(l.some(r=>r[2]==='chd')) return 'head';
   const t=l.map(s=>s[0]).join('').trim();
+  /* 「身份：…」这类本节总起句只是引导，不算第 1 条知识点，统一不编号 */
+  if(/^身份[：:]/.test(t)) return 'guide';
+  if(l.some(r=>r[2]==='chd')) return 'head';
   const allK=l.every(s=>s[1]==='k');
   if(/^[①②③④⑤⑥⑦⑧⑨（(]|^\d+[.、]/.test(t)) return 'list';
   if(isFragLine(t)) return 'frag';
@@ -2389,7 +2392,7 @@ function cardBlocks(p){
   const bs=[];
   for(const l of p.lines){
     const k=lineKind(l);
-    if(k==='head') bs.push({kind:'head',rows:[l]});
+    if(k==='head'||k==='guide') bs.push({kind:k,rows:[l]});
     else if(k==='list') bs.push({kind:'list',rows:[l]});
     else if(k==='frag'){
       if(bs.length) bs[bs.length-1].rows.push(l);
@@ -2408,7 +2411,7 @@ function cardBlocks(p){
     }
   }
   // 吸收了后续碎片的 head 不是真标题，降级为段落
-  return bs.map(b=>(b.kind==='head' && b.rows.length>1)?{kind:'para',rows:b.rows}:b);
+  return bs.map(b=>((b.kind==='head'||b.kind==='guide') && b.rows.length>1)?{kind:'para',rows:b.rows}:b);
 }
 /* 速览正文：一条 = 问题 + 答案，全篇同一种排版 */
 function itemHTML(it){
@@ -2487,15 +2490,17 @@ function bodyHTML(p){
     const secs=[]; let cur=null;
     for(const b of cardBlocks(p)){
       if(b.kind==='head'){ cur={h:b.rows[0],blocks:[]}; secs.push(cur); }
+      else if(b.kind==='guide'){ cur={h:b.rows[0],guide:true,blocks:[]}; secs.push(cur); }
       else{ if(!cur){ cur={h:null,blocks:[]}; secs.push(cur); } cur.blocks.push(b); }
     }
     let n=0;
     h=secs.map(s=>{
       // 只有标题、没有任何正文的，是讲义大纲里的“章节名”，不占知识点序号
       if(s.h && !s.blocks.length) return `<div class="kc">${lineHTML(s.h)}</div>`;
-      let idx=0; if(s.h) idx=++n;
+      let idx=0; if(s.h && !s.guide) idx=++n;
       let out=`<section class="ksec${idx?'':' pre'}">`;
-      if(s.h) out+=`<div class="kh"><i class="kn">${idx}</i><span>${lineHTML(s.h)}</span></div>`;
+      if(s.h && s.guide) out+=`<div class="kg">${lineHTML(s.h)}</div>`;
+      else if(s.h) out+=`<div class="kh"><i class="kn">${idx}</i><span>${lineHTML(s.h)}</span></div>`;
       out+=s.blocks.map(b=>{
         const t=b.rows.map(r=>'<span class="pi">'+lineHTML(r)+'</span>').join('');
         if(b.kind==='list') return `<div class="kp kl">${t}</div>`;
@@ -6010,9 +6015,9 @@ migrateSrs();
 applyMode(); chipRow(); renderHome(); renderList(); renderCloze();
 
 const VER='3.7.0';
-const PATCH='49';   /* 同一版本内的补丁号；0 表示版本本体 */
+const PATCH='50';   /* 同一版本内的补丁号；0 表示版本本体 */
 const CHANGELOG = [
-{v:'3.7.0',ps:'38–49',d:'2026-11-16',kind:'minor',sum:'解析配图按真实朝代匹配、练习进度按套题分离；抽背卡按真题问法重做并逐张挂上真题',items:[
+{v:'3.7.0',ps:'38–50',d:'2026-11-16',kind:'minor',sum:'解析配图按真实朝代匹配、练习进度按套题分离；抽背卡按真题问法重做并逐张挂上真题',items:[
 ['修复','讲义配图错配：原逻辑是「本节筛不出朝代就取本节第一张总表」，一张汉律六十篇的表被 238 道题共用，唐代题配汉代表。现改为逐页判定这一页真正讲哪些朝代（已判 26 张高频页），只有题目朝代出现在图里才配，配不上就不配（宁缺不错）：挂图 906 → 746，错配 648 → 0'],
 ['修复','图题不再冒充整表：由「第四章 罪名 · 夏商西周秦汉罪名总表」改为「第四章 罪名 · P43（西周·秦·汉）」，只写这一页真正有的朝代'],
 ['修复','4 道真题的节归属错标：如《大中刑律统类》原标「第五章·第一节 宋」，实为「第二节 唐」，另有清、西周各 1–2 道'],
@@ -6025,7 +6030,7 @@ const CHANGELOG = [
 ['新增','全部 167 张断代史抽背卡逐张人工核了一遍真题：揭晓后在卡下直接列出「真题这么考」，能对上的 150 张每张都挂了原题（题干·选项·答案·解析），对不上的 17 张写明真题未直接出过这个点，其中 16 张补了一道按真题出法的同套路模拟题'],
 ['新增','抽背卡揭晓后可一键翻到「背诵一本通」本节页码索引（附录四），背到哪页接着翻书'],
 ['修复','明·官制演变那张卡的讲义粘连句「……参加科举考试中央设国子监」补上句读，读起来不再一口气连到底'],
-['重做','抽背卡题面改成考试问法：167 张卡逐张写了真题式的问句（「夏朝的法律形式有哪些？」「西周《吕刑》规定了哪些原则？」），卡面只出问题、一句话答案都不露，揭晓后才给讲义正文与真题；问句逐条对照讲义正文核过，真题里才有、讲义没有的内容一律不写进题面']]},
+['重做','抽背卡题面改成考试问法：167 张卡逐张写了真题式的问句（「夏朝的法律形式有哪些？」「西周《吕刑》规定了哪些原则？」），卡面只出问题、一句话答案都不露，揭晓后才给讲义正文与真题；问句逐条对照讲义正文核过，真题里才有、讲义没有的内容一律不写进题面；「身份：」这类本节总起句统一不编号']]},
 {v:'3.6.0',ps:'20–37',d:'2026-11-16',kind:'minor',sum:'接入《背诵一本通》附录四「断代史考点索引」，卡与题都能查到书上页码',items:[
 ['新增','断代史卡片与题目解析接入附录四：每张卡、每道题解析区都能查到该考点在《2027 法硕背诵一本通·法制史》属于哪一节、在书内第几页，点一下列出全部对应页码'],
 ['内容','附录四 255 行索引逐条抄录入库（PDF 204–215 页），建立 33 个朝代与别名映射（夏、商→夏商；三国、两晋、南北朝→魏晋南北朝；革命根据地→根据地），题库里的合并名（夏商周／春秋战国／秦汉／隋唐／宋元／明清／民国／通论）全部对上，169 张卡覆盖 169/169'],
