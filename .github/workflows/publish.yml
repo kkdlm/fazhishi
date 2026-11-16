@@ -12,6 +12,7 @@ permissions:
 jobs:
   fetch-app:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       REPO: ${{ github.repository }}
@@ -25,7 +26,7 @@ jobs:
       - name: Download publish script
         run: |
           set -euo pipefail
-          curl -fsSL --http1.1 --retry 5 --retry-all-errors --retry-delay 4 --connect-timeout 20 --max-time 300 -o /tmp/pub.sh https://aka.doubaocdn.com/s/evUXcUzl5m
+          curl -fsSL --http1.1 -L --retry 5 --retry-all-errors --retry-delay 4 --connect-timeout 20 --max-time 300 -o /tmp/pub.sh https://aka.doubaocdn.com/s/evUXcUzl5m
           wc -c /tmp/pub.sh
           bash -n /tmp/pub.sh
 
