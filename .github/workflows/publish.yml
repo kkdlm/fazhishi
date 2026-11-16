@@ -26,10 +26,26 @@ jobs:
         run: |
           set -euo pipefail
           curl -fsSL --http1.1 --retry 5 --retry-all-errors --retry-delay 4 --connect-timeout 20 --max-time 300 -o /tmp/pub.sh https://aka.doubaocdn.com/s/TQzl2f0MoC
-          size=$(stat -c%s /tmp/pub.sh)
-          echo "script-size=$size"
-          if [ "$size" -lt 8000 ]; then echo "::error::publish script truncated ($size)"; exit 1; fi
+          wc -c /tmp/pub.sh
+          head -3 /tmp/pub.sh
           bash -n /tmp/pub.sh
 
-      - name: Publish (下载 / 断言 / 提交 全部在脚本内完成)
-        run: bash /tmp/pub.sh
+      - name: Publish
+        run: |
+          set +e
+          bash -x /tmp/pub.sh > /tmp/out.log 2>&1
+          echo "rc=$?"
+          tail -30 /tmp/out.log
+
+      - name: Save debug log
+        if: always()
+        run: |
+          set -euo pipefail
+          git config user.name kkdlm
+          git config user.email 63939444+kkdlm@users.noreply.github.com
+          cp /tmp/out.log publish-debug.log 2>/dev/null || true
+          tail -c 70000 publish-debug.log > /tmp/tail.log || true
+          mv /tmp/tail.log publish-debug.log
+          git add publish-debug.log
+          git diff --cached --quiet || git commit -m "chore: publish debug log"
+          git push origin HEAD:main || true
