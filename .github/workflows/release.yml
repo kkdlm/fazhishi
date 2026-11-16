@@ -16,9 +16,9 @@ jobs:
   release:
     runs-on: ubuntu-latest
     env:
-      SRC: https://aka.doubaocdn.com/s/m7TyV5Zx3w
-      SWURL: https://aka.doubaocdn.com/s/TPWRUlzXSL
-      PATCH: "44"
+      SRC: https://aka.doubaocdn.com/s/Ur2UkEB8X4
+      SWURL: https://aka.doubaocdn.com/s/R6s3BUnbSc
+      PATCH: "45"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
