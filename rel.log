@@ -21,3 +21,26 @@ index-size=2016376
 + printf '{\n  "version": "3.7.0",\n  "patch": 39,\n  "date": "2026-11-16"\n}\n'
 + echo done
 done
++ curl -fsSL --http1.1 -L --retry 5 --retry-all-errors --retry-delay 3 --max-time 300 -o index.new https://aka.doubaocdn.com/s/nGtcXkbnhR
++ echo fetch-exit=0
+fetch-exit=0
++ ls -l index.new
+-rw-r--r-- 1 runner runner 2016376 Nov 16 05:31 index.new
+++ stat -c%s index.new
++ sz=2016376
++ echo index-size=2016376
+index-size=2016376
++ '[' 2016376 -lt 1500000 ']'
++ head -c 60 index.new
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light" data-f+ grep -c 'const PATCH='\''39'\''' index.new
+1
++ mv index.new index.html
++ curl -fsSL --http1.1 -L --retry 5 --retry-all-errors --retry-delay 3 --max-time 120 -o sw.js https://aka.doubaocdn.com/s/4CYynBANym
++ ls -l sw.js
+-rw-r--r-- 1 runner runner 3484 Nov 16 05:31 sw.js
++ grep -c app-3.7.0-p39 sw.js
+1
++ printf '{\n  "version": "3.7.0",\n  "patch": 39,\n  "date": "2026-11-16"\n}\n'
++ echo done
+done
