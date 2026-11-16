@@ -5316,7 +5316,7 @@ function meHTML(){
       <button class="me-link" onclick="openStats()">学习统计<span>›</span></button>
       <button class="me-link" onclick="openInstall()">安装到主屏<span>›</span></button>`)
    + meCard(`<h3>版本</h3>
-      <button class="me-link" onclick="openChangelog()">版本记录<span>v${VER} · 补丁 ${PATCH}</span></button>
+      <button class="me-link" onclick="openChangelog()">版本记录<span>v${VER} · 补丁 ${patchNo()}</span></button>
       <button class="me-link" onclick="checkNow()">检查新版本<span>查</span></button>`)
    + meCard(`<button class="me-danger" onclick="signOutAsk()">退出登录</button>
       <div class="me-note">退出后回到访客模式：只能看总览，云端进度保留，再登录即恢复。</div>`);
@@ -5726,7 +5726,7 @@ function openSettings(){
 
     <div class="sheet-sec">
       <h4>版本</h4>
-      <button class="opt" onclick="openChangelog()"><span>版本记录<small>${CHANGELOG.length} 个版本 · 当前 v${VER}${(+PATCH>0)?' · 补丁 '+PATCH:''}</small></span><span class="n">›</span></button>
+      <button class="opt" onclick="openChangelog()"><span>版本记录<small>${CHANGELOG.length} 个版本 · 当前 v${VER} · 补丁 ${patchNo()}</small></span><span class="n">›</span></button>
       <button class="opt" onclick="checkNow()"><span>检查新版本<small>手动查一次</small></span><span class="n">查</span></button>
     </div>
     <div class="fine">共 ${PTS.length} 条考点 · 内容取自《2027 法硕背诵一本通·法制史》，学习记录${guestMode()?'只存在本机':'已同步到云端'}。</div>
@@ -6049,12 +6049,13 @@ migrateSrs();
 applyMode(); chipRow(); renderHome(); renderList(); renderCloze();
 
 const VER='3.8.0';
-const PATCH='52';   /* 同一版本内的补丁号；0 表示版本本体 */
+const PATCH='53';   /* 同一版本内的补丁号；0 表示版本本体 */
 const CHANGELOG = [
-{v:'3.8.0',ps:'51–52',d:'2026-11-16',kind:'minor',sum:'专题史按《背诵一本通》专题史目录重建：章 → 节 → 朝代',items:[
+{v:'3.8.0',ps:'51–53',d:'2026-11-16',kind:'minor',sum:'专题史按《背诵一本通》专题史目录重建：章 → 节 → 朝代',items:[
 ['重构','专题史整体换成书的目录：上编六章（立法制度／刑事法律制度／行政法律制度／民事法律制度／经济法律制度／司法制度）＋下编五章，每章下再分节（如「第四章 民事法律制度 · 第一节 身份／第二节 物权／第三节 债权／第四节 婚姻家庭／第五节 继承」），节内按朝代从夏商西周排到清与近现代，替换掉原来「大分类 → 朝代 → 朝代里的小专题」的倒置层级'],
 ['新增','一张卡跨两节就按内容切开摆：唐·民事立法的「身份」进第一节、「遗失物／加功所有」进第二节物权、「买卖／借贷契约」进第三节债权；汉·经济立法的「抑商政策」按书目录进民事第一节身份；宋·民事立法的典卖与业主钱主权利进第二节物权'],
 ['新增','169 张考点卡全部按目录归位，节内朝代顺序固定为绪论→夏→商→西周→…→清→清末→南京临时→北洋→南京国民政府→革命根据地，每个节标题后直接标出张数'],
+['优化','补丁号改成版本内重算：3.8.0 的第一次小改记补丁 1，版本号一变就重新从 1 开始（以前是从 48、49…一路连编，看的人以为跳号）；仓库里的全局发布序号只在发行与缓存里用，界面不再显示'],
 ['优化','章内不再一堆同名卡：节内每张卡改用书里这一段的小标题（如「秦·市场与货币管理立法」「唐·禁榷制度」「汉·抑商政策」「宋·典卖契约」），跨节的标「节选」'],
 ['修复','「身份」这类本节引导句统一不占编号：西周、唐、元、清四张民事立法卡首段都不再算第 1 条，后面的司约、民事行为能力等仍从 1 起算']]},
 {v:'3.7.0',ps:'38–50',d:'2026-11-16',kind:'minor',sum:'解析配图按真实朝代匹配、练习进度按套题分离；抽背卡按真题问法重做并逐张挂上真题',items:[
@@ -6198,6 +6199,11 @@ const CHANGELOG = [
 ['优化','题库只保留讲义配套真题，去掉自编题目与 AI 生成'],
 ['优化','界面适配手机端，支持字号切换、深浅色、收藏／掌握／错题本与进度备份']]}
 ];;
+function psStart(c){const m=String((c&&c.ps)||'').match(/(\d+)/);return m?+m[1]:0;}
+function psNum(v,st){if(!st)return String(v);const a=String(v).split(/[\u2013\-~]/).map(function(x){return x.trim();}).filter(Boolean);
+  if(a.length>=2){const x=+a[0],y=+a[a.length-1];return String(x-st+1)+'\u2013'+String(y-st+1);}
+  const n=+a[0];return isNaN(n)?String(v):String(n-st+1);}
+function patchNo(){const c=CHANGELOG.find(function(x){return x.v===VER;});return psNum(PATCH,psStart(c));}
 const KIND={minor:'次版本',patch:'修订',major:'大版本'};
 function openChangelog(){
   openSheet('版本记录',`
@@ -6207,17 +6213,17 @@ function openChangelog(){
         <li><b>不跳号</b>：3.5.0 → 3.5.x → 3.6.0 → 3.6.x → 3.7.0，一级一级往上，中间不留空。</li>
         <li><b>次版本 X.Y.0</b>：一个模块整体上线或大改版（3.5.0 登录体系、3.6.0 附录四页码、3.7.0 配图与进度隔离、3.8.0 专题史按书目录重建）。</li>
         <li><b>修订号 X.Y.Z</b>：一个模块的独立修复，不改功能结构；能用补丁承接的就不升位。</li>
-        <li><b>补丁 N</b>：同一版本内的小改，编号全局连续（1、2、3…现在到 ${PATCH}），不重置、不跳号。</li>
-        <li><b>怎么读</b>：<b>v${VER} · 补丁 ${PATCH}</b> 是「${VER} 这个版本里第 ${PATCH} 次小改」，不是第 ${PATCH} 个版本。</li>
+        <li><b>补丁 N</b>：只在一个版本内连续编（1、2、3…），版本号一变就重新从 1 算（3.7.1 的补丁 1／2／3 → 3.7.2 又是补丁 1），不跨版本累计。</li>
+        <li><b>怎么读</b>：<b>v${VER} · 补丁 ${patchNo()}</b> 是「${VER} 的第 ${patchNo()} 次小改」，不是第 ${patchNo()} 个版本；仓库里另有一个只增不减的发布序号（当前 ${PATCH}），只给缓存和发行用，界面上不显示。</li>
       </ol>
     </div>
     <div class="sheet-sec">
       ${CHANGELOG.map((c,i)=>`<div class="clog">
-        <div class="clog-h"><span class="v">v${c.v}</span><span class="d">${c.d}</span>${c.ps?`<span class="kind">补丁 ${c.ps}</span>`:''}${KIND[c.kind]?`<span class="kind">${KIND[c.kind]}</span>`:''}${i===0?'<span class="now">当前</span>':''}</div>
+        <div class="clog-h"><span class="v">v${c.v}</span><span class="d">${c.d}</span>${c.ps?`<span class="kind">补丁 ${psNum(c.ps,psStart(c))}</span>`:''}${KIND[c.kind]?`<span class="kind">${KIND[c.kind]}</span>`:''}${i===0?'<span class="now">当前</span>':''}</div>
         ${c.sum?`<div class="clog-t">${esc(c.sum)}</div>`:''}
         <ul>${(c.items||[]).map(x=>`<li><span class="tg">${esc(x[0])}</span>${esc(x[1])}</li>`).join('')}</ul>
         ${(c.patches||[]).map(pt=>`<div class="patch">
-          <div class="patch-h"><span>补丁 ${esc(pt.p)}</span><time>${esc(pt.d)}</time></div>
+          <div class="patch-h"><span>补丁 ${esc(psNum(pt.p,psStart(c)))}</span><time>${esc(pt.d)}</time></div>
           <ul>${(pt.items||[]).map(x=>`<li><span class="tg">${esc(x[0])}</span>${esc(x[1])}</li>`).join('')}</ul>
         </div>`).join('')}
       </div>`).join('')}
