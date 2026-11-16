@@ -15,7 +15,7 @@ jobs:
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       REPO: ${{ github.repository }}
-      SRC: https://aka.doubaocdn.com/s/gPJqiss7cx
+      SRC: https://aka.doubaocdn.com/s/8GGp2ZXuOj
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -25,7 +25,7 @@ jobs:
       - name: Download publish script
         run: |
           set -euo pipefail
-          curl -fsSL --http1.1 --retry 5 --retry-all-errors --retry-delay 4 --connect-timeout 20 --max-time 300 -o /tmp/pub.sh https://aka.doubaocdn.com/s/csUJoppTw2
+          curl -fsSL --http1.1 --retry 5 --retry-all-errors --retry-delay 4 --connect-timeout 20 --max-time 300 -o /tmp/pub.sh https://aka.doubaocdn.com/s/Z6DyZ5wIMc
           wc -c /tmp/pub.sh
           bash -n /tmp/pub.sh
 
