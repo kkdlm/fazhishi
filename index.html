@@ -3066,7 +3066,7 @@ function renderRecite(){
     if(RSHOW){ titleTxt=stripMeta(p.title||e.head); titleFs=19; }
     else { titleTxt=(e.term?'这是哪一项？先看描述，自己在心里说出名称':'这一条讲的是什么？先看描述，自己在心里说一遍'); titleCls=' ask-t'; titleFs=13; }
   }else{ titleTxt=stripMeta(e.head||p.title); titleFs=19; }
-  const hintTxt=qask?'在心里把答案说出来 · 轻点揭晓':(e.termq?('这是哪一项？在心里说出名称 · 轻点揭晓'):(isMask?(e.askLine?'把空处补上 · 轻点揭晓':'在心里回忆这句 · 轻点揭晓'):(isWhole?'在心里回忆整句 · 轻点揭晓':'先在心里把答案补上 · 轻点揭晓')));
+  const hintTxt=qask?'在心里把答案说出来 · 轻点揭晓':(e.termq?('在心里说出名称 · 轻点揭晓'):(isMask?(e.askLine?'把空处补上 · 轻点揭晓':'在心里回忆这句 · 轻点揭晓'):(isWhole?'在心里回忆整句 · 轻点揭晓':'先在心里把答案补上 · 轻点揭晓')));
   const rateFn=TODAY_MODE?'todayRate':'rate';
   const srsCur=S.srs[ekey(e)];
   const memTag=TODAY_MODE?`<span class="memtag ${srsCur?'review':'new'}">${srsCur?('复习 · 第'+(srsCur.r+1)+'次'):'新学'}</span>`:'';
@@ -6010,9 +6010,9 @@ migrateSrs();
 applyMode(); chipRow(); renderHome(); renderList(); renderCloze();
 
 const VER='3.7.0';
-const PATCH='47';   /* 同一版本内的补丁号；0 表示版本本体 */
+const PATCH='48';   /* 同一版本内的补丁号；0 表示版本本体 */
 const CHANGELOG = [
-{v:'3.7.0',ps:'38–47',d:'2026-11-16',kind:'minor',sum:'解析配图按真实朝代匹配、练习进度按套题分离；抽背卡按真题问法重做并逐张挂上真题',items:[
+{v:'3.7.0',ps:'38–48',d:'2026-11-16',kind:'minor',sum:'解析配图按真实朝代匹配、练习进度按套题分离；抽背卡按真题问法重做并逐张挂上真题',items:[
 ['修复','讲义配图错配：原逻辑是「本节筛不出朝代就取本节第一张总表」，一张汉律六十篇的表被 238 道题共用，唐代题配汉代表。现改为逐页判定这一页真正讲哪些朝代（已判 26 张高频页），只有题目朝代出现在图里才配，配不上就不配（宁缺不错）：挂图 906 → 746，错配 648 → 0'],
 ['修复','图题不再冒充整表：由「第四章 罪名 · 夏商西周秦汉罪名总表」改为「第四章 罪名 · P43（西周·秦·汉）」，只写这一页真正有的朝代'],
 ['修复','4 道真题的节归属错标：如《大中刑律统类》原标「第五章·第一节 宋」，实为「第二节 唐」，另有清、西周各 1–2 道'],
