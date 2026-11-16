@@ -1714,7 +1714,7 @@ html[data-theme="night"] .quiz-opt .you{background:rgba(255,255,255,.16);color:#
     <div class="sec-h"><h2>专题速达</h2><span class="more">考试高频</span></div>
     <div class="fast">
       <button onclick="go('topic');setTopic('tl')"><b>朝代时间轴</b><span>夏商周—根据地 · 法典按朝代排</span></button>
-      <button onclick="go('topic');setTopic('vt')"><b>纵向专题</b><span>立法/刑罚/司法/民事 · 六条线</span></button>
+      <button onclick="go('browse');setZtSrc('book')"><b>背诵一本通</b><span>整本书原文 · 章 → 节 → 朝代</span></button>
       <button onclick="go('topic');setTopic('bg')"><b>老龚点睛</b><span>讲义点睛原页 · 12 张</span></button>
       <button onclick="go('topic');setTopic('y')"><b>一图流原页</b><span>六张原页总表 · 点击放大</span></button>
       <button onclick="go('quiz');startRealQuiz('random')"><b>随机 10 题</b><span>打乱顺序抽真题</span></button>
@@ -1741,8 +1741,8 @@ html[data-theme="night"] .quiz-opt .you{background:rgba(255,255,255,.16);color:#
         <input id="q" placeholder="搜考点，如「唐律疏议」「春秋决狱」「十恶」" autocomplete="off" enterkeyhint="search">
       </div>
       <div class="seg3" id="srcSeg" style="display:none">
-        <button data-z="card" onclick="setZtSrc('card')">原版 · 考点卡</button>
-        <button data-z="book" onclick="setZtSrc('book')">书版 · 书原文</button>
+        <button data-z="card" onclick="setZtSrc('card')">整合版</button>
+        <button data-z="book" onclick="setZtSrc('book')">背诵一本通</button>
       </div>
       <div class="chips" id="chips"></div>
     </div>
@@ -1806,7 +1806,6 @@ html[data-theme="night"] .quiz-opt .you{background:rgba(255,255,255,.16);color:#
 
     <div id="topicSeg" class="seg3 seg4">
       <button onclick="setTopic('tl')" class="on" data-t="tl">时间轴</button>
-      <button onclick="setTopic('vt')" data-t="vt">纵向专题</button>
       <button onclick="setTopic('bg')" data-t="bg">老龚点睛</button>
       <button onclick="setTopic('y')" data-t="y">一图流原页</button>
       <button onclick="setTopic('fv')" data-t="fv">复盘·一览</button>
@@ -2229,7 +2228,7 @@ function setZtSrc(v){
   S.ztsrc=(v==='book'?'book':'card'); save();
   if(S.mode!=='zhuan'){ S.mode='zhuan'; }
   applyMode(); chipRow(); renderList(); centerChips();
-  mtoast(S.ztsrc==='book'?'已切到书版：整本书原文':'已切回原版：169 张考点卡');
+  mtoast(S.ztsrc==='book'?'已切到背诵一本通：整本书原文':'已切回整合版：169 张考点卡');
 }
 function setVTBook(k){ VT=k; chipRow(); renderList(); window.scrollTo({top:0}); }
 function filterCh(k){
@@ -2362,7 +2361,7 @@ function renderList(){
     const ch=BTOPIC.chs.find(x=>x.k===VT)||BTOPIC.chs[0];
     if(VT!==ch.k) VT=ch.k;
     const nb=(ch.secs||[]).reduce((a,x)=>a+((x.blocks||[]).length),0);
-    document.getElementById('qCount').textContent = '书版 · '+ch.n+' · '+(ch.secs||[]).length+' 节 '+nb+' 块';
+    document.getElementById('qCount').textContent = '背诵一本通 · '+ch.n+' · '+(ch.secs||[]).length+' 节 '+nb+' 块';
     document.getElementById('list').innerHTML = vtBodyHTML(true);
     return;
   }
@@ -4938,7 +4937,7 @@ function setTopic(t){
   const hd=document.getElementById('topicHead');
   if(hd){
     if(TOPIC==='tl') hd.innerHTML='<h2>朝代时间轴</h2><span class="more">19 个节点</span>';
-    else if(TOPIC==='vt') hd.innerHTML='<h2>纵向专题</h2>';
+    else if(TOPIC==='vt'){ TOPIC='tl'; hd.innerHTML='<h2>朝代时间轴</h2><span class="more">19 个节点</span>'; }
     else if(TOPIC==='y') hd.innerHTML='<h2>一图流原页</h2><span class="more">6 张</span>';
     else if(TOPIC==='fv') hd.innerHTML='<h2>本节一览 · 本节复盘</h2><span class="more">'+LECTAB.filter(x=>x.kind==='一览'||x.kind==='复盘'||x.kind==='导图').length+' 张</span>';
     else if(TOPIC==='kb') hd.innerHTML='<h2>知识表</h2><span class="more">'+LECTAB.filter(x=>x.kind==='表格'||x.kind==='总表').length+' 张</span>';
@@ -5201,12 +5200,12 @@ function vtBodyHTML(withTip){
     if(!(sec.blocks||[]).length){
       return `<div class="vt-sec"><div class="vt-sec-h"><b>${esc(sec.n)}</b><span>书 P${esc(sec.pgs||'')}</span></div><div class="bk-secs-body"><div class="vt-empty">本节正文待转录</div></div></div>`;
     }
-    return `<div class="vt-sec"><div class="vt-sec-h"><b>${esc(sec.n)}</b><span>书 P${esc(sec.pgs||'')}</span><button class="bk-fold" onclick="bkFold(this)">收起</button></div>
-      <div class="bk-secs-body">${sec.blocks.map(bkBlock).join('')}</div></div>`;
+    return `<div class="vt-sec"><div class="vt-sec-h"><b>${esc(sec.n)}</b><span>书 P${esc(sec.pgs||'')}</span><button class="bk-fold" onclick="bkFold(this)">展开</button></div>
+      <div class="bk-secs-body" style="display:none">${sec.blocks.map(bkBlock).join('')}</div></div>`;
   };
   const body=(ch.secs&&ch.secs.length)?ch.secs.map(secHtml).join(''):`<div class="vt-empty">本章正文待转录（书 P${esc(ch.pgs||'')}）</div>`;
   const doneIx=ch.secs?ch.secs.filter(s=>(s.blocks||[]).length).length:0;
-  return `${withTip?'<div class="tip" style="margin:6px 0 10px">纵向专题＝《2027 法硕背诵一本通》专题史正文：按书的章 → 节 → 一、西周／二、汉… 原样搬入，一字不改、不重排。</div>':''}
+  return `${withTip?'<div class="tip" style="margin:6px 0 10px">背诵一本通＝《2027 法硕背诵一本通》专题史正文：按书的章 → 节 → 一、西周／二、汉… 原样搬入，一字不改、不重排；每节默认收起，点「展开」看这一节。</div>':''}
    <div class="vt-book">${esc(ch.n)}<span class="bk-pg">书 P${esc(ch.pgs||'')}${ch.secs&&ch.secs.length?` · 已录 ${doneIx}/${ch.secs.length} 节`:''}</span></div>
    ${body}`;
 }
@@ -6190,13 +6189,16 @@ migrateSrs();
 applyMode(); chipRow(); renderHome(); renderList(); renderCloze();
 
 const VER='3.10.0';
-const PATCH='1';   /* 同一版本内的补丁号；0 表示版本本体 */
+const PATCH='2';   /* 同一版本内的补丁号；0 表示版本本体 */
 const CHANGELOG = [
-{v:'3.10.0',ps:'1',d:'2026-11-16',kind:'minor',sum:'速览的专题史多一个「书版」来源：与原版考点卡并列，一键切换',items:[
+{v:'3.10.0',ps:'1–2',d:'2026-11-16',kind:'minor',sum:'速览的专题史两个来源：整合版（169 张考点卡）与背诵一本通（整本书原文），一键切换',items:[
 ['新增','速览 → 专题史顶部加「原版 · 考点卡／书版 · 书原文」两档，和「断代史／专题史」一样一键切：原版仍是 169 张考点卡，书版直接是《背诵一本通》专题史正文（13 章 47 节 2038 块）'],
 ['新增','书版下按书的章给 chip（绪论 70／立法 317／刑事 449／行政 155／民事 215／经济 23／司法 185／下编五章／附录 371），点一下换章，不用先进专题页；每节仍可整节收起'],
 ['优化','专题 → 纵向专题和速览的书版共用同一份数据与同一个当前章，在哪边换的章，另一边跟手就换；书版下搜索框自动收起，免得搜出书里没有的词'],
-['修复','首页专题组点进速览会自动回原版卡，不会把书版卡在别的章上让人以为丢了内容']]},
+['修复','首页专题组点进速览会自动回整合版，不会把书版卡在别的章上让人以为丢了内容'],
+['变更','两档改叫「整合版」「背诵一本通」：整合版＝169 张考点卡，背诵一本通＝书的正文原文'],
+['优化','背诵一本通里每节默认收起，只显示节标题与页码，点「展开」才放这一节全文，长章节不用一路划到底'],
+['变更','专题页去掉「纵向专题」入口，书的正文统一从速览 → 专题史 → 背诵一本通进；首页那张入口卡直接跳这里']]},
 {v:'3.9.0',ps:'54–57',d:'2026-11-16',kind:'minor',sum:'纵向专题整本书搬完：正文 12 章 43 节 + 附录 4 节，一字不改、不重排',items:[
 ['重构','纵向专题不再用 169 张考点卡拼，改成书的正文逐页转录：章 → 节 → 一、西周／二、汉：「抑商政策」／三、唐：民分良贱 → 编号条目、框、表格、[背诵提示]、[背诵口诀]、示意图，一字不改、不重排'],
 ['完成','全书正文（书 P1–184）12 章 43 节 1667 块全录：绪论 70、立法 317、刑事 449、行政 155、民事 215、经济 23、司法 185；下编立法 33、宪法 62、刑事 35、民商 59、司法 64'],
