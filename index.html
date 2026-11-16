@@ -4264,16 +4264,12 @@ const LECTAB = [{"k":"t017","name":"第二章 主要法律形式 · 夏商至明
 function renderYTL(plain){
   const cards=YTL.map((b,i)=>{
     const hd=b.hd2||b.src;
-    const parts=(b.parts||[b.src]).map((src,j)=>{
-      const lb=(b.plabel&&b.plabel[j])?b.plabel[j]:('第 '+(j+1)+' 段');
-      return `<div class="bg-part"><span class="bg-pl">${esc(lb)}</span>
-        <img loading="lazy" src="${src}" alt="${esc(b.name)}" data-nm="${esc(b.name)}" onclick="openImgZoom('${hd}',this.dataset.nm,true)"></div>`;
-    }).join('');
     return `<div class="bg-card"><div class="bg-name">${esc(b.name)}</div>
-      <div class="bg-cap">按原 PDF 300dpi 重出，切成 2 段显示；点图看整表原生清晰。</div>${parts}`+
+      <div class="bg-cap">按原 PDF 300dpi 重出整表 · 点图放大看细节。</div>
+      <div class="bg-part"><img loading="lazy" src="${hd}" alt="${esc(b.name)}" data-nm="${esc(b.name)}" onclick="openImgZoom('${hd}',this.dataset.nm,true)"></div>`+
       `<button class="bg-open" data-nm="${esc(b.name)}" onclick="openImgZoom('${hd}',this.dataset.nm,true)">看整表原像素</button></div>`;
   }).join('');
-  const head=plain?'':`<div class="sec-h" style="margin:18px 0 8px"><h2>一图流原页</h2><span class="more">${YTL.length} 张 · 每张分 2 段</span></div>`;
+  const head=plain?'':`<div class="sec-h" style="margin:18px 0 8px"><h2>一图流原页</h2><span class="more">${YTL.length} 张 · 整表原页</span></div>`;
   return head+`<div class="bg-grid">${cards}</div>`;
 }
 /* ---------- 栏一：本节一览 + 本节复盘/导图 ---------- */
@@ -5380,7 +5376,7 @@ migrateSrs();
 applyMode(); chipRow(); renderHome(); renderList(); renderCloze();
 
 const VER='3.7.0';
-const PATCH='29';   /* 同一版本内的补丁号；0 表示版本本体 */
+const PATCH='30';   /* 同一版本内的补丁号；0 表示版本本体 */
 const CHANGELOG = [
 {v:'3.5.0',d:'2026-11-15',kind:'minor',sum:'改为登录后解锁全部板块，用户中心独立成一页',items:[
 ['变更','未注册登录时只开放「总览」：断代史 / 专题史、检索、卡片正文都能看，掌握与笔记照常记；速览、背诵、专题、刷题按下会直接跳到「我的」页要求登录'],
