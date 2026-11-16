@@ -1225,8 +1225,8 @@ html[data-theme="night"] .vt-chip.on{color:#0E1411}
 .vt-book{font-family:var(--serif,serif);font-size:calc(15px*var(--fs));font-weight:800;color:var(--ink);margin:2px 0 10px}
 .vt-sec{margin:0 0 16px}
 .vt-sec-h{display:flex;align-items:baseline;gap:8px;margin:2px 0 8px;padding:1px 0 1px 8px;border-left:3px solid var(--red)}
-.vt-sec-h b{font-family:var(--serif,serif);font-size:calc(14px*var(--fs));font-weight:700;color:var(--ink)}
-.vt-sec-h span{font-size:calc(11px*var(--fs));color:var(--ink-3)}
+.vt-sec-h b{flex:1 1 auto;min-width:0;font-family:var(--serif,serif);font-size:calc(14px*var(--fs));font-weight:700;color:var(--ink);line-height:1.45}
+.vt-sec-h span{flex:0 0 auto;white-space:nowrap;font-size:calc(11px*var(--fs));color:var(--ink-3)}
 .vt-era2{flex:0 0 auto;font-size:calc(10.5px*var(--fs));color:#F6F8EF;background:color-mix(in srgb,var(--ink) 52%,#fff);border-radius:5px;padding:1px 5px;margin-right:2px}
 html[data-theme="night"] .vt-era2{background:color-mix(in srgb,var(--ink) 40%,#000)}
 .vt-cut{font-style:normal;font-size:calc(10px*var(--fs));color:var(--ink-3);border:1px solid var(--line);border-radius:4px;padding:0 4px;margin-left:6px;vertical-align:2px}
@@ -1244,7 +1244,7 @@ html[data-theme="night"] .vt-era2{background:color-mix(in srgb,var(--ink) 40%,#0
 .vt-foot{font-size:11px;color:var(--ink-3);margin-top:8px}
 /* ===== 书版纵向专题（照搬《背诵一本通》专题史正文）===== */
 .bk-pg{font-size:calc(11px*var(--fs));color:var(--ink-3);margin-left:8px;font-weight:400}
-.bk-fold{margin-left:auto;border:1px solid var(--line);background:var(--card);border-radius:5px;font-size:calc(11px*var(--fs));color:var(--ink-3);padding:1px 7px}
+.bk-fold{flex:0 0 auto;white-space:nowrap;margin-left:auto;border:1px solid var(--line);background:var(--card);border-radius:5px;font-size:calc(11px*var(--fs));color:var(--ink-3);padding:1px 7px}
 .bk-h3{font-family:var(--serif,serif);font-size:calc(15px*var(--fs));font-weight:800;color:var(--ink);margin:16px 0 8px;padding-left:9px;border-left:4px solid var(--red);line-height:1.45}
 .bk-h4{font-size:calc(13.5px*var(--fs));font-weight:700;color:var(--red);margin:12px 0 6px;line-height:1.6}
 .bk-p{margin:6px 0;line-height:1.9;font-size:calc(13px*var(--fs));color:var(--ink-2);text-align:justify}
@@ -1740,6 +1740,10 @@ html[data-theme="night"] .quiz-opt .you{background:rgba(255,255,255,.16);color:#
         <svg viewBox="0 0 16 16"><circle cx="7" cy="7" r="4.6" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M10.5 10.5L14 14" stroke="currentColor" stroke-width="1.5"/></svg>
         <input id="q" placeholder="搜考点，如「唐律疏议」「春秋决狱」「十恶」" autocomplete="off" enterkeyhint="search">
       </div>
+      <div class="seg3" id="srcSeg" style="display:none">
+        <button data-z="card" onclick="setZtSrc('card')">原版 · 考点卡</button>
+        <button data-z="book" onclick="setZtSrc('book')">书版 · 书原文</button>
+      </div>
       <div class="chips" id="chips"></div>
     </div>
   </div>
@@ -1912,6 +1916,7 @@ function save(){ S.localAt=Date.now(); try{ localStorage.setItem(KEY, JSON.strin
 function normArr(v){ return Array.isArray(v)?v:[]; }
 function normObj(v){ return (v&&typeof v==='object'&&!Array.isArray(v))?v:{}; }
 function normalizeState(){
+  if(S.ztsrc!=='book') S.ztsrc='card';
   S.status=normObj(S.status); S.fav=normArr(S.fav); S.due=normObj(S.due); S.seen=normObj(S.seen);
   S.log=normObj(S.log); S.notes=normObj(S.notes); S.quizLog=normObj(S.quizLog);
   S.qwrong=normArr(S.qwrong); S.qdone=normArr(S.qdone); S.ient=normObj(S.ient);
@@ -2192,6 +2197,17 @@ function chipRow(){
     `<button class="chip ${FLT==='fav'?'on':''}" onclick="filterCh('fav')">★ 收藏<span class="n">${(S.fav||[]).length}</span></button>` +
     `<button class="chip ${FLT==='wrong'?'on':''}" onclick="filterCh('wrong')">错题<span class="n">${PTS.filter(p=>S.status[p.n]==='no').length}</span></button>` +
     `<button class="chip ${FLT==='todo'?'on':''}" onclick="filterCh('todo')">未掌握<span class="n">${PTS.filter(p=>S.status[p.n]!=='ok').length}</span></button>`;
+  const bookMode = (S.mode==='zhuan' && S.ztsrc==='book');
+  if(bookMode){
+    const chs=BTOPIC.chs.map(c=>{
+      const n=(c.secs||[]).reduce((a,x)=>a+((x.blocks||[]).length?1:0),0);
+      const nb=(c.secs||[]).reduce((a,x)=>a+((x.blocks||[]).length),0);
+      return `<button class="chip ${VT===c.k?'on':''}" onclick="setVTBook('${c.k}')">${esc(c.sh||c.n)}<span class="n">${nb||'待录'}</span></button>`;
+    }).join('');
+    document.getElementById('chips').innerHTML=chs;
+    centerChips();
+    return;
+  }
   const secs = (S.mode==='zhuan')
     ? VTHEMES.map(th=>{
         const n=PTS.filter(p=>themeOf(p)===th.k).length;
@@ -2209,7 +2225,17 @@ function chipRow(){
   document.getElementById('chips').innerHTML = pre+total+secs;
   centerChips();
 }
-function filterCh(k){ FLT=k; chipRow(); renderList(); centerChips(); }
+function setZtSrc(v){
+  S.ztsrc=(v==='book'?'book':'card'); save();
+  if(S.mode!=='zhuan'){ S.mode='zhuan'; }
+  applyMode(); chipRow(); renderList(); centerChips();
+  mtoast(S.ztsrc==='book'?'已切到书版：整本书原文':'已切回原版：169 张考点卡');
+}
+function setVTBook(k){ VT=k; chipRow(); renderList(); window.scrollTo({top:0}); }
+function filterCh(k){
+  if(S.mode==='zhuan' && S.ztsrc==='book' && k!=='all'){ S.ztsrc='card'; save(); applyMode(); }
+  FLT=k; chipRow(); renderList(); centerChips();
+}
 function centerChips(){
   const bar=document.getElementById('chips'); if(!bar) return;
   const on=bar.querySelector('.chip.on'); if(!on) return;
@@ -2332,6 +2358,14 @@ const SEQ=(()=>{const m={};PTS.slice().sort(sortPts).forEach((p,i)=>{m[p.n]=i+1;
 function pnum(n){ return SEQ[n]||n; }
 function eraRank(ch){ const i=ERA_ORD.indexOf(ch); return i<0?900:i; }
 function renderList(){
+  if(S.mode==='zhuan' && S.ztsrc==='book'){
+    const ch=BTOPIC.chs.find(x=>x.k===VT)||BTOPIC.chs[0];
+    if(VT!==ch.k) VT=ch.k;
+    const nb=(ch.secs||[]).reduce((a,x)=>a+((x.blocks||[]).length),0);
+    document.getElementById('qCount').textContent = '书版 · '+ch.n+' · '+(ch.secs||[]).length+' 节 '+nb+' 块';
+    document.getElementById('list').innerHTML = vtBodyHTML(true);
+    return;
+  }
   const q=Q.trim();
   const ps=PTS.filter(p=>{
     if(!passFilter(p)) return false;
@@ -4891,6 +4925,12 @@ function applyMode(){
   if(b) b.textContent = S.mode==='zhuan' ? '专题史' : '断代史';
   const h2=document.querySelector('#v-home .sec-h h2');
   if(h2) h2.textContent = S.mode==='zhuan' ? '专题掌握' : '朝代进度';
+  const zb=(S.ztsrc==='book');
+  const seg=document.getElementById('srcSeg');
+  if(seg) seg.style.display = (S.mode==='zhuan')?'flex':'none';
+  document.querySelectorAll('#srcSeg button').forEach(b=>b.classList.toggle('on', (b.dataset.z||'card')===(zb?'book':'card')));
+  const sr=document.querySelector('#v-browse .search');
+  if(sr) sr.style.display = (S.mode==='zhuan'&&zb)?'none':'';
 }
 function setTopic(t){
   TOPIC=t||'tl';
@@ -5147,12 +5187,16 @@ function bkFold(btn){
   haptic();
 }
 function bkCount(c){ return c.secs.reduce((a,s)=>a+((s.blocks||[]).length?1:0),0); }
-function renderVT(){
+function vtChipsHTML(){
   const ch=BTOPIC.chs.find(x=>x.k===VT)||BTOPIC.chs[0];
   const chips=BTOPIC.chs.map(c=>{
     const done=(c.secs||[]).reduce((a,s)=>a+((s.blocks||[]).length),0);
     return `<button class="vt-chip${c.k===ch.k?' on':''}" onclick="setVT('${c.k}')">${esc(c.sh||c.n)}<i>${done?done:'待录'}</i></button>`;
   }).join('');
+  return `<div class="vt-chips" id="vtChips">${chips}</div>`;
+}
+function vtBodyHTML(withTip){
+  const ch=BTOPIC.chs.find(x=>x.k===VT)||BTOPIC.chs[0];
   const secHtml=(sec)=>{
     if(!(sec.blocks||[]).length){
       return `<div class="vt-sec"><div class="vt-sec-h"><b>${esc(sec.n)}</b><span>书 P${esc(sec.pgs||'')}</span></div><div class="bk-secs-body"><div class="vt-empty">本节正文待转录</div></div></div>`;
@@ -5162,10 +5206,12 @@ function renderVT(){
   };
   const body=(ch.secs&&ch.secs.length)?ch.secs.map(secHtml).join(''):`<div class="vt-empty">本章正文待转录（书 P${esc(ch.pgs||'')}）</div>`;
   const doneIx=ch.secs?ch.secs.filter(s=>(s.blocks||[]).length).length:0;
-  return `<div class="vt-chips" id="vtChips">${chips}</div>
-   <div class="tip" style="margin:6px 0 10px">纵向专题＝《2027 法硕背诵一本通》专题史正文：按书的章 → 节 → 一、西周／二、汉… 原样搬入，一字不改、不重排。</div>
+  return `${withTip?'<div class="tip" style="margin:6px 0 10px">纵向专题＝《2027 法硕背诵一本通》专题史正文：按书的章 → 节 → 一、西周／二、汉… 原样搬入，一字不改、不重排。</div>':''}
    <div class="vt-book">${esc(ch.n)}<span class="bk-pg">书 P${esc(ch.pgs||'')}${ch.secs&&ch.secs.length?` · 已录 ${doneIx}/${ch.secs.length} 节`:''}</span></div>
    ${body}`;
+}
+function renderVT(){
+  return vtChipsHTML()+vtBodyHTML(true);
 }
 function toggleMn(i){
   const txt=(MEET_MN||[])[i]||'';
@@ -6143,9 +6189,14 @@ normalizeState();
 migrateSrs();
 applyMode(); chipRow(); renderHome(); renderList(); renderCloze();
 
-const VER='3.9.0';
-const PATCH='57';   /* 同一版本内的补丁号；0 表示版本本体 */
+const VER='3.10.0';
+const PATCH='1';   /* 同一版本内的补丁号；0 表示版本本体 */
 const CHANGELOG = [
+{v:'3.10.0',ps:'1',d:'2026-11-16',kind:'minor',sum:'速览的专题史多一个「书版」来源：与原版考点卡并列，一键切换',items:[
+['新增','速览 → 专题史顶部加「原版 · 考点卡／书版 · 书原文」两档，和「断代史／专题史」一样一键切：原版仍是 169 张考点卡，书版直接是《背诵一本通》专题史正文（13 章 47 节 2038 块）'],
+['新增','书版下按书的章给 chip（绪论 70／立法 317／刑事 449／行政 155／民事 215／经济 23／司法 185／下编五章／附录 371），点一下换章，不用先进专题页；每节仍可整节收起'],
+['优化','专题 → 纵向专题和速览的书版共用同一份数据与同一个当前章，在哪边换的章，另一边跟手就换；书版下搜索框自动收起，免得搜出书里没有的词'],
+['修复','首页专题组点进速览会自动回原版卡，不会把书版卡在别的章上让人以为丢了内容']]},
 {v:'3.9.0',ps:'54–57',d:'2026-11-16',kind:'minor',sum:'纵向专题整本书搬完：正文 12 章 43 节 + 附录 4 节，一字不改、不重排',items:[
 ['重构','纵向专题不再用 169 张考点卡拼，改成书的正文逐页转录：章 → 节 → 一、西周／二、汉：「抑商政策」／三、唐：民分良贱 → 编号条目、框、表格、[背诵提示]、[背诵口诀]、示意图，一字不改、不重排'],
 ['完成','全书正文（书 P1–184）12 章 43 节 1667 块全录：绪论 70、立法 317、刑事 449、行政 155、民事 215、经济 23、司法 185；下编立法 33、宪法 62、刑事 35、民商 59、司法 64'],
