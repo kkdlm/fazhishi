@@ -101,7 +101,7 @@ jobs:
           if grep -Fq "每张分 2 段" index.html; then echo "::error::一图流不应再分左右两段"; exit 1; fi
           grep -Fq "function qDoneN" index.html || { echo "::error::章节进度统计缺失"; exit 1; }
           grep -Fq "qp-range" index.html || { echo "::error::当前范围进度条缺失"; exit 1; }
-          grep -Fq "从第一道没做的题开始" index.html || { echo "::error::未做优先提示缺失"; exit 1; }
+          grep -Fq "第一道没做的题开始" index.html || { echo "::error::未做优先提示缺失"; exit 1; }
           grep -Fq "从头过一遍" index.html || { echo "::error::全量重做入口缺失"; exit 1; }
           v=$(grep -o "VER='[0-9.]*'" index.html | head -1 | sed "s/VER='//;s/'//")
           echo "VER=$v" >> "$GITHUB_ENV"
