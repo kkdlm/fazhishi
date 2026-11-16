@@ -20,7 +20,7 @@ jobs:
 
       - name: Download single-file app
         env:
-          SRC: https://aka.doubaocdn.com/s/EXYkyyAzTA
+          SRC: https://aka.doubaocdn.com/s/RNioRwdXt1
         run: |
           set -euo pipefail
           fetch() {
@@ -40,7 +40,7 @@ jobs:
           test $(grep -c 'rel="apple-touch-icon' index.html) -ge 4 || { echo "::error::touch icons missing"; exit 1; }
           if grep -q 'apple-touch-startup-image' index.html; then echo "::error::系统启动图未删除"; exit 1; fi
           grep -q "VER='3.7.0'" index.html || { echo "::error::version marker not found"; exit 1; }
-          grep -q "const PATCH='29'" index.html || { echo "::error::patch marker not 29"; exit 1; }
+          grep -q "const PATCH='30'" index.html || { echo "::error::patch marker not 30"; exit 1; }
           grep -q '"apple-mobile-web-app-title" content="法制史一点通"' index.html || { echo "::error::ios app title missing"; exit 1; }
           grep -q "SB_URL='https://lbykbafnkhwxqtfuaoio.supabase.co'" index.html || { echo "::error::supabase url missing"; exit 1; }
           grep -q "sb_publishable_" index.html || { echo "::error::supabase key missing"; exit 1; }
@@ -97,7 +97,8 @@ jobs:
           grep -Fq "function busyOn" index.html || { echo "::error::按钮忙碌态缺失"; exit 1; }
           grep -Fq "button[data-busy]" index.html || { echo "::error::忙碌样式缺失"; exit 1; }
           grep -Fq "看整表原像素" index.html || { echo "::error::一图流原页高清入口缺失"; exit 1; }
-          grep -Fq "按原 PDF 300dpi 重出" index.html || { echo "::error::原页 300dpi 文案缺失"; exit 1; }
+          grep -Fq "按原 PDF 300dpi 重出整表" index.html || { echo "::error::原页 300dpi 整表文案缺失"; exit 1; }
+          if grep -Fq "每张分 2 段" index.html; then echo "::error::不应再分左右两段"; exit 1; fi
           v=$(grep -o "VER='[0-9.]*'" index.html | head -1 | sed "s/VER='//;s/'//")
           echo "VER=$v" >> "$GITHUB_ENV"
           p=$(grep -o "const PATCH='[0-9]*'" index.html | head -1 | sed "s/const PATCH='//;s/'//")
@@ -126,7 +127,7 @@ jobs:
           grep -q "document.write(html)" admin/index.html || { echo "::error::admin 解锁后应为整页接管，不能再用 iframe"; exit 1; }
           grep -q "user-scalable=no" admin/index.html || { echo "::error::admin 未禁缩放"; exit 1; }
           if grep -q "f.srcdoc" admin/index.html; then echo "::error::admin 还在用 iframe 壳"; exit 1; fi
-          if grep -q "sb_publishable_" admin/index.html; then echo "::error::admin must not contain plaintext key"; exit 1; fi
+          if grep -q "sb_publishable_" admin/index.html; then echo "::error::admin must not contain plaintext key"; exit 1; }
 
       - name: Download images bundle and unpack
         run: |
@@ -140,7 +141,7 @@ jobs:
             echo "::warning::curl failed, falling back to wget"
             wget -q --no-check-certificate --tries=3 --timeout=120 -O "$out" "$url"
           }
-          fetch img.tar.gz "https://aka.doubaocdn.com/s/D2VaCtwWYF"
+          fetch img.tar.gz "https://aka.doubaocdn.com/s/VKMEUPTOt4"
           rm -rf img && tar xzf img.tar.gz
           n=$(ls -1 img | wc -l)
           echo "images=$n"
@@ -185,8 +186,8 @@ jobs:
           fetch icon-192.png "https://aka.doubaocdn.com/s/wN2B51yuN0"
           fetch icon-512.png "https://aka.doubaocdn.com/s/JkPVJKcpEn"
           echo "icons ok"
-          fetch sw.js "https://aka.doubaocdn.com/s/MPDXnC1ecg"
-          grep -q "app-3.7.0-p29" sw.js || { echo "::error::sw stale"; exit 1; }
+          fetch sw.js "https://aka.doubaocdn.com/s/7WXz4nhKQa"
+          grep -q "app-3.7.0-p30" sw.js || { echo "::error::sw stale"; exit 1; }
           grep -q "/admin/" sw.js || { echo "::error::sw admin bypass missing"; exit 1; }
           node --check sw.js
 
