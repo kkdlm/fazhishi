@@ -16,8 +16,8 @@ jobs:
   release:
     runs-on: ubuntu-latest
     env:
-      SRC: https://aka.doubaocdn.com/s/JKzFZbYxFR
-      SWURL: https://aka.doubaocdn.com/s/4ErVHQkENb
+      SRC: https://aka.doubaocdn.com/s/eYtOtFbtVJ
+      SWURL: https://aka.doubaocdn.com/s/21i4nqVjVs
       VER: "3.11.0"
       PATCH: "2"
     steps:
