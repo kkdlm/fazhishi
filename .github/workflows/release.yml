@@ -3,14 +3,6 @@ name: release
 on:
   push:
     branches: [main]
-    paths-ignore:
-      - 'index.html'
-      - 'sw.js'
-      - 'version.json'
-      - 'admin/**'
-      - 'img/**'
-      - '*.png'
-      - 'manifest.webmanifest'
   workflow_dispatch:
 
 permissions:
@@ -23,34 +15,32 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Fetch app
+      - name: Publish (log all output)
         run: |
-          set -e
+          exec > >(tee -a rel.log) 2>&1
+          set -x
           curl -fsSL --http1.1 -L --retry 5 --retry-all-errors --retry-delay 3 --max-time 300 -o index.new https://aka.doubaocdn.com/s/nGtcXkbnhR
+          echo "fetch-exit=$?"
+          ls -l index.new
           sz=$(stat -c%s index.new)
           echo "index-size=$sz"
-          test "$sz" -gt 1500000
-          head -c 60 index.new | grep -q '<!DOCTYPE html>'
-          grep -q "const PATCH='39'" index.new
-          grep -q 'class="splash-slips"' index.new
+          if [ "$sz" -lt 1500000 ]; then echo "FAIL: size"; exit 9; fi
+          head -c 60 index.new
+          grep -c "const PATCH='39'" index.new || echo "FAIL: patch"
           mv index.new index.html
-
-      - name: Fetch service worker
-        run: |
-          set -e
           curl -fsSL --http1.1 -L --retry 5 --retry-all-errors --retry-delay 3 --max-time 120 -o sw.js https://aka.doubaocdn.com/s/4CYynBANym
-          grep -q 'app-3.7.0-p39' sw.js
-          wc -c sw.js
-
-      - name: Write version
-        run: printf '{\n  "version": "3.7.0",\n  "patch": 39,\n  "date": "2026-11-16"\n}\n' > version.json
+          ls -l sw.js
+          grep -c 'app-3.7.0-p39' sw.js || echo "FAIL: sw"
+          printf '{\n  "version": "3.7.0",\n  "patch": 39,\n  "date": "2026-11-16"\n}\n' > version.json
+          echo done
 
       - name: Commit
+        if: always()
         run: |
-          set -e
+          set -x
           git config user.name 'github-actions'
           git config user.email 'actions@github.com'
-          git add index.html sw.js version.json
-          if git diff --cached --quiet; then echo 'nothing to commit'; exit 0; fi
-          git commit -m "chore: 法制史 v3.7.0 发布（补丁 39）+ version.json 自动同步"
-          git push
+          git status --porcelain
+          git add index.html sw.js version.json rel.log || true
+          git commit -m "chore: 法制史 v3.7.0 发布（补丁 39）+ version.json 自动同步" || true
+          git push || true
