@@ -16,10 +16,10 @@ jobs:
   release:
     runs-on: ubuntu-latest
     env:
-      SRC: https://aka.doubaocdn.com/s/UbUJ9Id4K9
-      SWURL: https://aka.doubaocdn.com/s/A46hwpiVrj
+      SRC: https://aka.doubaocdn.com/s/JKzFZbYxFR
+      SWURL: https://aka.doubaocdn.com/s/4ErVHQkENb
       VER: "3.11.0"
-      PATCH: "1"
+      PATCH: "2"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -27,7 +27,7 @@ jobs:
       - name: Publish
         run: |
           set -e
-          if ! curl -fsSL --http1.1 -L --retry 5 --retry-all-errors --retry-delay 3 --max-time 300 -o index.new "$SRC"; then echo "::notice::源文件暂时拉不到，本次跳过"; exit 0; fi
+          if ! curl -fsSL --http1.1 -L --retry 5 --retry-all-errors --retry-delay 3 --max-time 420 -o index.new "$SRC"; then echo "::notice::源文件暂时拉不到，本次跳过"; exit 0; fi
           sz=$(stat -c%s index.new); echo "index-size=$sz"
           if [ "$sz" -lt 1500000 ]; then echo "::notice::文件过小，跳过"; exit 0; fi
           head -c 60 index.new | grep -q '<!DOCTYPE html>'
