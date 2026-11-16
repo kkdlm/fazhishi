@@ -20,7 +20,7 @@ jobs:
 
       - name: Download single-file app
         env:
-          SRC: https://aka.doubaocdn.com/s/Nv826wN6mW
+          SRC: https://aka.doubaocdn.com/s/5Uu083fpMv
         run: |
           set -euo pipefail
           fetch() {
@@ -40,7 +40,7 @@ jobs:
           test $(grep -c 'rel="apple-touch-icon' index.html) -ge 4 || { echo "::error::touch icons missing"; exit 1; }
           if grep -q 'apple-touch-startup-image' index.html; then echo "::error::系统启动图未删除"; exit 1; fi
           grep -q "VER='3.7.0'" index.html || { echo "::error::version marker not found"; exit 1; }
-          grep -q "const PATCH='31'" index.html || { echo "::error::patch marker not 31"; exit 1; }
+          grep -q "const PATCH='32'" index.html || { echo "::error::patch marker not 32"; exit 1; }
           grep -q '"apple-mobile-web-app-title" content="法制史一点通"' index.html || { echo "::error::ios app title missing"; exit 1; }
           grep -q "SB_URL='https://lbykbafnkhwxqtfuaoio.supabase.co'" index.html || { echo "::error::supabase url missing"; exit 1; }
           grep -q "sb_publishable_" index.html || { echo "::error::supabase key missing"; exit 1; }
@@ -103,6 +103,11 @@ jobs:
           grep -Fq "qp-range" index.html || { echo "::error::当前范围进度条缺失"; exit 1; }
           grep -Fq "第一道没做的题开始" index.html || { echo "::error::未做优先提示缺失"; exit 1; }
           grep -Fq "从头过一遍" index.html || { echo "::error::全量重做入口缺失"; exit 1; }
+          grep -Fq "function qJumpTo" index.html || { echo "::error::题目回看跳转缺失"; exit 1; }
+          grep -Fq "qcard-strip" index.html || { echo "::error::答题卡缺失"; exit 1; }
+          grep -Fq "下一题从第" index.html || { echo "::error::继续上次落点文案缺失"; exit 1; }
+          grep -Fq "退出并清空这一轮" index.html || { echo "::error::退出询问层缺少清空选项"; exit 1; }
+          grep -Fq "next:next" index.html || { echo "::error::进度应记录第一道未答位置"; exit 1; }
           v=$(grep -o "VER='[0-9.]*'" index.html | head -1 | sed "s/VER='//;s/'//")
           echo "VER=$v" >> "$GITHUB_ENV"
           p=$(grep -o "const PATCH='[0-9]*'" index.html | head -1 | sed "s/const PATCH='//;s/'//")
@@ -197,8 +202,8 @@ jobs:
           fetch icon-192.png "https://aka.doubaocdn.com/s/wN2B51yuN0"
           fetch icon-512.png "https://aka.doubaocdn.com/s/JkPVJKcpEn"
           echo "icons ok"
-          fetch sw.js "https://aka.doubaocdn.com/s/sVrwqwUhR4"
-          grep -q "app-3.7.0-p31" sw.js || { echo "::error::sw stale"; exit 1; }
+          fetch sw.js "https://aka.doubaocdn.com/s/OI8VZYpjfa"
+          grep -q "app-3.7.0-p32" sw.js || { echo "::error::sw stale"; exit 1; }
           grep -q "/admin/" sw.js || { echo "::error::sw admin bypass missing"; exit 1; }
           node --check sw.js
 
