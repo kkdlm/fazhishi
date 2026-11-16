@@ -626,6 +626,14 @@ html[data-theme="night"] mark.hl{background:#8a6d2f;color:#fff}
 .qexit{flex:none;padding:5px 10px;border-radius:8px;border:1px solid var(--line);background:var(--card);
   color:var(--ink-2);font-size:11.5px;font-family:inherit}
 .qexit:active{background:var(--paper)}
+.qcard-strip{display:flex;gap:6px;overflow-x:auto;padding:2px 2px 9px;margin:0 -2px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.qcard-strip::-webkit-scrollbar{display:none}
+.qd{flex:0 0 auto;min-width:30px;height:30px;padding:0 5px;border-radius:9px;border:1px solid var(--line);background:var(--card);
+  color:var(--ink-3);font:600 12px/1 var(--sans);display:inline-flex;align-items:center;justify-content:center;transition:transform .12s}
+.qd:active{transform:scale(.94)}
+.qd.ok{background:var(--ok-soft);border-color:color-mix(in srgb,var(--ok) 38%,var(--line));color:var(--ok)}
+.qd.bad{background:var(--bad-soft);border-color:color-mix(in srgb,var(--bad) 38%,var(--line));color:var(--bad)}
+.qd.cur{box-shadow:inset 0 0 0 2px var(--zhu);color:var(--zhu);font-weight:800;background:var(--card)}
 .wb-tip{font-size:11.5px;color:var(--ink-3);line-height:1.7;margin:0 0 10px}
 .wb-card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:11px 12px;margin-bottom:9px}
 .wb-head{display:flex;gap:9px;align-items:flex-start;width:100%;text-align:left;background:none;border:none;padding:0;font-family:inherit}
@@ -3137,6 +3145,7 @@ function renderQuizSetup(){
       '<div class="qstat"><b>'+doneN+'</b><span>已做 · 正确率'+acc+'%</span></div>'+
       '<div class="qstat"><b>'+wrongN+'</b><span>本套错题</span></div>'+
     '</div>'+
+    progCardHTML()+
     '<div class="qp-range"><b>当前范围</b><span class="qp-n">'+(QF.chap==='all'?'全部章节':briefChap(QF.chap))+(QF.sec!=='all'?' · '+briefSec(QF.sec):'')+'</span>'+
       '<span class="qp-x">已做 '+qDoneN(filteredQuestions())+' / '+filteredQuestions().length+'</span>'+
       '<span class="setbar"><i style="width:'+(filteredQuestions().length?Math.round(qDoneN(filteredQuestions())/filteredQuestions().length*100):0)+'%"></i></span></div>'+
@@ -3352,8 +3361,10 @@ function qzRecount(){
 function saveQuizProgress(){
   if(!QZ || QZ.mode==='ai' || !QZ.list || QZ.list.length<2) return;
   if(QZ.idx>=QZ.list.length){ S.qprog=null; save(); return; }
-  S.qprog={mode:QZ.mode, idx:QZ.idx, ids:QZ.list.map(function(q){return q.id}),
-           cur:(QZ.cur||[]).slice(), right:QZ.right|0, wrong:QZ.wrong|0,
+  var next=0, cur=QZ.cur||[];
+  for(var i=0;i<QZ.list.length;i++){ if(!(cur[i]&&cur[i].revealed)){ next=i; break; } next=i+1; }
+  S.qprog={mode:QZ.mode, idx:QZ.idx, next:next, ids:QZ.list.map(function(q){return q.id}),
+           cur:cur.slice(), right:QZ.right|0, wrong:QZ.wrong|0,
            set:(QZ.list[0]&&QZ.list[0].set)||'', scope:(QZ.scope||''), at:Date.now()};
   save();
 }
@@ -3362,7 +3373,9 @@ function resumeQuiz(){
   const p=progInfo(); if(!p) return;
   const list=p.ids.map(function(id){ return REALQ.find(function(q){return q.id===id}) }).filter(Boolean);
   if(!list.length){ S.qprog=null; save(); mtoast('上次的题目已不在题库'); renderQuizSetup(); return; }
-  QZ={mode:p.mode||'filtered', list:list, idx:Math.min(Number(p.idx)||0, list.length-1),
+  var start=(p.next!=null&&p.next>=0)?Number(p.next):Math.min(Number(p.idx)||0, list.length-1);
+  start=Math.min(Math.max(0,start), list.length-1);
+  QZ={mode:p.mode||'filtered', list:list, idx:start,
       sel:[], revealed:false, right:0, wrong:0, miss:[], cur:(p.cur||[]).slice(), scope:p.scope||'上次进度'};
   qzRecount(); qzLoad(QZ.idx); go('quiz'); renderQuiz(); window.scrollTo({top:0});
   haptic();
@@ -3370,10 +3383,10 @@ function resumeQuiz(){
 function restartQuiz(){ S.qprog=null; save(); if(QF.set) renderQuizSetup(); else renderQuizSets(); }
 function progCardHTML(){
   const p=progInfo(); if(!p) return '';
-  const n=p.ids.length, i=Math.min((Number(p.idx)||0)+1, n);
+  const n=p.ids.length, nx=(p.next!=null?Number(p.next):(Number(p.idx)||0)), i=Math.min(nx+1, n);
   const done=(p.cur||[]).filter(function(x){return x&&x.revealed}).length;
   return '<div class="stop-card">'+
-    '<div class="stop-t"><b>有未做完的一轮</b><span>上一题停在第 '+i+' / '+n+' 题 · 已答 '+done+' 题 · 对 '+(p.right|0)+' 错 '+(p.wrong|0)+'</span></div>'+
+    '<div class="stop-t"><b>有未做完的一轮</b><span>下一题从第 '+i+' / '+n+' 题接着做 · 已答 '+done+' 题 · 对 '+(p.right|0)+' 错 '+(p.wrong|0)+'</span></div>'+
     '<div class="stop-btns"><button class="primary sm" onclick="resumeQuiz()">继续上次</button>'+
     '<button class="ghost sm" onclick="restartQuiz()">重新开始</button></div></div>';
 }
@@ -3394,6 +3407,14 @@ function renderQuiz(){
       <span class="bar"><i style="width:${QZ.idx/QZ.list.length*100}%"></i></span>
       <span class="qidx">对 ${QZ.right}</span>
       <button class="qexit" onclick="quizExit()">退出</button>
+    </div>
+    <div class="qcard-strip">
+      ${QZ.list.map((qq,i)=>{
+        const r=(QZ.cur||[])[i]; let c='qd';
+        if(i===QZ.idx) c+=' cur';
+        if(r&&r.revealed) c+=(r.correct?' ok':' bad');
+        return `<button class="${c}" onclick="qJumpTo(${i})">${i+1}</button>`;
+      }).join('')}
     </div>
     <div class="quiz-card">
       <div class="quiz-qmeta">
@@ -3432,6 +3453,7 @@ function renderQuiz(){
           </div>
         </div>
         <div class="quiz-actions">
+          <button onclick="prevRealQ()" ${QZ.idx===0?'disabled':''}>上一题</button>
           <button onclick="quizHome()">退出</button>
           <button class="primary" onclick="nextRealQ()">${QZ.idx+1>=QZ.list.length?'查看结果':'下一题'}</button>
         </div>`
@@ -3479,6 +3501,11 @@ function nextRealQ(){
   else saveQuizProgress();
   qzLoad(QZ.idx); renderQuiz(); window.scrollTo({top:0});
 }
+function qJumpTo(i){
+  if(!QZ || !QZ.list || i<0 || i>=QZ.list.length) return;
+  qzSync(); QZ.idx=i; qzLoad(i); saveQuizProgress(); haptic();
+  renderQuiz(); window.scrollTo({top:0});
+}
 function prevRealQ(){
   if(QZ.idx===0) return;
   qzSync(); QZ.idx--; qzLoad(QZ.idx); saveQuizProgress();
@@ -3489,11 +3516,22 @@ function quizHome(){
   QZ=null; WB=null; renderQuizSetup();
 }
 function quizExit(){
-  if(QZ && QZ.list && QZ.list.length>1 && QZ.idx<QZ.list.length){
-    qzSync(); saveQuizProgress();
-    mtoast('进度已保存，下次可接着做');
-  }
-  quizHome();
+  if(!QZ || !QZ.list || QZ.list.length<2 || QZ.idx>=QZ.list.length){ quizHome(); return; }
+  qzSync();
+  const done=(QZ.cur||[]).filter(function(x){return x&&x.revealed}).length;
+  if(!done){ quizHome(); return; }
+  saveQuizProgress();
+  const n=QZ.list.length;
+  let next=0; const cur=QZ.cur||[];
+  for(let i=0;i<n;i++){ if(!(cur[i]&&cur[i].revealed)){ next=i; break; } next=i+1; }
+  const at=Math.min(next+1, n);
+  openSheet('这次做题', '<div class="sheet-sec"><h4>已答 '+done+' / '+n+' 题 · 对 '+QZ.right+' 错 '+QZ.wrong+'</h4>'+
+    '<p class="tip" style="margin:6px 0 12px">进度已保存（每答完一道就存一次）。下次进来点「继续上次」会回到第 '+at+' 题。</p>'+
+    '<div class="quiz-setup">'+
+    '<button class="opt" onclick="closeSheet()"><span><b>继续做题</b><small>不退出，回到第 '+at+' 题</small></span></button>'+
+    '<button class="opt" onclick="closeSheet();quizHome()"><span><b>保存并退出</b><small>下次从第 '+at+' 题接着做</small></span></button>'+
+    '<button class="opt" onclick="closeSheet();restartQuiz();quizHome()"><span><b>退出并清空这一轮</b><small>已做过的题目记录不删，只丢这一轮的进度</small></span></button>'+
+    '</div></div>');
 }
 /* ---------- 错题本：直接翻题＋答案＋解析，不用重做 ---------- */
 let WB=null;
@@ -5409,7 +5447,7 @@ migrateSrs();
 applyMode(); chipRow(); renderHome(); renderList(); renderCloze();
 
 const VER='3.7.0';
-const PATCH='31';   /* 同一版本内的补丁号；0 表示版本本体 */
+const PATCH='32';   /* 同一版本内的补丁号；0 表示版本本体 */
 const CHANGELOG = [
 {v:'3.5.0',d:'2026-11-15',kind:'minor',sum:'改为登录后解锁全部板块，用户中心独立成一页',items:[
 ['变更','未注册登录时只开放「总览」：断代史 / 专题史、检索、卡片正文都能看，掌握与笔记照常记；速览、背诵、专题、刷题按下会直接跳到「我的」页要求登录'],
