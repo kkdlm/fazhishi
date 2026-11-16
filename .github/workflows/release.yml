@@ -8,28 +8,31 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: release
+  cancel-in-progress: false
+
 jobs:
   release:
     runs-on: ubuntu-latest
     env:
-      SRC: https://aka.doubaocdn.com/s/nGtcXkbnhR
-      SWURL: https://aka.doubaocdn.com/s/4CYynBANym
-      PATCH: "39"
+      SRC: https://aka.doubaocdn.com/s/3ID59nZfdm
+      SWURL: https://aka.doubaocdn.com/s/CJ5FBrV0iX
+      PATCH: "40"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
       - name: Publish
-        continue-on-error: true
         run: |
           set -e
-          curl -fsSL --http1.1 -L --retry 5 --retry-all-errors --retry-delay 3 --max-time 300 -o index.new "$SRC"
+          if ! curl -fsSL --http1.1 -L --retry 5 --retry-all-errors --retry-delay 3 --max-time 300 -o index.new "$SRC"; then echo "::notice::源文件暂时拉不到，本次跳过"; exit 0; fi
           sz=$(stat -c%s index.new); echo "index-size=$sz"
-          test "$sz" -gt 1500000
+          if [ "$sz" -lt 1500000 ]; then echo "::notice::文件过小，跳过"; exit 0; fi
           head -c 60 index.new | grep -q '<!DOCTYPE html>'
-          grep -q "const PATCH='$PATCH'" index.new
+          if ! grep -q "const PATCH='$PATCH'" index.new; then echo "::notice::补丁号不匹配，跳过"; exit 0; fi
           mv index.new index.html
-          curl -fsSL --http1.1 -L --retry 5 --retry-all-errors --retry-delay 3 --max-time 120 -o sw.js "$SWURL"
+          curl -fsSL --http1.1 -L --retry 3 --max-time 120 -o sw.js "$SWURL" || { echo "::notice::sw 拉不到，跳过"; exit 0; }
           grep -q "app-3.7.0-p$PATCH" sw.js
           printf '{\n  "version": "3.7.0",\n  "patch": %s,\n  "date": "2026-11-16"\n}\n' "$PATCH" > version.json
           echo ok
@@ -38,7 +41,7 @@ jobs:
         run: |
           git config user.name 'github-actions'
           git config user.email 'actions@github.com'
-          git add index.html sw.js version.json
+          git add index.html sw.js version.json || true
           if git diff --cached --quiet; then echo 'nothing to commit'; exit 0; fi
           git commit -m "chore: 法制史 v3.7.0 发布（补丁 $PATCH）+ version.json 自动同步"
           git push
