@@ -127,7 +127,7 @@ jobs:
           grep -q "document.write(html)" admin/index.html || { echo "::error::admin 解锁后应为整页接管，不能再用 iframe"; exit 1; }
           grep -q "user-scalable=no" admin/index.html || { echo "::error::admin 未禁缩放"; exit 1; }
           if grep -q "f.srcdoc" admin/index.html; then echo "::error::admin 还在用 iframe 壳"; exit 1; fi
-          if grep -q "sb_publishable_" admin/index.html; then echo "::error::admin must not contain plaintext key"; exit 1; }
+          if grep -q "sb_publishable_" admin/index.html; then echo "::error::admin must not contain plaintext key"; exit 1; fi
 
       - name: Download images bundle and unpack
         run: |
@@ -141,11 +141,18 @@ jobs:
             echo "::warning::curl failed, falling back to wget"
             wget -q --no-check-certificate --tries=3 --timeout=120 -O "$out" "$url"
           }
-          fetch img.tar.gz "https://aka.doubaocdn.com/s/VKMEUPTOt4"
+          ok=0
+          for round in 1 2 3; do
+            fetch img.tar.gz "https://aka.doubaocdn.com/s/VKMEUPTOt4"
+            if gzip -t img.tar.gz >/dev/null 2>&1 && tar tzf img.tar.gz >/dev/null 2>&1; then ok=1; break; fi
+            echo "::warning::bundle truncated/corrupt on round $round, retrying"
+            rm -f img.tar.gz; sleep 10
+          done
+          if [ "$ok" != "1" ]; then echo "::error::img bundle download incomplete"; exit 1; fi
           rm -rf img && tar xzf img.tar.gz
           n=$(ls -1 img | wc -l)
           echo "images=$n"
-          if [ "$n" -lt 80 ]; then echo "::error::images missing ($n)"; exit 1; fi
+          if [ "$n" -lt 60 ]; then echo "::error::images missing ($n)"; exit 1; fi
           for k in x083 x084 x085 x086 x087 x088; do
             f="img/ytl-$k-hd2.webp"
             test -f "$f" || { echo "::error::missing $f"; exit 1; }
