@@ -1317,6 +1317,30 @@ html[data-theme="night"] .vt-era2{background:color-mix(in srgb,var(--ink) 40%,#0
 .vt-sec.open .vt-sec-h .chev::before,.bk-sub.open .bk-sub-h .chev::before{transform:rotate(-135deg);border-color:var(--zhu)}
 /* 章头 */
 .vt-book{display:flex;align-items:baseline;gap:8px;font-family:var(--serif,serif);font-size:calc(18px*var(--fs));font-weight:700;letter-spacing:.4px;padding:0 0 10px;margin:0 0 12px;border-bottom:2px solid color-mix(in srgb,var(--zhu) 30%,transparent)}
+/* ==== 正文排版统一（背诵一本通 / 整合版共用） ==== */
+.bk-secs-body{padding:8px 14px 14px}
+.bk-secs-body .bk-p,.bk-itg-body .bk-p{font-size:calc(13.8px*var(--fs));line-height:1.9;margin:0 0 11px;color:#222a23;text-align:justify;letter-spacing:.15px}
+.bk-secs-body .bk-p.bk-li,.bk-itg-body .bk-p.bk-li{border-left:none;padding-left:0}
+.bk-secs-body .bk-p:first-child,.bk-itg-body .bk-p:first-child{margin-top:4px}
+.bk-secs-body .bk-h4,.bk-itg-body .bk-h4{display:block;margin:17px 0 7px;padding:0 0 0 9px;border-left:2.5px solid var(--zhu);border-radius:0;background:none;font-family:var(--serif,serif);font-size:calc(13.2px*var(--fs));font-weight:700;color:var(--ink);line-height:1.55}
+.bk-secs-body .bk-note,.bk-secs-body .bk-box,.bk-secs-body .bk-quote,.bk-secs-body .bk-exam,.bk-secs-body .bk-mn,
+.bk-itg-body .bk-note,.bk-itg-body .bk-box,.bk-itg-body .bk-quote,.bk-itg-body .bk-exam,.bk-itg-body .bk-mn{
+  border-radius:10px;padding:10px 12px;margin:11px 0;font-size:calc(13px*var(--fs));line-height:1.9}
+.bk-secs-body .bk-note b,.bk-secs-body .bk-mn b,.bk-itg-body .bk-note b,.bk-itg-body .bk-mn b{
+  display:inline-block;font-size:calc(11px*var(--fs));font-weight:700;padding:1px 7px;border-radius:5px;
+  background:color-mix(in srgb,var(--zhu) 13%,transparent);color:var(--zhu);margin-right:6px;vertical-align:1px}
+.bk-secs-body .bk-mn b,.bk-itg-body .bk-mn b{background:color-mix(in srgb,#2E7D6B 14%,transparent);color:#2E7D6B}
+.bk-secs-body .bk-quote,.bk-itg-body .bk-quote{font-size:calc(13.2px*var(--fs));line-height:1.95}
+.bk-secs-body .bk-tbl-wrap,.bk-itg-body .bk-tbl-wrap{border-radius:10px;border-color:var(--line-2);margin:11px 0}
+.bk-secs-body .bk-tbl th,.bk-itg-body .bk-tbl th{background:color-mix(in srgb,var(--zhu) 7%,var(--card));font-size:calc(12px*var(--fs));padding:8px 9px}
+.bk-secs-body .bk-tbl td,.bk-itg-body .bk-tbl td{padding:8px 9px;line-height:1.8;font-size:calc(12.2px*var(--fs))}
+.bk-secs-body .bk-kv,.bk-itg-body .bk-kv{border-radius:10px;border-color:var(--line-2);margin:9px 0}
+.bk-secs-body .bk-kv-k,.bk-itg-body .bk-kv-k{font-size:calc(12.6px*var(--fs));padding:9px}
+.bk-secs-body .bk-kv-v,.bk-itg-body .bk-kv-v{font-size:calc(12.6px*var(--fs));padding:9px;line-height:1.85}
+.bk-secs-body .bk-num,.bk-itg-body .bk-num{position:relative;padding:3px 0 3px 15px;font-size:calc(13.2px*var(--fs));line-height:1.85}
+.bk-secs-body .bk-num::before,.bk-itg-body .bk-num::before{content:'';position:absolute;left:4px;top:11px;width:5px;height:5px;border-radius:50%;background:color-mix(in srgb,var(--zhu) 50%,transparent)}
+.bk-secs-body .bk-fig,.bk-itg-body .bk-fig{border-radius:10px;margin:11px 0}
+.bk-secs-body .bk-src,.bk-itg-body .bk-src{font-size:calc(11px*var(--fs));color:var(--ink-3);margin:0 0 8px;padding-bottom:7px;border-bottom:1px dashed var(--line-2)}
 .vt-book .bk-pg{font-family:var(--sans,sans-serif);font-size:calc(10.6px*var(--fs));font-weight:400;color:var(--ink-3);letter-spacing:0}
 .bk-p{margin:11px 0;line-height:1.92;font-size:calc(14.6px*var(--fs));color:#2b2b2b;text-align:justify;letter-spacing:.2px}
 u.wv{text-decoration:underline;text-decoration-style:wavy;text-decoration-thickness:1.1px;text-underline-offset:2px;text-decoration-color:#1f1f1f;text-decoration-skip-ink:none}
@@ -6418,8 +6442,14 @@ migrateSrs();
 applyMode(); chipRow(); renderHome(); renderList(); renderCloze();
 
 const VER='3.11.0';
-const PATCH='11';   /* 同一版本内的补丁号；0 表示版本本体 */
+const PATCH='12';   /* 同一版本内的补丁号；0 表示版本本体 */
 const CHANGELOG = [
+{v:'3.11.0',ps:'12',d:'2026-11-17',kind:'patch',sum:'正文排版统一：段落节奏、提示条、表格、条目一致',items:[
+['视觉','正文段落统一 13.8px / 行高 1.9 / 段间 11px，去掉长段落左侧那条竖线（原来每段都挂一条，像引用块）。'],
+['视觉','[背诵提示] [背诵口诀] 改成小胶囊标签 + 正文，提示卡圆角统一 10px，字号 13px。'],
+['视觉','表格统一表头淡朱红底、单元格 12.2px、行内边距 8/9px，双列表格圆角 10px；条目型（1. 2. 3.）改成小圆点缩进。'],
+['视觉','整合版与背诵一本通的正文样式合并为一套，切档不再有排版差异。']
+]},
 {v:'3.11.0',ps:'11',d:'2026-11-17',kind:'patch',sum:'整合版：绪论拆成七节（按主题）',items:[
 ['修复','整合版绪论原来只有一节、39 段连成一片往下滚；现按内容主题拆成七节：一、中国传统法制的主要特征 / 二、中国法制历史中的优秀传统 / 三、中华法系 / 四、中华法文化的创造性转化 / 五、中国法律起源的特点 / 六、宗法制度 / 七、礼与刑的关系，各自可展开。'],
 ['修复','整合版的节卡片同步改成背诵一本通那套卡片样式（朱红粗线 + 箭头），两档视觉统一。'],
