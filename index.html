@@ -1318,6 +1318,17 @@ html[data-theme="night"] .vt-era2{background:color-mix(in srgb,var(--ink) 40%,#0
 /* 章头 */
 .vt-book{display:flex;align-items:baseline;gap:8px;font-family:var(--serif,serif);font-size:calc(18px*var(--fs));font-weight:700;letter-spacing:.4px;padding:0 0 10px;margin:0 0 12px;border-bottom:2px solid color-mix(in srgb,var(--zhu) 30%,transparent)}
 /* ==== 正文排版统一（背诵一本通 / 整合版共用） ==== */
+.hit-list{display:flex;flex-direction:column;gap:8px}
+.hit{display:flex;align-items:flex-start;gap:8px;text-align:left;width:100%;background:var(--card);border:1px solid var(--line-2);border-radius:12px;padding:11px 12px;box-shadow:0 1px 2px rgba(40,60,45,.04)}
+.hit:active{background:var(--red-soft)}
+.hit .hit-loc{flex:0 0 auto;max-width:46%;font-size:calc(10.8px*var(--fs));color:var(--ink-3);line-height:1.5;padding-right:8px;border-right:1px solid var(--line-2)}
+.hit .hit-loc b{color:var(--ink-2);font-weight:600}
+.hit .hit-tx{flex:1 1 auto;min-width:0;font-size:calc(13px*var(--fs));line-height:1.7;color:var(--ink-2)}
+.hit .chev{align-self:center;opacity:.5}
+mark.hl{background:color-mix(in srgb,var(--zhu) 16%,transparent);color:var(--zhu);padding:0 1px;border-radius:3px}
+.bk-b{display:block}
+.hit-hl{animation:hitFlash 2.2s ease-out}
+@keyframes hitFlash{0%{background:color-mix(in srgb,var(--zhu) 18%,transparent);box-shadow:inset 0 0 0 2px color-mix(in srgb,var(--zhu) 25%,transparent)}100%{background:transparent;box-shadow:none}}
 .bk-secs-body{padding:8px 14px 14px}
 .bk-secs-body .bk-p,.bk-itg-body .bk-p{font-size:calc(13.8px*var(--fs));line-height:1.9;margin:0 0 11px;color:#222a23;text-align:justify;letter-spacing:.15px}
 .bk-secs-body .bk-p.bk-li,.bk-itg-body .bk-p.bk-li{border-left:none;padding-left:0}
@@ -2364,7 +2375,7 @@ function integBodyHTML(){
   h+=ss.map(function(s){
       var nb2=(s.blocks||[]).filter(function(b){return b.t!=='img';}).length;
       return '<div class="vt-sec"><div class="vt-sec-h" onclick="bkFoldRow(this)"><b>'+esc(s.n)+'</b><span class="vt-sec-meta">'+(nb2?nb2+' 段':'')+'</span><i class="chev"></i></div>'+
-      '<div class="bk-secs-body" style="display:none"><div class="bk-src">'+esc(s.src||'')+'</div>'+(s.blocks||[]).map(bkBlock).join('')+'</div></div>';
+      '<div class="bk-secs-body" style="display:none"><div class="bk-src">'+esc(s.src||'')+'</div>'+(s.blocks||[]).map(function(b,bi){return '<div class="bk-b" data-b="'+bi+'">'+bkBlock(b)+'</div>';}).join('')+'</div></div>';
     }).join('');
   return h;
 }
@@ -5426,35 +5437,79 @@ function bkJump(el,id){
 }
 function integSearchHTML(q){
   const kw=q.trim(); if(!kw) return integBodyHTML();
-  const hits=[];
+  const rows=[]; let total=0; const secs=new Set();
   (typeof ITG2!=='undefined'?ITG2:[]).forEach(function(ch){
-    (ch.secs||[]).forEach(function(sec){
-      const bs=(sec.blocks||[]).filter(function(b){return bkText(b).indexOf(kw)>=0;});
-      if(bs.length) hits.push({ch:ch.n,sec:sec.n,blocks:bs,n:bs.length});
+    (ch.secs||[]).forEach(function(sec,si){
+      (sec.blocks||[]).forEach(function(b,bi){
+        const txt=bkText(b);
+        if(txt.indexOf(kw)<0) return;
+        total++; secs.add(ch.k+'|'+si);
+        if(rows.length>=150) return;
+        const loc='<b>'+esc(ch.n)+'</b> › '+esc(sec.n);
+        rows.push(hitRow(kw,loc,txt,"jumpHit('card','"+ch.k+"',"+si+",0,"+bi+")"));
+      });
     });
   });
-  let tot=0; hits.forEach(function(h){tot+=h.n;});
-  if(!tot){ document.getElementById('qCount').textContent='整合版 · 全书没有「'+kw+'」'; return '<div class="vt-empty">全书没有「'+kw+'」，换个词试试</div>'; }
-  document.getElementById('qCount').textContent='整合版 · 「'+kw+'」命中 '+tot+' 段 / '+hits.length+' 节';
-  return hits.slice(0,40).map(function(h){
-    return '<div class="vt-sec"><div class="vt-sec-h" onclick="bkFoldRow(this)"><b>'+esc(h.sec)+'</b><span class="vt-sec-meta">'+esc(h.ch)+' · '+h.n+' 段</span><i class="chev"></i></div>'+
-      '<div class="bk-secs-body">'+h.blocks.map(bkBlock).join('')+'</div></div>';
-  }).join('');
+  if(!total){ document.getElementById('qCount').textContent='整合版 · 全书没有「'+kw+'」'; return '<div class="vt-empty">全书没有「'+kw+'」，换个词试试</div>'; }
+  document.getElementById('qCount').textContent='整合版 · 「'+kw+'」命中 '+total+' 段 / '+secs.size+' 节';
+  return '<div class="hit-list">'+rows.join('')+'</div>';
+}
+function hitSentence(text,kw){
+  if(!text) return '';
+  const parts=String(text).split(/(?<=[。；！？])/);
+  let seg='';
+  for(let i=0;i<parts.length;i++){ if(parts[i].indexOf(kw)>=0){ seg=parts[i]; break; } }
+  if(!seg) seg=String(text);
+  seg=seg.trim();
+  const p=seg.indexOf(kw);
+  if(p<0) return seg.slice(0,70)+(seg.length>70?'…':'');
+  const st=Math.max(0,p-22), en=Math.min(seg.length,p+kw.length+24);
+  return (st>0?'…':'')+seg.slice(st,en)+(en<seg.length?'…':'');
+}
+function hitRow(kw,loc,text,onclickCode){
+  let sn=hitSentence(text,kw);
+  sn=sn.replace(/[<>&]/g,function(m){return {'<':'&lt;','>':'&gt;','&':'&amp;'}[m];});
+  const at=sn.indexOf(kw);
+  if(at>=0) sn=sn.slice(0,at)+'<mark class="hl">'+kw+'</mark>'+sn.slice(at+kw.length);
+  return '<button class="hit" onclick="'+onclickCode+'"><div class="hit-loc">'+loc+'</div><div class="hit-tx">'+sn+'</div><i class="chev"></i></button>';
+}
+function jumpHit(kind,chKey,si,gi,bi){
+  Q=''; const qi=document.getElementById('q'); if(qi) qi.value='';
+  if(kind==='card'){ ITG=chKey; } else { VT=chKey; }
+  renderList();
+  const secs=document.querySelectorAll('#list .vt-sec');
+  const sec=secs[si]; if(!sec) return;
+  const h=sec.querySelector('.vt-sec-h'), body=sec.querySelector('.bk-secs-body');
+  if(body && body.style.display==='none') h.click();
+  const subs=sec.querySelectorAll('.bk-sub');
+  const sub=subs[gi];
+  if(sub){ const sh=sub.querySelector('.bk-sub-h'), sb=sub.querySelector('.bk-sub-b');
+    if(sb && sb.style.display==='none') sh.click(); }
+  const tgt=sec.querySelector('.bk-b[data-b="'+bi+'"]');
+  if(tgt){ tgt.scrollIntoView({behavior:'smooth',block:'center'}); tgt.classList.add('hit-hl'); setTimeout(()=>tgt.classList.remove('hit-hl'),2200); }
+  haptic();
 }
 function vtSearchHTML(q){
   const kw=q.trim(); if(!kw) return vtBodyHTML(true);
-  const hits=[];
+  const rows=[]; let total=0; const secs=new Set();
   BTOPIC.chs.forEach(ch=>{
-    (ch.secs||[]).forEach(sec=>{
-      const blocks=(sec.blocks||[]).filter(b=>bkText(b).includes(kw));
-      if(blocks.length) hits.push({ch:ch.n,sec:sec.n,hi:sec.hit||0,blocks:blocks,pgs:sec.pgs||''});
+    (ch.secs||[]).forEach((sec,si)=>{
+      const gs=bkGroups(sec);
+      gs.forEach((g,gi)=>{
+        (g.bs||[]).forEach((b,bi)=>{
+          const txt=bkText(b);
+          if(txt.indexOf(kw)<0) return;
+          total++; secs.add(ch.k+'|'+si);
+          if(rows.length>=150) return;
+          const loc='<b>'+esc(ch.n)+'</b> › '+esc(sec.n)+(g.t?' › '+esc(g.t):'')+' · 书 P'+esc(sec.pgs||'');
+          rows.push(hitRow(kw,loc,txt,"jumpHit('book','"+ch.k+"',"+si+","+gi+","+bi+")"));
+        });
+      });
     });
   });
-  const total=hits.reduce((a,h)=>a+h.blocks.length,0);
-  if(!total) return `<div class="vt-empty">全书没有「${esc(kw)}」，换个词试试（书名号、朝代名都可以）</div>`;
-  document.getElementById('qCount').textContent=`背诵一本通 · 「${kw}」命中 ${total} 处 / ${hits.length} 节`;
-  return hits.slice(0,40).map(h=>`<div class="vt-sec"><div class="vt-sec-h"><b>${esc(h.sec)}</b><span>${esc(h.ch)} · 书 P${esc(h.pgs)}</span></div>
-    <div class="bk-secs-body">${h.blocks.map(bkBlock).join('')}</div></div>`).join('');
+  if(!total) return '<div class="vt-empty">全书没有「'+esc(kw)+'」，换个词试试（书名号、朝代名都可以）</div>';
+  document.getElementById('qCount').textContent='背诵一本通 · 「'+kw+'」命中 '+total+' 处 / '+secs.size+' 节';
+  return '<div class="hit-list">'+rows.join('')+'</div>';
 }
 function vtBodyHTML(withTip){
   const ch=BTOPIC.chs.find(x=>x.k===VT)||BTOPIC.chs[0];
@@ -5467,7 +5522,7 @@ function vtBodyHTML(withTip){
     const nav='';
     const bodyHtml=gs.map((g,i)=>{
       const id='g'+si+'-'+i;
-      const inner=g.bs.map(bkBlock).join('');
+      const inner=g.bs.map((b,bi)=>`<div class="bk-b" data-b="${bi}">${bkBlock(b)}</div>`).join('');
       if(!g.t) return `<div class="bk-lead">${inner}</div>`;
       const cnt=g.bs.length;
       return `<div class="bk-sub" data-g="${id}" id="bk-${id}">
@@ -6464,8 +6519,13 @@ migrateSrs();
 applyMode(); chipRow(); renderHome(); renderList(); renderCloze();
 
 const VER='3.11.0';
-const PATCH='13';   /* 同一版本内的补丁号；0 表示版本本体 */
+const PATCH='14';   /* 同一版本内的补丁号；0 表示版本本体 */
 const CHANGELOG = [
+{v:'3.11.0',ps:'14',d:'2026-11-17',kind:'patch',sum:'搜索改成命中句列表 + 点击精准跳转',items:[
+['调整','搜索结果不再整节铺开：每条只显示位置（章 › 节 › 小节 · 书页码）和命中的那一句，关键词标朱红。'],
+['新增','点任意一条结果，自动清空搜索、切到该章、展开所在节与小节，滚到那一段并闪一下高亮，直接落在知识点上。'],
+['调整','跳转定位改为居中，避免落在吸顶栏下面看不见。']
+]},
 {v:'3.11.0',ps:'13',d:'2026-11-17',kind:'patch',sum:'专题史恢复搜索框（整合版 / 背诵一本通都能搜）',items:[
 ['修复','专题史模式下搜索框被代码隐藏了（切档时 display:none），现在两档都保留搜索框。'],
 ['新增','整合版支持全书检索：按章/节列出命中段，命中处自动展开，结果条数写在顶部（如「整合版 · 「无讼」命中 1 段 / 1 节」）。'],
