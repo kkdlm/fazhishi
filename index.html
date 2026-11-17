@@ -1268,6 +1268,30 @@ html[data-theme="night"] .vt-era2{background:color-mix(in srgb,var(--ink) 40%,#0
 .bk-sub-h>span{flex:0 0 auto;font-size:calc(11px*var(--fs));color:var(--ink-3,#999)}
 .bk-sub-h .bk-fold{flex:0 0 auto}
 .bk-sub-h.off .bk-sub-t{opacity:.6}
+/* —— 小节卡片化 —— */
+.bk-sub{background:var(--card);border:1px solid var(--line-2);border-radius:14px;margin:10px 0;padding:0 13px;box-shadow:0 1px 2px rgba(40,60,45,.045);transition:box-shadow .18s,border-color .18s}
+.bk-sub:has(.bk-sub-b:not([style*="none"]) ){border-color:color-mix(in srgb,var(--zhu) 22%,var(--line-2))}
+.bk-sub-h{padding:11px 0 11px;gap:8px;align-items:center}
+.bk-sub-h .bk-sub-t{font-size:calc(13.8px*var(--fs));font-weight:700;line-height:1.45;color:var(--ink);border-left:3px solid var(--zhu);padding-left:10px;letter-spacing:.2px}
+.bk-sub-h .bk-sub-n{font-size:calc(11px*var(--fs));color:var(--ink-3);background:color-mix(in srgb,var(--line-2) 70%,transparent);border-radius:999px;padding:1px 7px}
+.bk-sub-b{padding:2px 0 12px;border-top:1px dashed var(--line-2);margin-top:-1px}
+.bk-sub-b>*:first-child{margin-top:10px}
+.bk-sub-h.off .bk-sub-t{opacity:.72}
+/* —— 展开按钮 —— */
+.bk-fold{flex:0 0 auto;white-space:nowrap;margin-left:auto;border:1px solid color-mix(in srgb,var(--red) 24%,transparent);background:#fff;border-radius:999px;font-size:calc(11px*var(--fs));font-weight:600;color:var(--red);padding:3px 11px;line-height:1.25;box-shadow:0 1px 1px rgba(40,60,45,.04);transition:transform .12s var(--ease),background .16s}
+.bk-fold:active{transform:scale(.97);background:var(--red-soft)}
+.bk-fold.sm{padding:2px 9px;font-size:calc(10.5px*var(--fs))}
+/* —— 小节导航 —— */
+.bk-subnav{position:sticky;top:0;z-index:6;display:flex;gap:7px;overflow-x:auto;padding:9px 0 10px;margin:-2px 0 4px;background:linear-gradient(var(--card,#f9faf2) 74%,transparent);-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.bk-subnav .bk-nav{border:1px solid var(--line);background:#fff;color:var(--ink-2);border-radius:999px;padding:5px 11px;font-size:calc(12px*var(--fs));line-height:1.25;box-shadow:0 1px 1px rgba(40,60,45,.03)}
+.bk-subnav .bk-nav.on{background:var(--red);border-color:var(--red);color:#fff;font-weight:600}
+.bk-subnav .bk-nav:active{background:var(--red-soft)}
+/* —— 节头 —— */
+.vt-sec-h{padding:4px 0 4px 10px;border-left-width:4px;border-left-color:var(--zhu)}
+.vt-sec-h b{font-size:calc(14.5px*var(--fs))}
+.vt-sec-h span{background:color-mix(in srgb,var(--line-2) 62%,transparent);border-radius:999px;padding:1px 8px;font-size:calc(10.6px*var(--fs));margin-left:auto;margin-right:6px;color:var(--ink-3)}
+/* —— 章头 —— */
+.vt-book{font-size:calc(17px*var(--fs));letter-spacing:.5px;padding-bottom:2px;border-bottom:1px solid var(--line-2);margin-bottom:10px}
 .bk-p{margin:11px 0;line-height:1.92;font-size:calc(14.6px*var(--fs));color:#2b2b2b;text-align:justify;letter-spacing:.2px}
 u.wv{text-decoration:underline;text-decoration-style:wavy;text-decoration-thickness:1.1px;text-underline-offset:2px;text-decoration-color:#1f1f1f;text-decoration-skip-ink:none}
 .rc{font-weight:inherit}
@@ -5333,6 +5357,8 @@ function bkGoto(el,i){
 }
 function bkJump(el,id){
   const sec=el.closest('.vt-sec'); if(!sec) return;
+  const nav=el.closest('.bk-subnav'); if(nav){ nav.querySelectorAll('.bk-nav').forEach(x=>x.classList.remove('on')); }
+  el.classList.add('on');
   const t=sec.querySelector('[data-g="'+id+'"]'); if(!t) return;
   const h=t.querySelector('.bk-sub-h'), b=t.querySelector('.bk-sub-b');
   if(h&&b&&b.style.display==='none'){ h.click(); }
@@ -6365,8 +6391,14 @@ migrateSrs();
 applyMode(); chipRow(); renderHome(); renderList(); renderCloze();
 
 const VER='3.11.0';
-const PATCH='7';   /* 同一版本内的补丁号；0 表示版本本体 */
+const PATCH='8';   /* 同一版本内的补丁号；0 表示版本本体 */
 const CHANGELOG = [
+{v:'3.11.0',ps:'8',d:'2026-11-17',kind:'patch',sum:'背诵一本通：小节卡片化 + 展开按钮 + 导航高亮',items:[
+['视觉','小节从纯文字行改成卡片：左侧朱红竖线标题、右侧块数胶囊、「展开」胶囊按钮；展开后卡片描边转为朱红，收起态标题自动减淡。'],
+['视觉','节头改用朱红粗线 + 页码胶囊，页码与按钮分开，不再挤在一起。'],
+['视觉','章名加分隔线，层级从章—节—小节到正文逐级递减字号，一眼看清自己在哪一层。'],
+['交互','点小节导航后当前那枚按钮高亮，导航条吸顶跟随。']
+]},
 {v:'3.11.0',ps:'7',d:'2026-11-17',kind:'patch',sum:'背诵一本通：小节也做成可展开的一级',items:[
 ['调整','展开一节后，先看到的是小节列表（一、先秦时期的罪名 / 二、秦汉的罪名 …），每个小节右侧带「展开」，默认收起，点开才出正文。'],
 ['调整','节顶部的小节导航点击后会自动展开对应小节并滚过去；顶部章级「节」导航同样自动展开。']
