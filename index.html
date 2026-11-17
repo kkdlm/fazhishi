@@ -2499,6 +2499,7 @@ function pnum(n){ return SEQ[n]||n; }
 function eraRank(ch){ const i=ERA_ORD.indexOf(ch); return i<0?900:i; }
 function renderList(){
   if(S.mode==='zhuan' && S.ztsrc!=='book'){
+    if(Q.trim()){ document.getElementById('list').innerHTML = integSearchHTML(Q); return; }
     const x=integCur();
     document.getElementById('qCount').textContent = '整合版 · '+x.n+' · '+(integBlocks(x)?(integSecs(x).length+' 节 '+integBlocks(x)+' 段'):(integSecs(x).length+' 张原表'));
     document.getElementById('list').innerHTML = integBodyHTML();
@@ -5080,7 +5081,11 @@ function applyMode(){
   if(seg) seg.style.display = (S.mode==='zhuan')?'flex':'none';
   document.querySelectorAll('#srcSeg button').forEach(b=>b.classList.toggle('on', (b.dataset.z||'card')===(zb?'book':'card')));
   const sr=document.querySelector('#v-browse .search');
-  if(sr) sr.style.display = (S.mode==='zhuan')?'none':'';
+  if(sr) sr.style.display='';
+  const qi=document.getElementById('q');
+  if(qi) qi.placeholder = (S.mode==='zhuan')
+    ? '搜正文，如「无讼」「唐律疏议」「宗法」'
+    : '搜考点，如「唐律疏议」「春秋决狱」「十恶」';
 }
 function setTopic(t){
   TOPIC=t||'tl';
@@ -5418,6 +5423,23 @@ function bkJump(el,id){
   if(h&&b&&b.style.display==='none'){ h.click(); }
   t.scrollIntoView({behavior:'smooth',block:'start'});
   haptic();
+}
+function integSearchHTML(q){
+  const kw=q.trim(); if(!kw) return integBodyHTML();
+  const hits=[];
+  (typeof ITG2!=='undefined'?ITG2:[]).forEach(function(ch){
+    (ch.secs||[]).forEach(function(sec){
+      const bs=(sec.blocks||[]).filter(function(b){return bkText(b).indexOf(kw)>=0;});
+      if(bs.length) hits.push({ch:ch.n,sec:sec.n,blocks:bs,n:bs.length});
+    });
+  });
+  let tot=0; hits.forEach(function(h){tot+=h.n;});
+  if(!tot){ document.getElementById('qCount').textContent='整合版 · 全书没有「'+kw+'」'; return '<div class="vt-empty">全书没有「'+kw+'」，换个词试试</div>'; }
+  document.getElementById('qCount').textContent='整合版 · 「'+kw+'」命中 '+tot+' 段 / '+hits.length+' 节';
+  return hits.slice(0,40).map(function(h){
+    return '<div class="vt-sec"><div class="vt-sec-h" onclick="bkFoldRow(this)"><b>'+esc(h.sec)+'</b><span class="vt-sec-meta">'+esc(h.ch)+' · '+h.n+' 段</span><i class="chev"></i></div>'+
+      '<div class="bk-secs-body">'+h.blocks.map(bkBlock).join('')+'</div></div>';
+  }).join('');
 }
 function vtSearchHTML(q){
   const kw=q.trim(); if(!kw) return vtBodyHTML(true);
@@ -6442,8 +6464,13 @@ migrateSrs();
 applyMode(); chipRow(); renderHome(); renderList(); renderCloze();
 
 const VER='3.11.0';
-const PATCH='12';   /* 同一版本内的补丁号；0 表示版本本体 */
+const PATCH='13';   /* 同一版本内的补丁号；0 表示版本本体 */
 const CHANGELOG = [
+{v:'3.11.0',ps:'13',d:'2026-11-17',kind:'patch',sum:'专题史恢复搜索框（整合版 / 背诵一本通都能搜）',items:[
+['修复','专题史模式下搜索框被代码隐藏了（切档时 display:none），现在两档都保留搜索框。'],
+['新增','整合版支持全书检索：按章/节列出命中段，命中处自动展开，结果条数写在顶部（如「整合版 · 「无讼」命中 1 段 / 1 节」）。'],
+['调整','搜索框提示语随档切换：断代史「搜考点…」，专题史「搜正文，如「无讼」「唐律疏议」「宗法」」。']
+]},
 {v:'3.11.0',ps:'12',d:'2026-11-17',kind:'patch',sum:'正文排版统一：段落节奏、提示条、表格、条目一致',items:[
 ['视觉','正文段落统一 13.8px / 行高 1.9 / 段间 11px，去掉长段落左侧那条竖线（原来每段都挂一条，像引用块）。'],
 ['视觉','[背诵提示] [背诵口诀] 改成小胶囊标签 + 正文，提示卡圆角统一 10px，字号 13px。'],
