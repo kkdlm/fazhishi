@@ -1263,9 +1263,11 @@ html[data-theme="night"] .vt-era2{background:color-mix(in srgb,var(--ink) 40%,#0
 .bk-secnav{background:transparent;padding:2px 0 6px}
 .bk-subnav .bk-nav:active{background:color-mix(in srgb,var(--ink) 6%,#fff)}
 .bk-sub{border-top:1px dashed color-mix(in srgb,var(--ink) 10%,transparent);padding-top:6px;margin-top:8px}
-.bk-sub-h{display:flex;align-items:baseline;gap:8px;cursor:pointer;padding:2px 0 4px}
+.bk-sub-h{display:flex;align-items:baseline;gap:8px;cursor:pointer;padding:6px 2px}
+.bk-sub-h .bk-sub-t{flex:1 1 auto;min-width:0;font-family:var(--serif,serif);font-size:calc(13.5px*var(--fs));font-weight:700;color:var(--ink);line-height:1.45;border-left:3px solid color-mix(in srgb,var(--red) 60%,transparent);padding-left:8px}
 .bk-sub-h>span{flex:0 0 auto;font-size:calc(11px*var(--fs));color:var(--ink-3,#999)}
-.bk-sub-h.off{opacity:.55}
+.bk-sub-h .bk-fold{flex:0 0 auto}
+.bk-sub-h.off .bk-sub-t{opacity:.6}
 .bk-p{margin:11px 0;line-height:1.92;font-size:calc(14.6px*var(--fs));color:#2b2b2b;text-align:justify;letter-spacing:.2px}
 u.wv{text-decoration:underline;text-decoration-style:wavy;text-decoration-thickness:1.1px;text-underline-offset:2px;text-decoration-color:#1f1f1f;text-decoration-skip-ink:none}
 .rc{font-weight:inherit}
@@ -5317,6 +5319,7 @@ function bkSubFold(el){
   const b=el.nextElementSibling; if(!b) return;
   const hid=b.style.display==='none';
   b.style.display=hid?'block':'none';
+  const btn=el.querySelector('button'); if(btn) btn.textContent=hid?'收起':'展开';
   el.classList.toggle('off',!hid);
   haptic();
 }
@@ -5331,6 +5334,8 @@ function bkGoto(el,i){
 function bkJump(el,id){
   const sec=el.closest('.vt-sec'); if(!sec) return;
   const t=sec.querySelector('[data-g="'+id+'"]'); if(!t) return;
+  const h=t.querySelector('.bk-sub-h'), b=t.querySelector('.bk-sub-b');
+  if(h&&b&&b.style.display==='none'){ h.click(); }
   t.scrollIntoView({behavior:'smooth',block:'start'});
   haptic();
 }
@@ -5367,8 +5372,8 @@ function vtBodyHTML(withTip){
       if(!g.t) return `<div class="bk-sub" data-g="${id}"><div class="bk-sub-b">${inner}</div></div>`;
       const cnt=g.bs.length;
       return `<div class="bk-sub" data-g="${id}" id="bk-${id}">
-        <div class="bk-sub-h" onclick="bkSubFold(this)">${esc(g.t)}<span class="bk-sub-n">${cnt} 块</span></div>
-        <div class="bk-sub-b">${inner}</div></div>`;
+        <div class="bk-sub-h" onclick="bkSubFold(this)"><b class="bk-sub-t">${esc(g.t)}</b><span class="bk-sub-n">${cnt} 块</span><button class="bk-fold sm">展开</button></div>
+        <div class="bk-sub-b" style="display:none">${inner}</div></div>`;
     }).join('');
     return `<div class="vt-sec"><div class="vt-sec-h"><b>${esc(sec.n)}</b><span>书 P${esc(sec.pgs||'')}${named.length>1?` · ${named.length} 小节`:''}</span><button class="bk-fold" onclick="bkFold(this)">展开</button></div>
       <div class="bk-secs-body" style="display:none">${nav}${bodyHtml}</div></div>`;
@@ -6360,8 +6365,12 @@ migrateSrs();
 applyMode(); chipRow(); renderHome(); renderList(); renderCloze();
 
 const VER='3.11.0';
-const PATCH='6';   /* 同一版本内的补丁号；0 表示版本本体 */
+const PATCH='7';   /* 同一版本内的补丁号；0 表示版本本体 */
 const CHANGELOG = [
+{v:'3.11.0',ps:'7',d:'2026-11-17',kind:'patch',sum:'背诵一本通：小节也做成可展开的一级',items:[
+['调整','展开一节后，先看到的是小节列表（一、先秦时期的罪名 / 二、秦汉的罪名 …），每个小节右侧带「展开」，默认收起，点开才出正文。'],
+['调整','节顶部的小节导航点击后会自动展开对应小节并滚过去；顶部章级「节」导航同样自动展开。']
+]},
 {v:'3.11.0',ps:'6',d:'2026-11-17',kind:'patch',sum:'背诵一本通：节内再分小节 + 搜索可用 + 默认绪论',items:[
 ['新增','节内按书上的「一、二、三…」再分小节，每个小节可单独折叠，节顶部有一排小节导航，点一下直接跳过去。'],
 ['新增','章顶部加一排「节」导航，点节名自动展开并滚到该节。'],
