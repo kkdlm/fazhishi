@@ -5388,10 +5388,7 @@ function vtBodyHTML(withTip){
     }
     const gs=bkGroups(sec);
     const named=gs.filter(g=>g.t);
-    let nav='';
-    if(named.length>1){
-      nav=`<div class="bk-subnav">${named.map((g,i)=>`<button class="bk-nav" onclick="bkJump(this,'g${si}-${gs.indexOf(g)}')">${esc(g.t)}</button>`).join('')}</div>`;
-    }
+    const nav='';
     const bodyHtml=gs.map((g,i)=>{
       const id='g'+si+'-'+i;
       const inner=g.bs.map(bkBlock).join('');
@@ -5406,7 +5403,7 @@ function vtBodyHTML(withTip){
   };
   const body=(ch.secs&&ch.secs.length)?ch.secs.map((sec,si)=>secHtml(sec,si)).join(''):`<div class="vt-empty">本章正文待转录（书 P${esc(ch.pgs||'')}）</div>`;
   const doneIx=ch.secs?ch.secs.filter(s=>(s.blocks||[]).length).length:0;
-  const secNav=(ch.secs&&ch.secs.length>3)?`<div class="bk-subnav bk-secnav">${ch.secs.map((s2,i)=>`<button class="bk-nav" onclick="bkGoto(this,${i})">${esc(String(s2.n).replace(/^第[一二三四五六七八九十]+节\s*/,'').slice(0,12))}</button>`).join('')}</div>`:'';
+  const secNav='';
   return `
    <div class="vt-book">${esc(ch.n)}<span class="bk-pg">书 P${esc(ch.pgs||'')}${ch.secs&&ch.secs.length?` · 已录 ${doneIx}/${ch.secs.length} 节`:''}</span></div>
    ${secNav}${body}`;
@@ -6391,8 +6388,12 @@ migrateSrs();
 applyMode(); chipRow(); renderHome(); renderList(); renderCloze();
 
 const VER='3.11.0';
-const PATCH='8';   /* 同一版本内的补丁号；0 表示版本本体 */
+const PATCH='9';   /* 同一版本内的补丁号；0 表示版本本体 */
 const CHANGELOG = [
+{v:'3.11.0',ps:'9',d:'2026-11-17',kind:'patch',sum:'背诵一本通：去掉横向导航条，小节一律默认收起',items:[
+['调整','去掉节头下方那排横向小节选择条（以及章级那排节选择条），层级只靠 章→节→小节 三级列表。'],
+['调整','展开一节后，所有小节卡片默认收起，只显示标题 + 块数 + 「展开」，点哪条开哪条；节首的背诵提示仍照常显示。']
+]},
 {v:'3.11.0',ps:'8',d:'2026-11-17',kind:'patch',sum:'背诵一本通：小节卡片化 + 展开按钮 + 导航高亮',items:[
 ['视觉','小节从纯文字行改成卡片：左侧朱红竖线标题、右侧块数胶囊、「展开」胶囊按钮；展开后卡片描边转为朱红，收起态标题自动减淡。'],
 ['视觉','节头改用朱红粗线 + 页码胶囊，页码与按钮分开，不再挤在一起。'],
