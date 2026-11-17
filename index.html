@@ -1257,6 +1257,15 @@ html[data-theme="night"] .vt-era2{background:color-mix(in srgb,var(--ink) 40%,#0
 .bk-h3{font-family:var(--serif,serif);font-size:calc(15px*var(--fs));font-weight:800;color:var(--ink);margin:16px 0 8px;padding-left:9px;border-left:4px solid var(--red);line-height:1.45}
 .bk-h4{display:inline-block;font-size:calc(14px*var(--fs));font-weight:700;color:#7a2b18;margin:20px 0 8px;line-height:1.5;padding:3px 10px;border-radius:6px;background:color-mix(in srgb,var(--red) 9%,transparent);border-left:3px solid var(--red)}
 .bk-itg-body .bk-h4,.bk-secs-body .bk-h4{margin-top:18px}
+.bk-subnav{position:sticky;top:0;z-index:5;display:flex;gap:6px;overflow-x:auto;padding:6px 0 8px;margin:0 0 6px;background:linear-gradient(var(--bg,#fdfcf7),color-mix(in srgb,var(--bg,#fdfcf7) 92%,transparent));-webkit-overflow-scrolling:touch}
+.bk-subnav::-webkit-scrollbar{display:none}
+.bk-subnav .bk-nav{flex:0 0 auto;white-space:nowrap;border:1px solid color-mix(in srgb,var(--ink) 14%,transparent);background:#fff;color:var(--ink-2,#444);border-radius:999px;padding:4px 10px;font-size:calc(12px*var(--fs));line-height:1.3}
+.bk-secnav{background:transparent;padding:2px 0 6px}
+.bk-subnav .bk-nav:active{background:color-mix(in srgb,var(--ink) 6%,#fff)}
+.bk-sub{border-top:1px dashed color-mix(in srgb,var(--ink) 10%,transparent);padding-top:6px;margin-top:8px}
+.bk-sub-h{display:flex;align-items:baseline;gap:8px;cursor:pointer;padding:2px 0 4px}
+.bk-sub-h>span{flex:0 0 auto;font-size:calc(11px*var(--fs));color:var(--ink-3,#999)}
+.bk-sub-h.off{opacity:.55}
 .bk-p{margin:11px 0;line-height:1.92;font-size:calc(14.6px*var(--fs));color:#2b2b2b;text-align:justify;letter-spacing:.2px}
 u.wv{text-decoration:underline;text-decoration-style:wavy;text-decoration-thickness:1.1px;text-underline-offset:2px;text-decoration-color:#1f1f1f;text-decoration-skip-ink:none}
 .rc{font-weight:inherit}
@@ -2420,6 +2429,10 @@ function renderList(){
     const ch=BTOPIC.chs.find(x=>x.k===VT)||BTOPIC.chs[0];
     if(VT!==ch.k) VT=ch.k;
     const nb=(ch.secs||[]).reduce((a,x)=>a+((x.blocks||[]).length),0);
+    if(Q.trim()){
+      document.getElementById('list').innerHTML = vtSearchHTML(Q);
+      return;
+    }
     document.getElementById('qCount').textContent = '背诵一本通 · '+ch.n+' · '+(ch.secs||[]).length+' 节 '+nb+' 块';
     document.getElementById('list').innerHTML = vtBodyHTML(true);
     return;
@@ -5138,7 +5151,7 @@ const VTHEMES=[
  {k:'xz',n:'行政与监察',subs:['行政制度演变','官制演变','监察制度演变']},
  {k:'ms',n:'民事与婚姻继承',subs:['民事立法','民商立法','婚姻演变','婚姻立法','继承演变']},
  {k:'jj',n:'经济与土地',subs:['经济立法','土地立法','劳动立法','完结补充']}];
-let VT='L4';
+let VT='XU';
 function setVT(k){ VT=k; renderTopic(); centerVTChip(); }
 function centerVTChip(){
   const bar=document.getElementById('vtChips'); if(!bar) return;
@@ -5283,20 +5296,89 @@ function vtChipsHTML(){
   }).join('');
   return `<div class="vt-chips" id="vtChips">${chips}</div>`;
 }
+function bkText(b){
+  if(!b) return '';
+  if(typeof b.x==='string') return b.x;
+  if(Array.isArray(b.xs)) return b.xs.join(' ');
+  if(Array.isArray(b.rows)) return b.rows.map(r=>r.join(' ')).join(' ');
+  if(typeof b.s==='string') return b.s;
+  return '';
+}
+function bkGroups(sec){
+  const gs=[];
+  (sec.blocks||[]).forEach(b=>{
+    if(b.t==='h3'){ gs.push({t:String(b.x||''),bs:[]}); return; }
+    if(!gs.length) gs.push({t:'',bs:[]});
+    gs[gs.length-1].bs.push(b);
+  });
+  return gs;
+}
+function bkSubFold(el){
+  const b=el.nextElementSibling; if(!b) return;
+  const hid=b.style.display==='none';
+  b.style.display=hid?'block':'none';
+  el.classList.toggle('off',!hid);
+  haptic();
+}
+function bkGoto(el,i){
+  const list=document.getElementById('list'); if(!list) return;
+  const secs=list.querySelectorAll('.vt-sec'); const sec=secs[i]; if(!sec) return;
+  const body=sec.querySelector('.bk-secs-body'); const btn=sec.querySelector('.bk-fold');
+  if(body&&body.style.display==='none'){ body.style.display='block'; if(btn) btn.textContent='收起'; }
+  sec.scrollIntoView({behavior:'smooth',block:'start'});
+  haptic();
+}
+function bkJump(el,id){
+  const sec=el.closest('.vt-sec'); if(!sec) return;
+  const t=sec.querySelector('[data-g="'+id+'"]'); if(!t) return;
+  t.scrollIntoView({behavior:'smooth',block:'start'});
+  haptic();
+}
+function vtSearchHTML(q){
+  const kw=q.trim(); if(!kw) return vtBodyHTML(true);
+  const hits=[];
+  BTOPIC.chs.forEach(ch=>{
+    (ch.secs||[]).forEach(sec=>{
+      const blocks=(sec.blocks||[]).filter(b=>bkText(b).includes(kw));
+      if(blocks.length) hits.push({ch:ch.n,sec:sec.n,hi:sec.hit||0,blocks:blocks,pgs:sec.pgs||''});
+    });
+  });
+  const total=hits.reduce((a,h)=>a+h.blocks.length,0);
+  if(!total) return `<div class="vt-empty">全书没有「${esc(kw)}」，换个词试试（书名号、朝代名都可以）</div>`;
+  document.getElementById('qCount').textContent=`背诵一本通 · 「${kw}」命中 ${total} 处 / ${hits.length} 节`;
+  return hits.slice(0,40).map(h=>`<div class="vt-sec"><div class="vt-sec-h"><b>${esc(h.sec)}</b><span>${esc(h.ch)} · 书 P${esc(h.pgs)}</span></div>
+    <div class="bk-secs-body">${h.blocks.map(bkBlock).join('')}</div></div>`).join('');
+}
 function vtBodyHTML(withTip){
   const ch=BTOPIC.chs.find(x=>x.k===VT)||BTOPIC.chs[0];
-  const secHtml=(sec)=>{
+  const secHtml=(sec,si)=>{
     if(!(sec.blocks||[]).length){
       return `<div class="vt-sec"><div class="vt-sec-h"><b>${esc(sec.n)}</b><span>书 P${esc(sec.pgs||'')}</span></div><div class="bk-secs-body"><div class="vt-empty">本节正文待转录</div></div></div>`;
     }
-    return `<div class="vt-sec"><div class="vt-sec-h"><b>${esc(sec.n)}</b><span>书 P${esc(sec.pgs||'')}</span><button class="bk-fold" onclick="bkFold(this)">展开</button></div>
-      <div class="bk-secs-body" style="display:none">${sec.blocks.map(bkBlock).join('')}</div></div>`;
+    const gs=bkGroups(sec);
+    const named=gs.filter(g=>g.t);
+    let nav='';
+    if(named.length>1){
+      nav=`<div class="bk-subnav">${named.map((g,i)=>`<button class="bk-nav" onclick="bkJump(this,'g${si}-${gs.indexOf(g)}')">${esc(g.t)}</button>`).join('')}</div>`;
+    }
+    const bodyHtml=gs.map((g,i)=>{
+      const id='g'+si+'-'+i;
+      const inner=g.bs.map(bkBlock).join('');
+      if(!g.t) return `<div class="bk-sub" data-g="${id}"><div class="bk-sub-b">${inner}</div></div>`;
+      const cnt=g.bs.length;
+      return `<div class="bk-sub" data-g="${id}" id="bk-${id}">
+        <div class="bk-sub-h" onclick="bkSubFold(this)">${esc(g.t)}<span class="bk-sub-n">${cnt} 块</span></div>
+        <div class="bk-sub-b">${inner}</div></div>`;
+    }).join('');
+    return `<div class="vt-sec"><div class="vt-sec-h"><b>${esc(sec.n)}</b><span>书 P${esc(sec.pgs||'')}${named.length>1?` · ${named.length} 小节`:''}</span><button class="bk-fold" onclick="bkFold(this)">展开</button></div>
+      <div class="bk-secs-body" style="display:none">${nav}${bodyHtml}</div></div>`;
   };
-  const body=(ch.secs&&ch.secs.length)?ch.secs.map(secHtml).join(''):`<div class="vt-empty">本章正文待转录（书 P${esc(ch.pgs||'')}）</div>`;
+  const body=(ch.secs&&ch.secs.length)?ch.secs.map((sec,si)=>secHtml(sec,si)).join(''):`<div class="vt-empty">本章正文待转录（书 P${esc(ch.pgs||'')}）</div>`;
   const doneIx=ch.secs?ch.secs.filter(s=>(s.blocks||[]).length).length:0;
+  const secNav=(ch.secs&&ch.secs.length>3)?`<div class="bk-subnav bk-secnav">${ch.secs.map((s2,i)=>`<button class="bk-nav" onclick="bkGoto(this,${i})">${esc(String(s2.n).replace(/^第[一二三四五六七八九十]+节\s*/,'').slice(0,12))}</button>`).join('')}</div>`:'';
   return `
    <div class="vt-book">${esc(ch.n)}<span class="bk-pg">书 P${esc(ch.pgs||'')}${ch.secs&&ch.secs.length?` · 已录 ${doneIx}/${ch.secs.length} 节`:''}</span></div>
-   ${body}`;
+   ${secNav}${body}`;
 }
 function renderVT(){
   return vtChipsHTML()+vtBodyHTML(true);
@@ -6278,8 +6360,14 @@ migrateSrs();
 applyMode(); chipRow(); renderHome(); renderList(); renderCloze();
 
 const VER='3.11.0';
-const PATCH='5';   /* 同一版本内的补丁号；0 表示版本本体 */
+const PATCH='6';   /* 同一版本内的补丁号；0 表示版本本体 */
 const CHANGELOG = [
+{v:'3.11.0',ps:'6',d:'2026-11-17',kind:'patch',sum:'背诵一本通：节内再分小节 + 搜索可用 + 默认绪论',items:[
+['新增','节内按书上的「一、二、三…」再分小节，每个小节可单独折叠，节顶部有一排小节导航，点一下直接跳过去。'],
+['新增','章顶部加一排「节」导航，点节名自动展开并滚到该节。'],
+['修复','背诵一本通模式下搜索框恢复可用：全书范围检索，按节列出命中处（如搜「无讼」）。'],
+['修复','进入速览默认停在绪论，不再默认跳到民事。']
+]},
 {v:'3.11.0',ps:'5',d:'2026-11-17',kind:'patch',sum:'背诵一本通：校正抄录错字（无讼是求）',items:[
 ['修复','结论章「调处息争，无讼是求」中的「无论」校正为「无讼」；同段正文「无讼是中国古代法制的价值取向」同步校正。'],
 ['核查','全书 215 页 OCR 与书版逐节比对，一字级差异共 1764 处，逐类归因后除本处外均为 OCR 误认，书版文字不再改动。']
