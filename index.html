@@ -5724,10 +5724,16 @@ function vtBodyHTML(withTip){
     const cntNote=(sec.blocks||[]).filter(b=>b.t==='note'||b.t==='mn').length;
     const cntExam=(sec.blocks||[]).filter(b=>b.t==='exam').length;
     const cntAns=(sec.blocks||[]).filter(bkIsAns).length;
+    let cntW=0;
+    (sec.blocks||[]).forEach(function(b){
+      if(!b.w) return;
+      if(Array.isArray(b.w)){ cntW+=b.w.length; return; }
+      Object.keys(b.w).forEach(function(k){ if(Array.isArray(b.w[k])) cntW+=b.w[k].length; });
+    });
     return `<div class="vt-sec" id="vts${si}">
       <div class="vt-sec-h" onclick="bkFoldRow(this)"><b>${esc(sec.n)}</b><span class="vt-sec-meta">P${esc(sec.pgs||'')}${named.length>1?` · ${named.length} 小节`:''}${cntNote?` · 提示 ${cntNote}`:''}${cntExam?` · 题目 ${cntExam}`:''}${cntAns?` · 答案 ${cntAns}`:''}</span><i class="chev"></i></div>
       <div class="bk-secs-body" style="display:none">
-        <div class="vt-tools"><button class="sec-tool" onclick="bkCloak(this)">遮盖重点</button><button class="sec-tool" onclick="bkOnlyText(this)">只看背诵</button><span class="vt-toolhint">正文当面看，提示点开背</span></div>
+        <div class="vt-tools"><button class="sec-tool" onclick="bkCloak(this)">遮盖重点</button><button class="sec-tool" onclick="bkOnlyText(this)">只看背诵</button><span class="vt-toolhint">正文当面看，提示点开背${cntW?` · 波浪重点 ${cntW} 处`:' · 本节没有波浪重点'}</span></div>
         ${nav}${bodyHtml}</div></div>`;
   };
   const body=(ch.secs&&ch.secs.length)?ch.secs.map((sec,si)=>secHtml(sec,si)).join(''):`<div class="vt-empty">本章正文待转录（书 P${esc(ch.pgs||'')}）</div>`;
@@ -6718,8 +6724,12 @@ migrateSrs();
 applyMode(); chipRow(); renderHome(); renderList(); renderCloze();
 
 const VER='3.11.0';
-const PATCH='18';   /* 同一版本内的补丁号；0 表示版本本体 */
+const PATCH='19';   /* 同一版本内的补丁号；0 表示版本本体 */
 const CHANGELOG = [
+{v:'3.11.0',ps:'17',d:'2026-11-18',kind:'patch',sum:'背诵一本通：工具栏标出本节波浪重点处数',items:[
+['新增','每节工具栏显示「波浪重点 N 处」（无则提示本节没有波浪重点），配合「遮盖重点」直接自测。'],
+['说明','补丁 2 的四层卡片结构不变；本条只补统计与提示。']
+]},
 {v:'3.11.0',ps:'17',d:'2026-11-18',kind:'patch',sum:'背诵一本通卡片重构：正文 / 提示 / 题目 / 答案 四层分明',items:[
 ['重构','背诵一本通卡片按四类重新聚合：正文（要背）当面看；背诵提示与口诀默认收起；真题单独立成「题目」卡，显示年份与题型；参考答案一律点开才看，不再把题目当条文、把答案摆在正文前。'],
 ['修复','原被当成正文段落的「[答题要点]」等答案块，连同后续答题段落一起收进对应题目的「参考答案」，默认隐藏。'],
