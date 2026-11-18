@@ -16,10 +16,10 @@ jobs:
   release:
     runs-on: ubuntu-latest
     env:
-      SRC: https://aka.doubaocdn.com/s/bVNBp03Rjz
-      SWURL: https://aka.doubaocdn.com/s/VXyBNghm0e
+      SRC: https://aka.doubaocdn.com/s/5JioEUZLZV
+      SWURL: https://aka.doubaocdn.com/s/RssTbKGt3z
       VER: "3.11.0"
-      PATCH: "15"
+      PATCH: "16"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -35,7 +35,7 @@ jobs:
           mv index.new index.html
           curl -fsSL --http1.1 -L --retry 3 --max-time 120 -o sw.js "$SWURL" || { echo "::notice::sw 拉不到，跳过"; exit 0; }
           grep -q "app-$VER-p$PATCH" sw.js
-          printf '{\n  "version": "%s",\n  "patch": %s,\n  "date": "2026-11-17"\n}\n' "$VER" "$PATCH" > version.json
+          printf '{\n  "version": "%s",\n  "patch": %s,\n  "date": "2026-11-18"\n}\n' "$VER" "$PATCH" > version.json
           echo ok
 
       - name: Commit
