@@ -1834,6 +1834,8 @@ html[data-theme="night"] .quiz-opt .you{background:rgba(255,255,255,.16);color:#
 .kh.flash{background:color-mix(in srgb,var(--c,#2E7D6B) 18%,var(--card));outline:1.5px solid color-mix(in srgb,var(--c,#2E7D6B) 50%,transparent);border-radius:6px;transition:background .3s,outline .3s}
 .kp.flash{background:color-mix(in srgb,var(--c,#2E7D6B) 12%,var(--card));outline:1.5px solid color-mix(in srgb,var(--c,#2E7D6B) 40%,transparent);border-radius:6px;transition:background .3s,outline .3s}
 .ksec.flash{background:color-mix(in srgb,var(--c,#2E7D6B) 8%,var(--card));border-radius:8px}
+
+tr.hit-row,tr.hit-row td,tr.hit-row th,.bk-kv-row.hit-row,.bk-kv-row.hit-row>div{background:color-mix(in srgb,var(--c,#2E7D6B) 16%,transparent)!important;transition:background .3s}
 </style>
 </head>
 <body>
@@ -1977,7 +1979,7 @@ html[data-theme="night"] .quiz-opt .you{background:rgba(255,255,255,.16);color:#
       <button onclick="rPrev()">上一张</button>
       <button onclick="rSkip()">跳过这条</button>
       <button onclick="startRandom()">随机一轮</button>
-      <button onclick="openCardJump(RQ[Math.min(RIDX,RQ.length-1)].n)">在速览中查看</button>
+      <button onclick="jumpBookFromCard(document.querySelector('.r-jump'))">背诵一本通里看</button>
     </div>
     <div class="tip" id="rTip">提示：卡面只放「问题」，要背的原文全部在背面——先在心里把整题答完整，卡住 10 秒再揭晓；揭晓后按书上的小标题分段对照，红字是要点，最后才是这一条对应的真题怎么考。</div>
   </div>
@@ -3419,7 +3421,7 @@ function renderRecite(){
   const askHtml=stripMeta(askHtml0);
   const ansInner=e.ansBlocks
     ? e.ansBlocks.map(function(b){
-        return '<div class="r-ab">'+(b.h?'<button class="r-abh" data-an="'+esc(b.h)+'" onclick="openCardJump('+e.n+',this.dataset.an)">'+esc(b.h)+'<span class="r-abi">速览</span></button>':'')+runsHtml(b.runs,'rk')+'</div>';
+        return '<div class="r-ab">'+(b.h?'<button class="r-abh" data-an="'+esc(b.h||String(b.runs.map(r=>r[0]).join('')).slice(0,12))+'" data-alt="'+esc(String(b.runs.map(r=>r[0]).join('')).slice(0,12))+'" data-sub="'+esc(p.sub||'')+'" data-ch="'+esc(p.ch||'')+'" onclick="jumpBookFromCard(this)">'+esc(b.h)+'<span class="r-abi">速览</span></button>':'')+runsHtml(b.runs,'rk')+'</div>';
       }).join('')
     : runsHtml(e.ans,'rk');
   const ansHtml=stripMeta(isMask?e.ansLine:ansInner);
@@ -3439,8 +3441,10 @@ function renderRecite(){
   const rateFn=TODAY_MODE?'todayRate':'rate';
   const srsCur=S.srs[ekey(e)];
   const memTag=TODAY_MODE?`<span class="memtag ${srsCur?'review':'new'}">${srsCur?('复习 · 第'+(srsCur.r+1)+'次'):'新学'}</span>`:'';
+  const jumpHead=(e.ansBlocks&&e.ansBlocks[0]&&e.ansBlocks[0].h)||e.head||'';
+  const jumpAn=(e.ansBlocks&&e.ansBlocks[0])?String(e.ansBlocks[0].runs.map(r=>r[0]).join('')).slice(0,18):String((e.ans||[]).map(r=>r[0]).join('')).slice(0,18);
   card.innerHTML=`
-    <div class="r-meta"><i class="dot" style="background:${cOf(p.cat||p.ch)}"></i>${p.ch}${p.sub&&p.sub!==p.ch?' · '+p.sub:''} · ${pad3(pnum(p.n))} · 第 ${e.kth} 条 ${memTag}<button class="r-jump" onclick="openCardJump(${p.n})">速览 §${pad3(pnum(p.n))}</button><button class="bug-mini" onclick="bugFromRecite(event)" aria-label="记录问题"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><rect x="8" y="6" width="8" height="13" rx="4"/><path d="M12 6V4M9 9h.01M15 9h.01M12 12v6M5 10l-2-1M19 10l2-1M5 15l-2 1M19 15l2 1"/></svg></button></div>
+    <div class="r-meta"><i class="dot" style="background:${cOf(p.cat||p.ch)}"></i>${p.ch}${p.sub&&p.sub!==p.ch?' · '+p.sub:''} · ${pad3(pnum(p.n))} · 第 ${e.kth} 条 ${memTag}<button class="r-jump" data-an="${esc(jumpAn)}" data-alt="${esc(jumpHead)}" data-sub="${esc(p.sub||'')}" data-ch="${esc(p.ch||'')}" onclick="jumpBookFromCard(this)">背诵一本通 §${pad3(pnum(p.n))}</button><button class="bug-mini" onclick="bugFromRecite(event)" aria-label="记录问题"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><rect x="8" y="6" width="8" height="13" rx="4"/><path d="M12 6V4M9 9h.01M15 9h.01M12 12v6M5 10l-2-1M19 10l2-1M5 15l-2 1M19 15l2 1"/></svg></button></div>
     <div class="r-title${titleCls}" style="font-size:calc(${titleFs}px * var(--fs))">${esc(titleTxt)}</div>
     <div class="r-rule"></div>
     ${RSHOW
@@ -5719,6 +5723,134 @@ function deepestHit(root,kw){
   }
   return cur;
 }
+function bkDeepText(o,depth){
+  if(o==null) return '';
+  if(typeof o==='string') return o;
+  if(typeof o==='number') return String(o);
+  if(Array.isArray(o)) return o.map(function(x){return bkDeepText(x,depth+1);}).join(' ');
+  if(typeof o==='object'){ let r=''; for(const k in o){ if(k==='w'||k==='pgs') continue; r+=' '+bkDeepText(o[k],depth+1); } return r; }
+  return '';
+}
+function bkChapKeys(isMod){ return isMod? ['M1','M2','M3','M4','M5'] : ['XU','L1','L2','L3','L4','L5','L6']; }
+function bkThemeKeys(subRaw,isMod){
+  const MAP=[[/立法|法律形式|指导思想|法典|律例|刑律|立法成果/,['L1','M1']],
+    [/罪名|刑罚|刑种|量刑|刑事|五刑|死刑|徒刑|流刑|杖|笞/,['L2','M3']],
+    [/官制|行政|官吏|地方|职官|考课|监察|俸禄|行政区划/,['L3','M2']],
+    [/民事|身份|物权|债权|婚姻|继承|宗法|家族|契约|田宅|土地/,['L4','M4']],
+    [/经济|市场|赋税|贸易|专卖|货币/,['L5']],
+    [/司法|诉讼|审判|会审|狱|讼|证据|法院|检察|律师/,['L6','M5']],
+    [/宪法|约法|宪政|根本法|组织法/,['M2']],
+    [/绪论|特征|传统|法系|起源/,['XU']]];
+  for(let i=0;i<MAP.length;i++){ if(MAP[i][0].test(subRaw)){ return MAP[i][1].filter(function(k){return isMod? k[0]==='M':k[0]!=='M';}); } }
+  return null;
+}
+function jumpBookByText(opts){
+  opts=opts||{};
+  document.querySelectorAll('.hit-hl,.hit-row').forEach(function(e){ e.classList.remove('hit-hl','hit-row'); });
+  const rawQ=String(opts.q||''), rawAlt=String(opts.alt||'');
+  const tries=[rawQ.slice(0,18), rawQ.slice(0,12), rawQ.slice(0,8), rawAlt].map(normalizeText).filter(function(x,i,a){return x && a.indexOf(x)===i;});
+  if(!tries.length) return false;
+  const dyn=String(opts.ch||''), isMod=/清末|晚清|民国|临时|北洋|国民|根据地|太平天国|中华民国/.test(dyn);
+  const scoped=bkThemeKeys(String(opts.sub||''),isMod) || bkChapKeys(isMod);
+  const alt=normalizeText(rawAlt);
+  const find=function(keys,needDyn){
+    let best=null, bestSc=1e18;
+    (BTOPIC.chs||[]).forEach(function(ch){
+      if(keys && keys.indexOf(ch.k)<0) return;
+      const chap=normalizeText(ch.n||'');
+      (ch.secs||[]).forEach(function(sec,si){
+        const secn=normalizeText(sec.n||'');
+        (sec.blocks||[]).forEach(function(b,bi){
+          const tx=normalizeText(bkDeepText(b,0));
+          for(let ti=0;ti<tries.length;ti++){
+            const qq=tries[ti];
+            if(tx.indexOf(qq)<0) continue;
+            if(needDyn && dyn && tx.indexOf(normalizeText(dyn))<0) break;
+            let sc=tx.length + ti*90;
+            if(opts.sub && secn.indexOf(normalizeText(opts.sub))>=0) sc-=260;
+            if(dyn && tx.indexOf(normalizeText(dyn))>=0) sc-=90;
+            if(alt && tx.indexOf(alt)>=0) sc-=160;
+            if(sc<bestSc){ bestSc=sc; best={k:ch.k,si:si,bi:bi,ti:ti}; }
+            break;
+          }
+        });
+      });
+    });
+    return best;
+  };
+  let hit0=find(scoped,true);
+  if(!hit0) hit0=find(scoped,false);
+  if(!hit0) hit0=find(bkChapKeys(isMod),true);
+  /* 仍无逐字命中：退到「同主题章节 + 该朝代那一段」，至少落到断代正确的位置 */
+  if(!hit0 && dyn){
+    let b3=null, s3=1e18;
+    (BTOPIC.chs||[]).forEach(function(ch){
+      if(scoped.indexOf(ch.k)<0) return;
+      const secN='';
+      (ch.secs||[]).forEach(function(sec,si){
+        (sec.blocks||[]).forEach(function(b,bi){
+          const tx=normalizeText(bkDeepText(b,0));
+          if(tx.indexOf(normalizeText(dyn))<0) return;
+          const len=tx.length - (tx.indexOf(normalizeText(opts.sub||''))>=0? 400 : 0);
+          if(len<s3){ s3=len; b3={k:ch.k,si:si,bi:bi,ti:0}; }
+        });
+      });
+    });
+    hit0=b3;
+  }
+  if(!hit0) hit0=find(null,false);
+  if(!hit0){ if(typeof mtoast==='function') mtoast('背诵一本通里暂未找到这一段'); return false; }
+  const q=tries[hit0.ti];
+  if(S.mode!=='zhuan'){ S.mode='zhuan'; save(); }
+  S.ztsrc='book'; VT=hit0.k; save();
+  if(typeof applyMode==='function') applyMode();
+  FLT='all'; Q=''; const qi=document.getElementById('q'); if(qi) qi.value='';
+  chipRow(); renderList(); go('browse');
+  setTimeout(function(){
+    const list=document.getElementById('list'); if(!list) return;
+    const secs=list.querySelectorAll('.vt-sec');
+    const sec=secs[hit0.si]||secs[0]; if(!sec) return;
+    const cands=[].slice.call(sec.querySelectorAll('.bk-b'));
+    let hit=null, len=1e18;
+    cands.forEach(function(c){
+      const tx=normalizeText(c.innerText);
+      if(tx.indexOf(q)>=0 && tx.length<len){ len=tx.length; hit=c; }
+    });
+    if(!hit && hit0.bi<cands.length) hit=cands[hit0.bi];
+    if(!hit) hit=sec;
+    let hl=hit;
+    if(hit.tagName!=='SECTION'){
+      const rows=[].slice.call(hit.querySelectorAll('.bk-kv-row,tr'));
+      const row=rows.filter(function(r){return normalizeText(r.innerText).indexOf(q)>=0;})
+                      .sort(function(a,b){return a.innerText.length-b.innerText.length;})[0];
+      if(row) hl=row;
+    }
+    const subB=hit.closest&&hit.closest('.bk-sub-b');
+    if(subB && subB.style.display==='none'){ const sb=hit.closest('.bk-sub'); const sh=sb&&sb.querySelector('.bk-sub-h'); if(sh) sh.click(); }
+    const secB=sec.querySelector('.bk-secs-body');
+    if(secB && secB.style.display==='none'){ const sh=sec.querySelector('.vt-sec-h'); if(sh) sh.click(); }
+    const bar=(document.querySelector('.topbar')||{}).offsetHeight||0;
+    const tool=(document.querySelector('.toolbar,.browse-tools')||{}).offsetHeight||0;
+    const put=function(){
+      const r=hl.getBoundingClientRect();
+      const abs=r.top+(window.scrollY||document.documentElement.scrollTop||0);
+      const top=Math.max(0,abs-bar-tool-14);
+      window.scrollTo(0,top);
+      document.documentElement.scrollTop=top; document.body.scrollTop=top;
+    };
+    setTimeout(function(){
+      put(); requestAnimationFrame(put); setTimeout(put,180); setTimeout(put,600);
+      hl.classList.add((hl.classList.contains('bk-kv-row')||hl.tagName==='TR')?'hit-row':'hit-hl');
+      setTimeout(function(){ hl.classList.remove('hit-row','hit-hl'); },10000);
+    },120);
+    haptic();
+  },150);
+  return true;
+}
+function jumpBookFromCard(btn){
+  const d=(btn&&btn.dataset)||{};
+  return jumpBookByText({q:d.an||d.alt||'', alt:d.alt||'', sub:d.sub||'', ch:d.ch||''});
+}
 function jumpHit(kind,chKey,si,gi,bi){
   Q=''; const qi=document.getElementById('q'); if(qi) qi.value='';
   if(kind==='card'){ ITG=chKey; } else { VT=chKey; }
@@ -6792,8 +6924,14 @@ migrateSrs();
 applyMode(); chipRow(); renderHome(); renderList(); renderCloze();
 
 const VER='3.11.0';
-const PATCH='23';   /* 同一版本内的补丁号；0 表示版本本体 */
+const PATCH='24';   /* 同一版本内的补丁号；0 表示版本本体 */
 const CHANGELOG = [
+{v:'3.11.0',ps:'17',d:'2026-11-18',kind:'patch',sum:'背诵卡一点直达「专题史·背诵一本通」对应段落',items:[
+['更改','背诵卡的卡头按钮、背面小标题、底部按钮，全部改为跳转到「专题史 → 背诵一本通」里对应的那一段正文；不再跳断代史考点卡。'],
+['定位','先按考点主题（立法/刑事/行政/民事/经济/司法/宪法）与朝代（古代/近代）圈定章节，再在书里做逐字匹配，表格命中会收窄到那一行。'],
+['降级','整句匹配不到时依次降到 12 字、8 字、小标题；仍不到就落到「同主题章节里该朝代那一段」，绝不跨代乱跳。'],
+['交互','落点自动展开所在「节」与「小节」，滚到搜索栏与筛选条下方，命中段落（或表格行）底色高亮 10 秒。']
+]},
 {v:'3.11.0',ps:'17',d:'2026-11-18',kind:'patch',sum:'从背诵卡跳速览：先切回断代史再定位',items:[
 ['修复','速览停在「专题史·背诵一本通」时，点「速览 §N」或背面小标题只会落在专题史界面、看不到知识点卡、也不展开不高亮：现在跳转前强制切回断代史模式并清掉筛选，再展开目标卡、滚到段落、高亮 10 秒。'],
 ['校验','已按「专题史·一本通 → 背诵 → 点小标题」的真实路径实测：模式切回 dai、目标卡 c-N 展开、命中段落在固定头部下方 12px、高亮标记存在。']
