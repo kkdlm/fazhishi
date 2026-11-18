@@ -1814,6 +1814,18 @@ html[data-theme="night"] .quiz-opt .you{background:rgba(255,255,255,.16);color:#
 .lgt.l-tip{border-style:dashed;border-color:color-mix(in srgb,#B8892F 40%,var(--line-2));color:#8A5D12}
 .lgt.l-exam{border-color:color-mix(in srgb,#B8892F 50%,var(--line-2));color:#8A5D12;background:color-mix(in srgb,#B8892F 7%,var(--card))}
 .lgt.l-ans{border-color:color-mix(in srgb,#2E7D6B 45%,var(--line-2));color:#1F6152;background:color-mix(in srgb,#2E7D6B 6%,var(--card))}
+
+.r-ab{margin:2px 0 9px;padding-left:9px;border-left:2px solid color-mix(in srgb,#2E7D6B 28%,transparent)}
+.r-abh{font-size:calc(12px*var(--fs));font-weight:700;color:#1F6152;margin-bottom:2px}
+.r-ab:first-child{margin-top:0}
+
+.say-hint{color:var(--ink-3);font-size:calc(12px*var(--fs));text-align:center;padding:14px 0 4px}
+
+.r-ans .rk{color:inherit;font-weight:inherit;text-decoration:underline;text-decoration-style:wavy;text-decoration-color:color-mix(in srgb,#A5342E 70%,transparent);text-underline-offset:2px}
+
+.tq-a{margin-top:7px}
+.tq-a summary{cursor:pointer;font-size:calc(11px*var(--fs));color:#8A5D12;background:color-mix(in srgb,#B8892F 9%,var(--card));border:1px dashed color-mix(in srgb,#B8892F 35%,var(--line-2));border-radius:7px;padding:5px 9px;list-style:none}
+.tq-a summary::-webkit-details-marker{display:none}
 </style>
 </head>
 <body>
@@ -1959,7 +1971,7 @@ html[data-theme="night"] .quiz-opt .you{background:rgba(255,255,255,.16);color:#
       <button onclick="startRandom()">随机一轮</button>
       <button onclick="openCardJump(RQ[Math.min(RIDX,RQ.length-1)].n)">在速览中查看</button>
     </div>
-    <div class="tip" id="rTip">提示：卡面就是考试的问法（例如「夏朝的法律形式有哪些」），先在心里把答案说出来，卡住 10 秒再揭晓；内核是「给描述问名称」的术语卡照样先回想名称。揭晓后下面就是这一条对应的真题怎么考的。</div>
+    <div class="tip" id="rTip">提示：卡面只放「问题」，要背的原文全部在背面——先在心里把整题答完整，卡住 10 秒再揭晓；揭晓后按书上的小标题分段对照，红字是要点，最后才是这一条对应的真题怎么考。</div>
   </div>
 </section>
 
@@ -3172,6 +3184,25 @@ function itemEntries(p){
     return esc(head14)+'<span class="bk"></span>';
   }
   const out=[];
+  /* 有人工问句的考点＝一张卡：题面是问句，背面是整段原文按小标题分段 */
+  const qaB=(typeof CTRIAL!=='undefined'&&CTRIAL&&CTRIAL[String(p.n)]&&CTRIAL[String(p.n)].askq)||'';
+  if(qaB){
+    const bl=blocks.filter(function(b){return b.lines.length;}).map(function(b){
+      const runs=[];
+      b.lines.forEach(function(L){ (L.raw||[]).forEach(function(r){
+        runs.push([r[0], !!(r[1]==='k' && isWord(r[0]) && String(r[0]).length<=14)]);
+      }); });
+      return {h:b.head||'', runs:runs};
+    }).filter(function(b){ return String(b.runs.map(r=>r[0]).join('')).trim(); });
+    if(bl.length){
+      const flat=[];
+      bl.forEach(function(b){ b.runs.forEach(function(r){ flat.push(r); }); if(b!==bl[bl.length-1]) flat.push(['\n',false]); });
+      out.push({n:p.n,li:0,kth:1,mode:'whole',head:null,termq:false,term:null,termFull:'',
+        askLine:'',ansLine:'',ans:flat,ansBlocks:bl,lead:null,promptRuns:null,
+        mn:(blocks[0]&&blocks[0].mn)||null,qaskText:qaB,p:p});
+      return out;
+    }
+  }
   blocks.forEach(function(bk){
     if(!bk.lines.length) return;
     /* 同一个术语下按句切成小卡：每卡最多 2 句 / 110 字，避免一卡塞一大段 */
@@ -3188,27 +3219,33 @@ function itemEntries(p){
     const head=bk.head;
     /* 这一节考试怎么问（人工逐卡写的问句，来自 card_trial.json.askq）：题面只出问题，答案全留在背面 */
     const qa=(typeof CTRIAL!=='undefined'&&CTRIAL&&CTRIAL[String(p.n)]&&CTRIAL[String(p.n)].askq)||'';
-    var qHead=head?head+(chunks.length>1?'（'+(ci+1)+'）':''):null, ask='', qAns=ansLine, qTerm=false;
-    if(head && (DEF.test(ft) || ch.length===1)){
-      qTerm=true; qHead='';
-      /* 描述句里如果提到了这个名词本身，把它挖空，别让答案坐在题面上 */
-      var qtxt=ft.length>78?ft.slice(0,78)+'…':ft;
-      var PH='\u0001';
-      var has=qtxt.indexOf(head)>=0;
-      if(has) qtxt=qtxt.split(head).join(PH);
-      ask=esc(qtxt).split(PH).join('<span class="bk"></span>')+(ch.length>1?'<span class="def-more">（共 '+ch.length+' 句描述）</span>':'');
-      qAns='<span class="rk">'+esc(head)+'</span>';
-    }else if(head){
-      ask='';
+    const headTxt=head?head+(chunks.length>1?'（'+(ci+1)+'）':''):null;
+    /* 背面＝书上这一段的原文（整段，含术语本身），题面只给「问什么」 */
+    const runsOf=function(ch){
+      const rs=[];
+      ch.forEach(function(L){ (L.raw||[]).forEach(function(r){
+        const t=r[0], k=r[1], w=isWord(t);
+        rs.push([t, !!(k==='k' && w)]);
+      }); });
+      return rs;
+    };
+    const ansRuns=runsOf(ch);
+    if(!String(ansRuns.map(r=>r[0]).join('')).trim()) return;   /* 答案空的整条丢掉 */
+    /* 题面：① 有人工问句就用问句（真题式问法）；② 否则用考点名当问法 */
+    const qa2=(typeof CTRIAL!=='undefined'&&CTRIAL&&CTRIAL[String(p.n)]&&CTRIAL[String(p.n)].askq)||'';
+    const face = headTxt ? ('背出「'+headTxt+'」'+(ch.length>1?'（共 '+ch.length+' 句）':'')) : (qa2||'');
+    if(face){
+      out.push({n:p.n,li:ch[0].li,kth:out.length+1,mode:'whole',
+        head:headTxt,termq:false,term:null,termFull:'',
+        askLine:'',ansLine:ansLine,mn:bk.mn||null,p,
+        promptRuns:null,lead:null,ans:ansRuns,qaskText:face});
     }else{
-      /* 没有术语小标题的卡：不再「挖空半句」，改为整句描述当题面——读完自己在心里说出这是哪一项制度 */
-      qTerm=true; qHead=head; qAns=ansLine; ask=esc(ch.map(function(L){return L.txt;}).join(''));
+      /* 没有小标题、也没人工问句：题面只留分类名/极短引子，后面全部藏到背面 */
+      out.push({n:p.n,li:ch[0].li,kth:out.length+1,mode:'mask',
+        head:null,termq:false,term:null,termFull:'',
+        askLine:cueOf(ch),ansLine:ansLine,mn:bk.mn||null,p,
+        ans:[],promptRuns:null,lead:null,qaskText:''});
     }
-    if(!String(qAns||'').replace(/<[^>]+>/g,'').trim()) return;  /* 答案空的整条丢掉 */
-    out.push({n:p.n,li:ch[0].li,kth:out.length+1,mode:'mask',head:qHead,termq:qTerm,term:qTerm?(head||null):null,
-      termFull:(head&&qTerm)?ansLine:'',askLine:ask,ansLine:qAns,ans:[],promptRuns:null,lead:null,mn:bk.mn||null,p,
-      /* 有术语小标题的定义型卡仍走「给描述问名称」（挖掉名词本身）；其余卡一律用人工写的考试问句当题面 */
-      qaskText:(head&&qTerm)?'':qa});
     });
   });
   return out.length?out:null;
@@ -3372,14 +3409,19 @@ function renderRecite(){
       ? `${e.lead?`<div class="whole-lead">${esc(e.lead)}</div>`:''}<span class="bk whole-bk"></span>`
       : `${promptHtml}<span class="bk"></span>`);
   const askHtml=stripMeta(askHtml0);
-  const ansHtml=stripMeta(isMask?e.ansLine:runsHtml(e.ans,'rk'));
+  const ansInner=e.ansBlocks
+    ? e.ansBlocks.map(function(b){
+        return '<div class="r-ab">'+(b.h?'<div class="r-abh">'+esc(b.h)+'</div>':'')+runsHtml(b.runs,'rk')+'</div>';
+      }).join('')
+    : runsHtml(e.ans,'rk');
+  const ansHtml=stripMeta(isMask?e.ansLine:ansInner);
   const termFullHtml=e.termFull?`<div class="term-full">${stripMeta(e.termFull)}</div>`:'';
   const fullHtml=stripMeta((isWhole||isMask)?ansHtml:`${promptHtml}${ansHtml}`)+termFullHtml;
   /* 题面：有考试问句的卡只出问题（像真题一样），答案一句都不露；术语型卡仍给描述问名称 */
   const qask=stripMeta(e.qaskText||'');
   let titleTxt='', titleCls='', titleFs=19;
   if(qask){
-    if(RSHOW){ titleTxt='问题 · '+qask; titleCls=' ask-t'; titleFs=13; }
+    if(RSHOW){ titleTxt=qask; titleCls=' ask-t'; titleFs=13; }
     else { titleTxt=qask; titleFs=20; }
   }else if(e.termq){
     if(RSHOW){ titleTxt=stripMeta(p.title||e.head); titleFs=19; }
@@ -3400,7 +3442,7 @@ function renderRecite(){
            <button class="mid" onclick="${rateFn}('mid')">模糊</button>
            <button class="ok" onclick="${rateFn}('ok')">会了</button>
          </div>`
-      : `${qask?`<div class="ans-slot"><span class="asb">先在心里作答</span><span>答完再看答案，别提前偷瞄</span></div>`:`<div class="r-ask${isWhole?' whole':''}">${askHtml}</div>`}
+      : `${qask?`<span class="bk"></span>`:`<div class="r-ask${isWhole?' whole':''}">${askHtml}</div>`}
          <div class="r-cover sm" onclick="reveal()">
            <div class="hint">${hintTxt}</div>
            <button class="reveal-btn" onclick="event.stopPropagation();reveal()">揭晓答案</button>
@@ -3424,8 +3466,8 @@ function mqHTML(mq){
   }).join('');
   return '<details class="tq mq"><summary><div class="tqm">同套路模拟题 · 自拟（按上面这套真题的出法）</div>'+
     '<div class="tqs">'+esc(String(mq.stem||''))+'</div></summary>'+
-    '<div class="tq-d">'+optsHtml+'<div style="margin-top:6px">答案：<b>'+(( (mq.ans||[]).join(' '))||'—')+'</b></div>'+
-    (mq.exp?('<div style="margin-top:5px">'+esc(String(mq.exp))+'</div>'):'')+'</div></details>';
+    '<div class="tq-d">'+optsHtml+'<details class="tq-a"><summary>看答案</summary><div style="margin-top:4px">答案：<b>'+(( (mq.ans||[]).join(' '))||'—')+'</b></div>'+
+    (mq.exp?('<div style="margin-top:5px">'+esc(String(mq.exp))+'</div>'):'')+'</details></div></details>';
 }
 function trialHTML(cardN){
   const t0=trialOf(cardN); if(!t0) return '';
@@ -3445,8 +3487,8 @@ function trialHTML(cardN){
     }).join('');
     return '<details class="tq"><summary><div class="tqm">'+(q.set==='old'?'法硕联考真题 ':'讲义配套题 ')+'#'+i+1+'</div>'+
       '<div class="tqs">'+esc(String(q.stem||'').replace(/^下列/i,'下列'))+'</div></summary>'+
-      '<div class="tq-d">'+optsHtml+'<div style="margin-top:6px">答案：<b>'+(ans.join(' ')||'—')+'</b></div>'+
-      (q.exp?('<div style="margin-top:5px">'+esc(String(q.exp).slice(0,220))+'</div>'):'')+'</div></details>';
+      '<div class="tq-d">'+optsHtml+'<details class="tq-a"><summary>看答案</summary><div style="margin-top:4px">答案：<b>'+(ans.join(' ')||'—')+'</b></div>'+
+      (q.exp?('<div style="margin-top:5px">'+esc(String(q.exp).slice(0,220))+'</div>'):'')+'</details></div></details>';
   }).join('');
   return '<div class="r-trial"><div class="trial-h">真题这么考 · 共 '+t0.qs.length+' 道</div>'+
     (t0.why?'<div class="trial-why">'+esc(t0.why)+'</div>':'')+items+mqHTML(t0.mq)+'</div>';
@@ -6734,8 +6776,14 @@ migrateSrs();
 applyMode(); chipRow(); renderHome(); renderList(); renderCloze();
 
 const VER='3.11.0';
-const PATCH='20';   /* 同一版本内的补丁号；0 表示版本本体 */
+const PATCH='21';   /* 同一版本内的补丁号；0 表示版本本体 */
 const CHANGELOG = [
+{v:'3.11.0',ps:'17',d:'2026-11-18',kind:'patch',sum:'背诵模块抽背卡：题面只放问题，要背的原文全在背面',items:[
+['重构','抽背卡不再「把原文放题面、挖空术语名」。现在题面只给问题（人工逐卡写的考试问法，如「夏朝有哪些主要立法？」），整段书原文连同小标题全部留在背面，揭晓后按小标题分段对照。'],
+['修复','问句与碎片答案错配：一个考点拆成多张小卡时，问句问的是整题、答案却只有一句。现在带问句的考点合成一张卡，问句与答案一一对应；没有问句的碎片卡只露分类名或极短引子。'],
+['修复','背面原先整段刷成红字（红墙），现改为书上的波浪线标重点，正文保持墨色。'],
+['修复','真题「答案先给出来」：选项下新增「看答案」一层，答案与解析点开才显示。']
+]},
 {v:'3.11.0',ps:'17',d:'2026-11-18',kind:'patch',sum:'答案聚合收紧：短标题不再被吞进参考答案',items:[
 ['修复','「（4）明。」「（2）请。」这类短的节点标题原先会被并进上一条「参考答案」里，导致正文缺段、答案串位；现在按长度与标题格式判定，正文段落留在正文，只有成段的答题内容才归答案。'],
 ['校验','全书 53 张真题题目卡、13 张参考答案卡均无空内容；正文中不再出现「[答题要点]」字样；只看背诵 / 遮盖重点两项开关实测生效。']
