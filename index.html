@@ -869,7 +869,7 @@ html[data-theme="night"] mark.hl{background:#8a6d2f;color:#fff}
 .spin{display:inline-block;width:13px;height:13px;border:2px solid var(--line);border-top-color:var(--red);
   border-radius:50%;animation:spin .8s linear infinite;vertical-align:-2px;margin-right:6px}
 @keyframes spin{to{transform:rotate(360deg)}}
-.qstat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px}
+.qstat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-bottom:14px}
 .qstat{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:11px 8px;text-align:center}
 .qstat b{display:block;font-family:var(--serif);font-size:19px;color:var(--red);line-height:1.1}
 .qstat span{font-size:10.5px;color:var(--ink-3);margin-top:3px;display:block}
@@ -1211,6 +1211,9 @@ button[data-busy]:active{transform:none}
 .qp-range .setbar{display:block;height:5px;background:var(--line-2,#EFE7DC);border-radius:4px;overflow:hidden;margin-top:8px}
 .qp-range .setbar i{display:block;height:100%;background:var(--red);border-radius:4px}
 .bg-part{margin:8px 0 10px}
+.ytl-part{overflow:auto;-webkit-overflow-scrolling:touch;border:1px solid var(--line);
+  border-radius:9px;background:#fff;padding:0;max-height:520px}
+.ytl-part img{display:block;width:920px;max-width:none;height:auto;cursor:zoom-in}
 .bg-pl{display:inline-block;margin:0 0 5px 1px;background:rgba(142,39,35,.92);color:#fff;
  font-size:10.5px;padding:2px 8px;border-radius:6px;letter-spacing:.02em}
 .bg-cap{font-size:11px;color:#9A8467;margin:-4px 2px 2px;line-height:1.5}
@@ -1336,6 +1339,11 @@ html[data-theme="night"] .vt-era2{background:color-mix(in srgb,var(--ink) 40%,#0
 mark.hl{background:color-mix(in srgb,var(--zhu) 16%,transparent);color:var(--zhu);padding:0 1px;border-radius:3px}
 .bk-b{display:block}
 .hit-hl{animation:hitFlash 10s ease-out;border-radius:6px}
+.hit-seg{background:color-mix(in srgb,var(--zhu) 16%,transparent)!important;border-radius:6px;
+  box-shadow:0 0 0 2px color-mix(in srgb,var(--zhu) 16%,transparent);transition:background .35s}
+.hit-row>td,.hit-row>th{background:color-mix(in srgb,var(--zhu) 15%,transparent)!important;transition:background .35s}
+.hit-row>td:first-child,.hit-row>th:first-child{border-radius:6px 0 0 6px}
+.hit-row>td:last-child,.hit-row>th:last-child{border-radius:0 6px 6px 0}
 @keyframes hitFlash{0%{background:color-mix(in srgb,var(--zhu) 16%,transparent);box-shadow:inset 0 0 0 2px color-mix(in srgb,var(--zhu) 28%,transparent)}70%{background:color-mix(in srgb,var(--zhu) 16%,transparent);box-shadow:inset 0 0 0 2px color-mix(in srgb,var(--zhu) 28%,transparent)}100%{background:transparent;box-shadow:none}}
 .bk-secs-body{padding:8px 14px 14px}
 .bk-secs-body .bk-p,.bk-itg-body .bk-p{font-size:calc(13.8px*var(--fs));line-height:1.9;margin:0 0 11px;color:#222a23;text-align:justify;letter-spacing:.15px}
@@ -3807,8 +3815,9 @@ function renderQuizSets(){
     progCardHTML('')+
     '<div class="qstat-grid">'+
       '<div class="qstat"><b>'+QSETS.length+'</b><span>套题</span></div>'+
-      '<div class="qstat"><b>'+doneN+'</b><span>已做 · 正确率'+acc+'%</span></div>'+
-      '<div class="qstat"><b>'+wrongN+'</b><span>错题待复习</span></div>'+
+      '<div class="qstat"><b>'+doneN+'</b><span>已做</span></div>'+
+      '<div class="qstat"><b>'+acc+'%</b><span>正确率</span></div>'+
+      '<div class="qstat"><b>'+wrongN+'</b><span>错题</span></div>'+
     '</div>'+
     '<div class="sec-h" style="margin:14px 0 8px"><h2 style="font-size:15px">第一步 · 选套题</h2><span class="more">选完再选章节</span></div>'+
     cards+
@@ -3877,9 +3886,10 @@ function renderQuizSetup(){
   box.innerHTML=
     '<div class="sec-h" style="margin:2px 0 10px"><h2>'+setName+'</h2><span class="more"><button class="chip" onclick="qfSet(\'set\',\'\');QF.bian=\'all\';QF.chap=\'all\';QF.sec=\'all\';QF.era=\'all\';">← 换套题</button></span></div>'+
     '<div class="qstat-grid">'+
-      '<div class="qstat"><b>'+all.length+'</b><span>本套题目</span></div>'+
-      '<div class="qstat"><b>'+doneN+'</b><span>已做 · 正确率'+acc+'%</span></div>'+
-      '<div class="qstat"><b>'+wrongN+'</b><span>本套错题</span></div>'+
+      '<div class="qstat"><b>'+all.length+'</b><span>本套题</span></div>'+
+      '<div class="qstat"><b>'+doneN+'</b><span>已做</span></div>'+
+      '<div class="qstat"><b>'+acc+'%</b><span>正确率</span></div>'+
+      '<div class="qstat"><b>'+wrongN+'</b><span>错题</span></div>'+
     '</div>'+
     progCardHTML(QF.set)+
     '<div class="qp-range"><b>当前范围</b><span class="qp-n">'+(QF.chap==='all'?'全部章节':briefChap(QF.chap))+(QF.sec!=='all'?' · '+briefSec(QF.sec):'')+'</span>'+
@@ -5135,8 +5145,8 @@ function renderYTL(plain){
   const cards=YTL.map((b,i)=>{
     const hd=b.hd2||b.src;
     return `<div class="bg-card"><div class="bg-name">${esc(b.name)}</div>
-      <div class="bg-cap">按原 PDF 300dpi 重出整表 · 点图放大看细节。</div>
-      <div class="bg-part"><img loading="lazy" src="${hd}" alt="${esc(b.name)}" data-nm="${esc(b.name)}" onclick="openImgZoom('${hd}',this.dataset.nm,true)"></div>`+
+      <div class="bg-cap">按原 PDF 300dpi 重出整表 · 左右滑动看细节，点图看整表原像素。</div>
+      <div class="bg-part ytl-part"><img loading="lazy" src="${hd}" alt="${esc(b.name)}" data-nm="${esc(b.name)}" onclick="openImgZoom('${hd}',this.dataset.nm,true)"></div>`+
       `<button class="bg-open" data-nm="${esc(b.name)}" onclick="openImgZoom('${hd}',this.dataset.nm,true)">看整表原像素</button></div>`;
   }).join('');
   const head=plain?'':`<div class="sec-h" style="margin:18px 0 8px"><h2>一图流原页</h2><span class="more">${YTL.length} 张 · 整表原页</span></div>`;
@@ -5212,7 +5222,7 @@ function renderBY(){
 function renderBoxGallery(plain){
   if(typeof BOXES==='undefined'||!BOXES.length) return '';
   const cards=BOXES.map((b,i)=>`<div class="bg-card" onclick="openImgZoom(BOXES[${i}].src)">
-      <div class="bg-name">${esc(b.name||('第'+b.page+'页'))}</div>
+      <div class="bg-name">${esc(String(b.name||('第'+b.page+'页')).replace(/·老龚点睛$/,''))}</div>
       <img loading="lazy" src="${b.src}" alt="老龚点睛">
     </div>`).join('');
   const head=plain?'':`<div class="sec-h" style="margin:18px 0 8px"><h2>老龚点睛</h2><span class="more">${BOXES.length} 张</span></div>`;
@@ -5444,7 +5454,7 @@ function bkJump(el,id){
   haptic();
 }
 function integSearchHTML(q){
-  const kw=q.trim(); if(!kw) return integBodyHTML();
+  const kw=q.trim(); HKW=kw; if(!kw) return integBodyHTML();
   const rows=[]; let total=0; const secs=new Set();
   (typeof ITG2!=='undefined'?ITG2:[]).forEach(function(ch){
     (ch.secs||[]).forEach(function(sec,si){
@@ -5481,6 +5491,23 @@ function hitRow(kw,loc,text,onclickCode){
   if(at>=0) sn=sn.slice(0,at)+'<mark class="hl">'+kw+'</mark>'+sn.slice(at+kw.length);
   return '<button class="hit" onclick="'+onclickCode+'"><div class="hit-loc">'+loc+'</div><div class="hit-tx">'+sn+'</div><i class="chev"></i></button>';
 }
+let HKW='';
+function deepestHit(root,kw){
+  if(!root||kw===undefined||kw===null||root.textContent.indexOf(kw)<0) return null;
+  let cur=root;
+  for(let guard=0;guard<12;guard++){
+    let next=null;
+    for(let i=0;i<cur.children.length;i++){
+      const c=cur.children[i];
+      if(!c.textContent||c.textContent.indexOf(kw)<0) continue;
+      if(c.children.length>12) continue;
+      next=c; break;
+    }
+    if(!next) return cur;
+    cur=next;
+  }
+  return cur;
+}
 function jumpHit(kind,chKey,si,gi,bi){
   Q=''; const qi=document.getElementById('q'); if(qi) qi.value='';
   if(kind==='card'){ ITG=chKey; } else { VT=chKey; }
@@ -5494,11 +5521,21 @@ function jumpHit(kind,chKey,si,gi,bi){
   if(sub){ const sh=sub.querySelector('.bk-sub-h'), sb=sub.querySelector('.bk-sub-b');
     if(sb && sb.style.display==='none') sh.click(); }
   const tgt=sec.querySelector('.bk-b[data-b="'+bi+'"]');
-  if(tgt){ tgt.scrollIntoView({behavior:'smooth',block:'center'}); tgt.classList.add('hit-hl'); setTimeout(()=>tgt.classList.remove('hit-hl'),10200); }
+  if(tgt){
+    let row=null;
+    if(HKW){ row=deepestHit(tgt,HKW); if(row&&(row.tagName==='TD'||row.tagName==='TH')) row=row.parentElement; }
+    if(row&&row!==tgt){
+      row.classList.add(row.tagName==='TR'?'hit-row':'hit-seg');
+      row.scrollIntoView({behavior:'smooth',block:'center'});
+      setTimeout(()=>row.classList.remove('hit-row','hit-seg'),10200);
+    } else {
+      tgt.scrollIntoView({behavior:'smooth',block:'center'}); tgt.classList.add('hit-hl'); setTimeout(()=>tgt.classList.remove('hit-hl'),10200);
+    }
+  }
   haptic();
 }
 function vtSearchHTML(q){
-  const kw=q.trim(); if(!kw) return vtBodyHTML(true);
+  const kw=q.trim(); HKW=kw; if(!kw) return vtBodyHTML(true);
   const rows=[]; let total=0; const secs=new Set();
   BTOPIC.chs.forEach(ch=>{
     (ch.secs||[]).forEach((sec,si)=>{
@@ -6527,8 +6564,14 @@ migrateSrs();
 applyMode(); chipRow(); renderHome(); renderList(); renderCloze();
 
 const VER='3.11.0';
-const PATCH='16';   /* 同一版本内的补丁号；0 表示版本本体 */
+const PATCH='17';   /* 同一版本内的补丁号；0 表示版本本体 */
 const CHANGELOG = [
+{v:'3.11.0',ps:'17',d:'2026-11-18',kind:'patch',sum:'收尾：表格行定位、刷题统计、一图流横向平移',items:[
+['修复','搜索跳转命中表格或表格式知识点时，只高亮命中的那一行（如「5. 调处息争，无讼是求」整行），不再把整张表刷成朱红。'],
+['视觉','刷题页顶部统计从「已做 · 正确率0%」挤一行改为四格：套题 / 已做 / 正确率 / 错题。'],
+['视觉','专题 → 一图流原页：宽表改成可左右平移的可视窗口（高 300px），配「看整表原像素」按钮。'],
+['修复','老龚点睛卡片标题去掉了重复的「·老龚点睛」后缀。']
+]},
 {v:'3.11.0',ps:'16',d:'2026-11-18',kind:'patch',sum:'全站一致性：专题时间轴、背诵操作条、首页口径',items:[
 ['修复','专题时间轴的节点说明被全局 .nt 标签样式污染，每条都套了个橘色小药丸底；现改为正常小字说明。'],
 ['视觉','时间轴的朝代头从整行大方块改成朱红描边胶囊（夏 / 商 / 西周 …），与节点竖线对齐，纵向滚动不会再出现大片空白。'],
