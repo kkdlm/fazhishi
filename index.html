@@ -1764,6 +1764,57 @@ html[data-theme="night"] .quiz-opt .you{background:rgba(255,255,255,.16);color:#
   h1{font-size:33px}
 }
 </style>
+<style id="btrefine">
+/* 背诵一本通 · 卡片层级重构：正文当面、提示收起、真题标题目、重点可遮盖 */
+.sec-tool{flex:0 0 auto;font-size:calc(10.4px*var(--fs));padding:3px 8px;border-radius:999px;border:1px solid var(--line-2);background:var(--card);color:var(--ink-3);cursor:pointer;white-space:nowrap;line-height:1.5}
+.sec-tool.on{background:color-mix(in srgb,var(--zhu) 12%,var(--card));border-color:color-mix(in srgb,var(--zhu) 38%,var(--line-2));color:var(--zhu)}
+.vt-sec-h{flex-wrap:wrap;row-gap:6px}
+.vt-tools{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:2px 0 10px;padding:6px 2px}
+.vt-toolhint{font-size:calc(10.2px*var(--fs));color:var(--ink-3)}
+
+.bk-tipwrap{margin:9px 0}
+.bk-tip{display:flex;align-items:center;gap:7px;width:100%;border:1px dashed color-mix(in srgb,var(--ink) 20%,var(--line-2));background:color-mix(in srgb,var(--ink) 4%,var(--card));border-radius:8px;padding:7px 11px;font-size:calc(11.6px*var(--fs));color:var(--ink-3);cursor:pointer;text-align:left;font-family:inherit}
+.bk-tip.on{border-style:solid;background:color-mix(in srgb,#B8892F 8%,var(--card));color:var(--ink)}
+.bk-tipi{font-size:calc(12px*var(--fs))}
+.bk-tipl{flex:1 1 auto;min-width:0;font-weight:600}
+.bk-tipx{flex:0 0 auto;font-size:calc(10.6px*var(--fs));font-weight:600;color:var(--zhu)}
+.bk-tipb{margin-top:6px;padding:9px 12px;border-radius:8px;background:color-mix(in srgb,#B8892F 7%,var(--card));border-left:3px solid color-mix(in srgb,#B8892F 55%,transparent);font-size:calc(12.4px*var(--fs));line-height:1.85;color:var(--ink-2)}
+.bk-tipb .bk-tipt{white-space:pre-wrap}
+.bk-tipwrap.t-mn .bk-tipb{background:color-mix(in srgb,#2E7D6B 7%,var(--card));border-left-color:#2E7D6B}
+.bk-exam{border-left:3px solid #B8892F;background:color-mix(in srgb,#B8892F 6%,var(--card));border-radius:0 8px 8px 0;padding:10px 12px;margin:10px 0}
+.bk-exam{padding:0;background:transparent;border-left:none}
+.bk-exam-h{display:flex;align-items:center;flex-wrap:wrap;gap:8px;row-gap:4px;width:100%;border:1px solid color-mix(in srgb,#B8892F 32%,var(--line-2));background:color-mix(in srgb,#B8892F 7%,var(--card));border-radius:8px;padding:8px 11px;cursor:pointer;font-family:inherit;text-align:left}
+.bk-exam-h .exam-tag{order:1;flex:0 0 auto;white-space:nowrap}
+.bk-exam-h .exam-yr{order:2;flex:0 0 auto;font-size:calc(10.6px*var(--fs));font-weight:600;color:#8A5D12}
+.bk-exam-h .bk-tipx{order:3;margin-left:auto;flex:0 0 auto}
+.bk-exam-h .exam-kind{order:2;flex:0 0 auto;font-size:calc(10.2px*var(--fs));color:#8A5D12;background:color-mix(in srgb,#B8892F 12%,#fff);border-radius:4px;padding:1px 6px}
+.bk-exam-h .exam-sub{order:4;flex:1 1 100%;font-size:calc(10.4px*var(--fs));color:var(--ink-3);white-space:normal}
+.bk-ansh{flex-wrap:wrap;row-gap:4px}
+.bk-ansh .ans-tag{order:1;flex:0 0 auto;white-space:nowrap}
+.bk-ansh .bk-tipx{order:2;margin-left:auto;flex:0 0 auto}
+.bk-ansh .ans-sub{order:3;flex:1 1 100%;white-space:normal}
+.exam-head{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.exam-tag{font-size:calc(10.2px*var(--fs));font-weight:700;color:#8A5D12;background:color-mix(in srgb,#B8892F 20%,#fff);padding:2px 7px;border-radius:4px;letter-spacing:0;white-space:nowrap}
+.exam-sub{font-size:calc(10.4px*var(--fs));color:var(--ink-3)}
+.exam-body{font-size:calc(12.4px*var(--fs));line-height:1.9;color:var(--ink-2);text-align:justify}
+.vt-sec.cloak u.wv{background:color-mix(in srgb,var(--ink) 10%,transparent);color:transparent;text-decoration:none;border-radius:3px;padding:0 2px;cursor:pointer}
+.vt-sec.cloak u.wv.revealed{background:color-mix(in srgb,#B8892F 14%,transparent);color:inherit;text-decoration:underline;text-decoration-style:wavy;text-decoration-color:#B8892F}
+.vt-sec.onlytext .bk-tipwrap,.vt-sec.onlytext .bk-exam{display:none!important}
+
+.bk-ans{margin:9px 0}
+.bk-ansh{display:flex;align-items:center;gap:8px;width:100%;border:1px dashed color-mix(in srgb,#2E7D6B 40%,var(--line-2));background:color-mix(in srgb,#2E7D6B 6%,var(--card));border-radius:8px;padding:7px 11px;cursor:pointer;font-family:inherit;text-align:left}
+.ans-tag{font-size:calc(10.4px*var(--fs));font-weight:700;color:#1F6152;background:color-mix(in srgb,#2E7D6B 18%,#fff);padding:2px 7px;border-radius:4px}
+.ans-sub{flex:1 1 auto;min-width:0;font-size:calc(10.6px*var(--fs));color:var(--ink-3)}
+.bk-ans .bk-tipb{background:color-mix(in srgb,#2E7D6B 5%,var(--card));border-left-color:#2E7D6B}
+.bk-ansp{margin:6px 0}
+.vt-sec.onlytext .bk-ans{display:none!important}
+
+.vt-legend{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 10px}
+.lgt{font-size:calc(10.2px*var(--fs));padding:3px 8px;border-radius:999px;background:color-mix(in srgb,var(--ink) 4%,var(--card));color:var(--ink-3);border:1px solid var(--line-2)}
+.lgt.l-tip{border-style:dashed;border-color:color-mix(in srgb,#B8892F 40%,var(--line-2));color:#8A5D12}
+.lgt.l-exam{border-color:color-mix(in srgb,#B8892F 50%,var(--line-2));color:#8A5D12;background:color-mix(in srgb,#B8892F 7%,var(--card))}
+.lgt.l-ans{border-color:color-mix(in srgb,#2E7D6B 45%,var(--line-2));color:#1F6152;background:color-mix(in srgb,#2E7D6B 6%,var(--card))}
+</style>
 </head>
 <body>
 
@@ -2524,6 +2575,15 @@ function sortPts(a,b){ return eraRank(a.ch)-eraRank(b.ch) || subRank(a.sub)-subR
 const SEQ=(()=>{const m={};PTS.slice().sort(sortPts).forEach((p,i)=>{m[p.n]=i+1;});return m;})();
 function pnum(n){ return SEQ[n]||n; }
 function eraRank(ch){ const i=ERA_ORD.indexOf(ch); return i<0?900:i; }
+document.addEventListener('click',function(e){
+  const u=e.target&&e.target.closest?e.target.closest('u.wv'):null;
+  if(!u) return;
+  const sec=u.closest('.vt-sec');
+  if(!sec||!sec.classList.contains('cloak')) return;
+  e.preventDefault(); e.stopPropagation();
+  u.classList.toggle('revealed');
+  haptic();
+},true);
 function renderList(){
   if(S.mode==='zhuan' && S.ztsrc!=='book'){
     if(Q.trim()){ document.getElementById('list').innerHTML = integSearchHTML(Q); return; }
@@ -5343,6 +5403,85 @@ function bkT(t,wr){
   out+=s.slice(p);
   return bkInline(out).replace(/\u0001/g,'<u class="wv">').replace(/\u0002/g,'</u>');
 }
+function bkTipHTML(label,inner,cls){
+  return `<div class="bk-tipwrap t-${cls}"><button class="bk-tip" onclick="bkTipFold(this)"><span class="bk-tipi">${cls==='mn'?'🧠':'💡'}</span><span class="bk-tipl">${esc(label)}</span><b class="bk-tipx">展开</b></button><div class="bk-tipb" style="display:none"><div class="bk-tipt">${inner}</div></div></div>`;
+}
+function bkTipFold(btn){
+  const wrap=btn.parentElement, body=wrap.querySelector('.bk-tipb');
+  if(!body) return;
+  const open=body.style.display==='none';
+  body.style.display=open?'block':'none';
+  btn.classList.toggle('on',open);
+  const x=btn.querySelector('.bk-tipx'); if(x) x.textContent=open?'收起':'展开';
+  haptic();
+}
+function bkCloak(btn){
+  const sec=btn.closest('.vt-sec'); if(!sec) return;
+  const on=!sec.classList.contains('cloak');
+  sec.classList.toggle('cloak',on);
+  btn.classList.toggle('on',on);
+  btn.textContent=on?'显示重点':'遮盖重点';
+  if(on) sec.querySelectorAll('u.wv.revealed').forEach(function(x){ x.classList.remove('revealed'); });
+  if(on){ const body=sec.querySelector('.bk-secs-body'); if(body&&body.style.display==='none'){ const h=sec.querySelector('.vt-sec-h'); if(h) h.click(); } }
+  haptic();
+}
+function bkOnlyText(btn){
+  const sec=btn.closest('.vt-sec'); if(!sec) return;
+  const on=!sec.classList.contains('onlytext');
+  sec.classList.toggle('onlytext',on);
+  btn.classList.toggle('on',on);
+  btn.textContent=on?'显示提示与题目':'只看背诵';
+  if(on){ const body=sec.querySelector('.bk-secs-body'); if(body&&body.style.display==='none'){ const h=sec.querySelector('.vt-sec-h'); if(h) h.click(); } }
+  haptic();
+}
+function bkIsAns(b){
+  if(!b) return false;
+  const t=String(b.x!=null?b.x:(b.xs?b.xs.join(' '):''));
+  return /^[\s\u3000]*[\[【(（]?\s*(答题要点|参考答案|答案要点)/.test(t);
+}
+function bkUnits(bs){
+  const out=[];
+  for(let i=0;i<bs.length;i++){
+    const b=bs[i];
+    if(b.t==='exam' && !bkIsAns(b)){
+      const u={kind:'exam',stem:b,ans:[]};
+      let j=i+1;
+      if(j<bs.length && bkIsAns(bs[j])){
+        while(j<bs.length && (bs[j].t==='p'||bs[j].t==='nums')){ u.ans.push(bs[j]); j++; }
+        i=j-1;
+      }
+      out.push(u); continue;
+    }
+    if(bkIsAns(b)){
+      const u={kind:'ans',bs:[b]};
+      let j=i+1;
+      while(j<bs.length && (bs[j].t==='p'||bs[j].t==='nums')){ u.bs.push(bs[j]); j++; }
+      i=j-1; out.push(u); continue;
+    }
+    out.push({kind:'block',b:b});
+  }
+  return out;
+}
+function bkAnsBody(bs){
+  return bs.map(function(b){
+    if(b.t==='nums') return bkBlock(b);
+    const t=String(b.x||'').replace(/^[\s\u3000]*[\[【(（]?\s*(答题要点|参考答案|答案要点)[\]】)）]?\s*/,'');
+    return `<p class="bk-p bk-ansp">${bkT(t,b.w)}</p>`;
+  }).join('');
+}
+function bkExamYear(t){ const m=/(\d{4})\s*年/.exec(String(t||'')); return m?m[1]+' 年':''; }
+function bkUnitHTML(u){
+  if(u.kind==='block') return bkBlock(u.b);
+  if(u.kind==='ans'){
+    return `<div class="bk-ans"><button class="bk-ansh" onclick="bkTipFold(this)"><span class="ans-tag">参考答案</span><span class="ans-sub">先自己答，再点开对照</span><b class="bk-tipx">展开</b></button><div class="bk-tipb ans-b" style="display:none">${bkAnsBody(u.bs)}</div></div>`;
+  }
+  const t=String(u.stem.x||'');
+  const yr=bkExamYear(t);
+  const km=/简答题|材料分析题|论述题|分析题|选择题/.exec(t);
+  const kind=km?km[0]:'';
+  const inner=bkAnsBody(u.ans);
+  return `<div class="bk-exam"><button class="bk-exam-h" onclick="bkTipFold(this)"><span class="exam-tag">真题 · 题目</span>${yr?`<span class="exam-yr">${yr}</span>`:''}${kind?`<span class="exam-kind">${kind}</span>`:''}<span class="exam-sub">这是题目，点开看材料与设问</span><b class="bk-tipx">展开</b></button><div class="bk-tipb exam-b" style="display:none">${bkT(t,u.stem.w)}${inner?`<div class="bk-ans"><button class="bk-ansh" onclick="bkTipFold(this)"><span class="ans-tag">参考答案</span><span class="ans-sub">做完了再对答案</span><b class="bk-tipx">展开</b></button><div class="bk-tipb ans-b" style="display:none">${inner}</div></div>`:''}</div></div>`;
+}
 function bkBlock(b){
   if(!b) return '';
   switch(b.t){
@@ -5367,11 +5506,15 @@ function bkBlock(b){
     case 'nums': return `<div class="bk-nums">${(b.xs||[]).map((x,i)=>`<div class="bk-num">${bkT(x,b.w&&b.w['n'+i])}</div>`).join('')}</div>`;
     case 'box': return `<div class="bk-box">${bkT(b.x,b.w)}</div>`;
     case 'quote': return `<div class="bk-quote">${bkT(b.x,b.w)}</div>`;
-    case 'note': return `<div class="bk-note"><b>[背诵提示${b.n?' '+b.n:''}]</b>${bkT(b.x,b.w)}</div>`;
-    case 'mn': return `<div class="bk-mn"><b>[背诵口诀]</b>${bkT(b.x,b.w)}</div>`;
+    case 'note': return bkTipHTML('背诵提示'+(b.n?' '+b.n:''),bkT(b.x,b.w),'note');
+    case 'mn': return bkTipHTML('背诵口诀',bkT(b.x,b.w),'mn');
     case 'fig': return `<div class="bk-fig">${esc(b.x||'')}</div>`;
     case 'img': return `<div class="bk-imgbox"><img src="${b.x}" loading="lazy" alt="一图流原表"></div>`;
-    case 'exam': return `<div class="bk-exam">${bkT(b.x,b.w)}</div>`;
+    case 'exam': {
+      const t=String(b.x||'');
+      const m=/(\d{4})\s*年/.exec(t);
+      return `<div class="bk-exam"><button class="bk-exam-h" onclick="bkTipFold(this)"><span class="exam-tag">真题 · 题目</span><span class="exam-yr">${m?m[1]+' 年':''}</span><span class="exam-sub">题干点开看，别当条文背</span><b class="bk-tipx">展开</b></button><div class="bk-tipb exam-b" style="display:none">${bkT(b.x,b.w)}</div></div>`;
+    }
     case 'table': {
       const rows=b.rows||[], head=b.head||[];
       const ncol=head.length||(rows[0]?rows[0].length:0);
@@ -5567,21 +5710,32 @@ function vtBodyHTML(withTip){
     const nav='';
     const bodyHtml=gs.map((g,i)=>{
       const id='g'+si+'-'+i;
-      const inner=g.bs.map((b,bi)=>`<div class="bk-b" data-b="${bi}">${bkBlock(b)}</div>`).join('');
+      const units=bkUnits(g.bs);
+      const inner=units.map((u,bi)=>`<div class="bk-b${u.kind==='exam'?' is-exam':''}${u.kind==='ans'?' is-ans':''}" data-b="${bi}">${bkUnitHTML(u)}</div>`).join('');
       if(!g.t) return `<div class="bk-lead">${inner}</div>`;
-      const cnt=g.bs.length;
+      const tb=g.bs.filter(b=>b.t==='note'||b.t==='mn').length;
+      const eb=units.filter(u=>u.kind==='exam').length;
+      const ab=units.filter(u=>u.kind==='ans').length;
+      const nb=units.filter(u=>u.kind==='block').length;
       return `<div class="bk-sub" data-g="${id}" id="bk-${id}">
-        <div class="bk-sub-h" onclick="bkSubFold(this)"><b class="bk-sub-t">${esc(g.t)}</b><span class="bk-sub-n">${cnt} 块</span><i class="chev"></i></div>
+        <div class="bk-sub-h" onclick="bkSubFold(this)"><b class="bk-sub-t">${esc(g.t)}</b><span class="bk-sub-n">正文 ${nb}${eb?` · 题目 ${eb}`:''}${ab?` · 答案 ${ab}`:''}${tb?` · 提示 ${tb}`:''}</span><i class="chev"></i></div>
         <div class="bk-sub-b" style="display:none">${inner}</div></div>`;
     }).join('');
-    return `<div class="vt-sec" id="vts${si}"><div class="vt-sec-h" onclick="bkFoldRow(this)"><b>${esc(sec.n)}</b><span class="vt-sec-meta">P${esc(sec.pgs||'')}${named.length>1?` · ${named.length} 小节`:''}</span><i class="chev"></i></div>
-      <div class="bk-secs-body" style="display:none">${nav}${bodyHtml}</div></div>`;
+    const cntNote=(sec.blocks||[]).filter(b=>b.t==='note'||b.t==='mn').length;
+    const cntExam=(sec.blocks||[]).filter(b=>b.t==='exam').length;
+    const cntAns=(sec.blocks||[]).filter(bkIsAns).length;
+    return `<div class="vt-sec" id="vts${si}">
+      <div class="vt-sec-h" onclick="bkFoldRow(this)"><b>${esc(sec.n)}</b><span class="vt-sec-meta">P${esc(sec.pgs||'')}${named.length>1?` · ${named.length} 小节`:''}${cntNote?` · 提示 ${cntNote}`:''}${cntExam?` · 题目 ${cntExam}`:''}${cntAns?` · 答案 ${cntAns}`:''}</span><i class="chev"></i></div>
+      <div class="bk-secs-body" style="display:none">
+        <div class="vt-tools"><button class="sec-tool" onclick="bkCloak(this)">遮盖重点</button><button class="sec-tool" onclick="bkOnlyText(this)">只看背诵</button><span class="vt-toolhint">正文当面看，提示点开背</span></div>
+        ${nav}${bodyHtml}</div></div>`;
   };
   const body=(ch.secs&&ch.secs.length)?ch.secs.map((sec,si)=>secHtml(sec,si)).join(''):`<div class="vt-empty">本章正文待转录（书 P${esc(ch.pgs||'')}）</div>`;
   const doneIx=ch.secs?ch.secs.filter(s=>(s.blocks||[]).length).length:0;
   const secNav='';
   return `
    <div class="vt-book">${esc(ch.n)}<span class="bk-pg">书 P${esc(ch.pgs||'')}${ch.secs&&ch.secs.length?` · 已录 ${doneIx}/${ch.secs.length} 节`:''}</span></div>
+   <div class="vt-legend"><span class="lgt l-main">正文 · 要背</span><span class="lgt l-tip">💡 提示 · 点开</span><span class="lgt l-exam">真题 · 题目</span><span class="lgt l-ans">答案 · 点开对照</span></div>
    ${secNav}${body}`;
 }
 function renderVT(){
@@ -6564,8 +6718,14 @@ migrateSrs();
 applyMode(); chipRow(); renderHome(); renderList(); renderCloze();
 
 const VER='3.11.0';
-const PATCH='17';   /* 同一版本内的补丁号；0 表示版本本体 */
+const PATCH='18';   /* 同一版本内的补丁号；0 表示版本本体 */
 const CHANGELOG = [
+{v:'3.11.0',ps:'17',d:'2026-11-18',kind:'patch',sum:'背诵一本通卡片重构：正文 / 提示 / 题目 / 答案 四层分明',items:[
+['重构','背诵一本通卡片按四类重新聚合：正文（要背）当面看；背诵提示与口诀默认收起；真题单独立成「题目」卡，显示年份与题型；参考答案一律点开才看，不再把题目当条文、把答案摆在正文前。'],
+['修复','原被当成正文段落的「[答题要点]」等答案块，连同后续答题段落一起收进对应题目的「参考答案」，默认隐藏。'],
+['新增','每节工具栏：遮盖重点（波浪重点变灰块，点一下逐处揭开）、只看背诵（一键隐藏提示 / 题目 / 答案）。'],
+['视觉','顶部四色图例说明规则；节标题显示正文 / 提示 / 题目 / 答案数量；小节标题同样标注。']
+]},
 {v:'3.11.0',ps:'17',d:'2026-11-18',kind:'patch',sum:'收尾：表格行定位、刷题统计、一图流横向平移',items:[
 ['修复','搜索跳转命中表格或表格式知识点时，只高亮命中的那一行（如「5. 调处息争，无讼是求」整行），不再把整张表刷成朱红。'],
 ['视觉','刷题页顶部统计从「已做 · 正确率0%」挤一行改为四格：套题 / 已做 / 正确率 / 错题。'],
