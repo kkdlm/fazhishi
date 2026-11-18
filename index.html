@@ -1781,6 +1781,18 @@ html[data-theme="night"] .quiz-opt .you{background:rgba(255,255,255,.16);color:#
 .bk-tipb{margin-top:6px;padding:9px 12px;border-radius:8px;background:color-mix(in srgb,#B8892F 7%,var(--card));border-left:3px solid color-mix(in srgb,#B8892F 55%,transparent);font-size:calc(12.4px*var(--fs));line-height:1.85;color:var(--ink-2)}
 .bk-tipb .bk-tipt{white-space:pre-wrap}
 .bk-tipwrap.t-fig .bk-tipb{background:color-mix(in srgb,#2C4A3E 6%,var(--card));border-left-color:#2C4A3E}
+.bk-figt{white-space:normal}
+.fg-tree{overflow:hidden;background-image:repeating-linear-gradient(to right,transparent 0 15px,color-mix(in srgb,var(--ink) 7%,transparent) 15px 16px);background-size:16px 100%;background-position:6px 0;border-radius:6px}
+.fg-row{display:flex;align-items:flex-start;padding-left:calc(var(--d,0)*16px);margin:1px 0}
+.fg-mk{flex:0 0 auto;width:14px;color:#8b948d;font-style:normal;font-family:ui-monospace,Menlo,monospace}
+.fg-t{flex:1 1 auto;min-width:0;white-space:normal;overflow-wrap:anywhere;word-break:break-word}
+
+.fg-row{display:flex;align-items:flex-start}
+.fg-p{white-space:pre;flex:0 0 auto;color:#8b948d;font-size:calc(11.2px*var(--fs))}
+.fg-t{flex:1 1 auto;min-width:0;overflow-wrap:anywhere;padding-left:2px}
+.fg-flow{white-space:pre-wrap;overflow-wrap:anywhere;word-break:break-word}
+.fg-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;white-space:pre;font-size:calc(10.6px*var(--fs));line-height:1.7}
+.fg-hint{font-size:calc(10.6px*var(--fs));color:var(--ink-3);margin-top:3px}
 .bk-tipwrap.t-fig .bk-tipt{white-space:pre;overflow-x:auto;font-family:ui-monospace,Menlo,monospace;font-size:calc(11.6px*var(--fs));line-height:1.85;color:var(--ink-2)}
 .bk-tipsub{font-size:calc(11px*var(--fs));color:var(--ink-3);font-weight:400;margin-left:2px}
 .bk-tipwrap.t-mn .bk-tipb{background:color-mix(in srgb,#2E7D6B 7%,var(--card));border-left-color:#2E7D6B}
@@ -5586,6 +5598,25 @@ function bkAnsBody(bs){
   }).join('');
 }
 function bkExamYear(t){ const m=/(\d{4})\s*年/.exec(String(t||'')); return m?m[1]+' 年':''; }
+function bkFigHTML(text){
+  const lines=String(text||'').replace(/\r/g,'').split('\n').map(l=>l.replace(/[ \t]+$/,'')).filter(l=>l.trim()!=='');
+  if(!lines.length) return '';
+  const tree=lines.some(l=>/[├└]/.test(l));
+  const matrix=!tree && (lines.some(l=>/[↑↓←＼／]/.test(l)) || lines.some(l=>/\u3000{3,}/.test(l)));
+  if(matrix) return `<div class="fg-scroll">${esc(lines.join('\n'))}</div><div class="fg-hint">↔ 这张图较宽，左右滑动看全</div>`;
+  if(tree){
+    const rows=lines.map(l=>{
+      const m=l.match(/^([\u3000 │├└─┬┼┃┣┗┳]*)/);
+      const pre=m?m[1]:''; const rest=l.slice(pre.length).trim();
+      if(!rest) return '';
+      const mk=(pre.match(/[├└]/)||[''])[0];
+      const d=Math.min(6,Math.max(0,Math.round(pre.replace(/[├└─]/g,'').length/2.2)));
+      return `<div class="fg-row" style="--d:${d}"><i class="fg-mk">${mk||'·'}</i><span class="fg-t">${esc(rest)}</span></div>`;
+    }).join('');
+    return `<div class="fg-tree">${rows}</div>`;
+  }
+  return `<div class="fg-flow">${esc(lines.join('\n'))}</div>`;
+}
 function bkUnitHTML(u){
   if(u.kind==='block') return bkBlock(u.b);
   if(u.kind==='ans'){
@@ -5622,9 +5653,9 @@ function bkBlock(b){
     case 'nums': return `<div class="bk-nums">${(b.xs||[]).map((x,i)=>`<div class="bk-num">${bkT(x,b.w&&b.w['n'+i])}</div>`).join('')}</div>`;
     case 'box': return `<div class="bk-box">${bkT(b.x,b.w)}</div>`;
     case 'quote': return `<div class="bk-quote">${bkT(b.x,b.w)}</div>`;
-    case 'note': return bkTipHTML('背诵提示'+(b.n?' '+b.n:''),bkT(b.x,b.w),'note');
+    case 'note': return bkTipHTML('背诵提示'+(b.n?' '+b.n:''), (b.fig||/[├└]/.test(String(b.x||'')))? bkFigHTML(b.x) : bkT(b.x,b.w),'note');
     case 'mn': return bkTipHTML('背诵口诀',bkT(b.x,b.w),'mn');
-    case 'fig': if(!String(b.x||'').trim()) return ''; return `<div class="bk-tipwrap t-fig"><button class="bk-tip" onclick="bkTipFold(this)"><span class="bk-tipi">🗺</span><span class="bk-tipl">背诵导图</span><span class="bk-tipsub">速览脉络，点开看</span><b class="bk-tipx">展开</b></button><div class="bk-tipb" style="display:none"><div class="bk-tipt bk-figt">${esc(b.x||'')}</div></div></div>`;
+    case 'fig': if(!String(b.x||'').trim()) return ''; return `<div class="bk-tipwrap t-fig"><button class="bk-tip" onclick="bkTipFold(this)"><span class="bk-tipi">🗺</span><span class="bk-tipl">背诵导图</span><span class="bk-tipsub">速览脉络，点开看</span><b class="bk-tipx">展开</b></button><div class="bk-tipb" style="display:none"><div class="bk-tipt bk-figt">${bkFigHTML(b.x)}</div></div></div>`;
     case 'img': return `<div class="bk-imgbox"><img src="${b.x}" loading="lazy" alt="一图流原表"></div>`;
     case 'exam': {
       const t=String(b.x||'');
@@ -7047,8 +7078,14 @@ try{
 }
 
 const VER='3.11.0';
-const PATCH='27';   /* 同一版本内的补丁号；0 表示版本本体 */
+const PATCH='28';   /* 同一版本内的补丁号；0 表示版本本体 */
 const CHANGELOG = [
+{v:'3.11.0',ps:'19',d:'2026-11-19',kind:'patch',sum:'导图全部重排：手机上不再横向截断',items:[
+['修复','全书 20 张「背诵导图」逐张审查。12 张是树状图，改用「层级缩进＋引导线」逐行排版，长节点自动换行，不再被切在屏幕右边（婚姻·七出的马家树是典型一张）。'],
+['修复','3 张流程/编号示意图改为自然换行；2 条超长链条（五刑加减、数罪并罚）折行后完整可读。'],
+['修复','5 张二维对照图（如南京国民政府「权/能」）本身是左右两栏版式，改成可横滑容器并加「↔ 左右滑动看全」提示，不再静默截断。'],
+['校对','婚姻·七出的导图原文有一行「［无子］［淫佚］」掉在行尾，已并入同一棵树显示；全部导图没有空块。']
+]},
 {v:'3.11.0',ps:'18',d:'2026-11-19',kind:'patch',sum:'修「背诵提示」空白框与提示/导图错位',items:[
 ['修复','根因在数据不在折叠：有 14 处「背诵提示」正文是空的（转录时只剩个标题），渲染出来就是一个空白圆角框，提示头与导图看起来两截。已把空提示与紧随的导图合并成一条提示，13 处空壳提示直接清掉。'],
 ['修复','渲染兜底：正文为空的提示不再画卡片，以后新增数据也不会再出现空白框。'],
