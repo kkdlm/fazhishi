@@ -3778,6 +3778,8 @@ function findAnchor(cardEl, name){
 }
 function normalizeText(s){ return (s||'').replace(/[\s\u00a0]/g,'').replace(/[《》“”"'（）()【】\[\]]/g,''); }
 function openCardJump(n, anchor){
+  /* 无论速览当前停在「专题史·一本通」还是别的模式，都先切回断代史，否则跳不到知识点卡 */
+  if(typeof S!=='undefined' && S.mode!=='dai'){ S.mode='dai'; try{save();}catch(e){} if(typeof applyMode==='function') applyMode(); }
   FLT='all'; Q=''; const q=document.getElementById('q'); if(q) q.value='';
   chipRow(); renderList();
   go('browse');
@@ -6790,8 +6792,12 @@ migrateSrs();
 applyMode(); chipRow(); renderHome(); renderList(); renderCloze();
 
 const VER='3.11.0';
-const PATCH='22';   /* 同一版本内的补丁号；0 表示版本本体 */
+const PATCH='23';   /* 同一版本内的补丁号；0 表示版本本体 */
 const CHANGELOG = [
+{v:'3.11.0',ps:'17',d:'2026-11-18',kind:'patch',sum:'从背诵卡跳速览：先切回断代史再定位',items:[
+['修复','速览停在「专题史·背诵一本通」时，点「速览 §N」或背面小标题只会落在专题史界面、看不到知识点卡、也不展开不高亮：现在跳转前强制切回断代史模式并清掉筛选，再展开目标卡、滚到段落、高亮 10 秒。'],
+['校验','已按「专题史·一本通 → 背诵 → 点小标题」的真实路径实测：模式切回 dai、目标卡 c-N 展开、命中段落在固定头部下方 12px、高亮标记存在。']
+]},
 {v:'3.11.0',ps:'17',d:'2026-11-18',kind:'patch',sum:'背诵卡一点直达速览：卡头与背面小标题都能跳，高亮 10 秒',items:[
 ['新增','抽背卡右上角「速览 §007」按钮：点一下切到速览断代史，自动展开该考点卡并滚到位置。'],
 ['新增','背面每个小标题（禹刑、甘誓…）可点：跳到同一条考点卡，并把那一段用底色框住高亮 10 秒，松手就撤。'],
