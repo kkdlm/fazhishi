@@ -1840,6 +1840,45 @@ tr.hit-row,tr.hit-row td,tr.hit-row th,.bk-kv-row.hit-row,.bk-kv-row.hit-row>div
 </head>
 <body>
 
+<script>
+/* ---------- 启动兜底（独立于主脚本：主脚本挂了也能提示并自救） ---------- */
+(function(){
+  window.__booted=false;
+  function panel(title, desc, offline){
+    if(document.getElementById('bootFail')) return;
+    var d=document.createElement('div');
+    d.id='bootFail';
+    d.style.cssText='position:fixed;inset:0;z-index:99999;background:#F6F5F0;color:#22302B;font:16px/1.75 -apple-system,system-ui,sans-serif;display:flex;align-items:center;justify-content:center;padding:28px';
+    d.innerHTML='<div style="max-width:420px">'
+      +'<div style="width:52px;height:52px;border-radius:9px;background:#B4483F;color:#FBF2E3;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:600">史</div>'
+      +'<h2 style="font-size:19px;margin:16px 0 8px">'+(title||'页面没加载出来')+'</h2>'
+      +'<p style="color:#5b6660;margin:0 0 4px">'+(desc||'')+'</p>'
+      +'<p style="color:#8a938d;font-size:13px;margin:0 0 18px">'+(offline?'现在是离线状态：先连上网再点「重新加载」；也可以点「清缓存重启」用本地文件打开。':'如果反复出现，点「清缓存重启」即可恢复；本地缓存和账号数据不会丢。')+'</p>'
+      +'<div style="display:flex;gap:10px;flex-wrap:wrap">'
+      +'<button onclick="location.reload()" style="padding:12px 20px;border:0;border-radius:10px;background:#2C4A3E;color:#fff;font-size:15px">重新加载</button>'
+      +'<button onclick="window.__hardReset&&window.__hardReset()" style="padding:12px 20px;border:1px solid #C9D2C6;border-radius:10px;background:#fff;color:#2C4A3E;font-size:15px">清缓存重启</button>'
+      +'</div></div>';
+    (document.body||document.documentElement).appendChild(d);
+    var sp=document.getElementById('splash'); if(sp&&sp.parentNode) sp.parentNode.removeChild(sp);
+  }
+  window.__bootFail=panel;
+  window.__hardReset=function(){
+    try{ if(navigator.serviceWorker) navigator.serviceWorker.getRegistrations().then(function(rs){rs.forEach(function(x){x.unregister();});}); }catch(e){}
+    try{ if(window.caches) caches.keys().then(function(ks){ks.forEach(function(k){caches.delete(k);});}); }catch(e){}
+    setTimeout(function(){ try{ location.replace(location.pathname+'?v='+Date.now()); }catch(e){ location.reload(); } },600);
+  };
+  window.__bootOk=function(){ window.__booted=true; var d=document.getElementById('bootFail'); if(d&&d.parentNode) d.parentNode.removeChild(d); };
+  window.addEventListener('error',function(e){
+    if(window.__booted) return;
+    panel('页面出错了','启动时遇到脚本错误，重开一次通常就好。'+(e&&e.message?('（'+String(e.message).slice(0,60)+'）'):''),!navigator.onLine);
+  });
+  window.addEventListener('unhandledrejection',function(){
+    if(window.__booted) return;
+    panel('页面出错了','启动时有一处数据没读出来，重开一次通常就好。',!navigator.onLine);
+  });
+  setTimeout(function(){ if(!window.__booted) panel(navigator.onLine?'页面加载超时':'现在没有网络',navigator.onLine?'网络或服务器响应太慢，点一下「重新加载」。':'连上网后点「重新加载」；也可以点「清缓存重启」用本地缓存打开。',!navigator.onLine); }, 6000);
+})();
+</script>
 <div class="splash" id="splash" aria-hidden="true">
   <div class="splash-inner">
     <div class="splash-slips"><i></i><i></i><i></i><i></i><i></i></div>
@@ -6992,13 +7031,28 @@ window.addEventListener('scroll',()=>{
   if(t) t.classList.toggle('show', window.scrollY>420);
 },{passive:true});
 /* 页内启动页已移除（见顶部注释） */
-normalizeState();
-migrateSrs();
-applyMode(); chipRow(); renderHome(); renderList(); renderCloze();
+try{
+  normalizeState();
+  migrateSrs();
+  applyMode(); chipRow(); renderHome(); renderList(); renderCloze();
+  if(window.__bootOk) window.__bootOk();
+  if(!navigator.onLine){ try{ mtoast('当前离线：已用本地缓存打开，内容照常看'); }catch(e){} }
+}catch(err){
+  try{ console.error(err); }catch(e){}
+  if(window.__bootFail) window.__bootFail('页面没加载出来','启动时有一处数据读不出来，重开一次通常就好。',!navigator.onLine);
+}
 
 const VER='3.11.0';
-const PATCH='25';   /* 同一版本内的补丁号；0 表示版本本体 */
+const PATCH='26';   /* 同一版本内的补丁号；0 表示版本本体 */
 const CHANGELOG = [
+{v:'3.11.0',ps:'17',d:'2026-11-19',kind:'patch',sum:'修「进应用一直白屏，清后台才好」并加启动兜底',items:[
+['修复','根因：Service Worker 处理「打开应用」时先等 version.json 的网络响应且没有超时，网络一卡首页就一直等不到任何页面，表现为纯白屏。现在有缓存就立刻返回，页面不再挂在响应链上。'],
+['修复','发新版后要先把 4.4MB 的整页下载完才显示，弱网下就是几十秒白屏：改为缓存即时显示，新版本在后台静默下载，下次启动生效。'],
+['新增','缓存自检：首页缓存小于 1.5MB 或与记录大小不符（下载被截断）时不再使用，直接走网络，避免存进坏页面后每次打开都白。'],
+['新增','无网络时给明确的离线页：写明「现在没有网络」，有「重新打开」按钮，并每 3 秒检测一次，联网自动重开。'],
+['新增','启动兜底：启动超时 6 秒、脚本报错、数据读不出来，都会盖一张自救卡（重新加载 / 清缓存重启），不会再留一个纯白屏；在离线时文案会直接说明。'],
+['新增','启动成功后才撤掉兜底；离线启动成功会提示「当前离线：已用本地缓存打开」。']
+]},
 {v:'3.11.0',ps:'17',d:'2026-11-18',kind:'patch',sum:'背诵卡跳一本通改用真实页码锚定，不再靠文字猜',items:[
 ['重做','每张背诵卡先按《背诵提示》里标的背诵一本通页码（bp）定位到「节」，页码缺失才退回卡面页码；页码落在两节边界时以「考点主题所属章」纠偏。'],
 ['重做','169 个考点逐条生成映射表（build/data/bk_map.json，由 gen_bk_map.py 可复现），不再运行时猜章节：0 条主题章错位。'],
