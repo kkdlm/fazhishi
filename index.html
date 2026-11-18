@@ -514,7 +514,7 @@ html[data-theme="night"] .rate .ok{background:#1A2A26;border-color:#254039}
 .sum-acts button{padding:12px 0;border-radius:11px;font-size:13.5px;border:1px solid var(--line);background:var(--paper-2)}
 .sum-acts button.primary{background:var(--red);color:#fff;border-color:var(--red)}
 .bottom-row{display:flex;gap:6px;margin-top:10px;justify-content:center;flex-wrap:wrap}
-.bottom-row button{font-size:12px;color:var(--ink-3);padding:7px 11px;border-radius:9px}
+.bottom-row button{font-size:calc(12px*var(--fs));color:var(--ink-2);padding:8px 14px;border-radius:999px;border:1px solid var(--line);background:var(--card)}
 .bottom-row button:active{background:var(--paper-2)}
 
 /* ============ 挖空 ============ */
@@ -561,6 +561,14 @@ html[data-theme="night"] .rate .ok{background:#1A2A26;border-color:#254039}
 .node.t2 .nm{font-size:calc(14.5px * var(--fs));font-weight:600;margin-top:3px}
 .node.t3 .nm{font-size:calc(13px * var(--fs));font-weight:500;color:var(--ink-2);margin-top:3px}
 .node .nt{font-size:calc(12px * var(--fs));color:var(--ink-3);margin-top:2px;line-height:1.65}
+.node .nt{display:block;background:none;border-radius:0;padding:0;margin-top:3px;font-weight:400;letter-spacing:0}
+.era{margin:18px 0 8px 20px;display:inline-flex;align-items:center;gap:8px;padding:5px 12px;border-radius:999px;
+  background:color-mix(in srgb,var(--zhu) 8%,var(--card));border:1px solid color-mix(in srgb,var(--zhu) 20%,var(--line))}
+.era b{font-size:calc(14.5px * var(--fs));font-family:var(--serif)}
+.era span{font-size:calc(10px * var(--fs));color:var(--ink-3);letter-spacing:.08em}
+.era-wrap{margin:0}
+.tl{padding-left:20px}
+.tl:before{left:5px}
 .node.flash .nm{color:var(--red)}
 .mn-list{display:flex;flex-direction:column;gap:7px}
 .mn-cell{display:block}
@@ -1786,7 +1794,7 @@ html[data-theme="night"] .quiz-opt .you{background:rgba(255,255,255,.16);color:#
     <div class="hero">
       <div class="eyebrow">2027 · 法硕非法学 · 中国法制史</div>
       <h1>法制史<br><em>一点通</em></h1>
-      <div class="hero-sub">209 条考点 · 29 个专题 · 23 个朝代段</div>
+      <div class="hero-sub">169 张考点卡 · 29 个专题 · 23 个朝代段</div>
       <div class="stamp serif">史</div>
     </div>
 
@@ -6519,8 +6527,14 @@ migrateSrs();
 applyMode(); chipRow(); renderHome(); renderList(); renderCloze();
 
 const VER='3.11.0';
-const PATCH='15';   /* 同一版本内的补丁号；0 表示版本本体 */
+const PATCH='16';   /* 同一版本内的补丁号；0 表示版本本体 */
 const CHANGELOG = [
+{v:'3.11.0',ps:'16',d:'2026-11-18',kind:'patch',sum:'全站一致性：专题时间轴、背诵操作条、首页口径',items:[
+['修复','专题时间轴的节点说明被全局 .nt 标签样式污染，每条都套了个橘色小药丸底；现改为正常小字说明。'],
+['视觉','时间轴的朝代头从整行大方块改成朱红描边胶囊（夏 / 商 / 西周 …），与节点竖线对齐，纵向滚动不会再出现大片空白。'],
+['视觉','背诵页四个操作（上一张 / 跳过这条 / 随机一轮 / 在速览中查看）从素文字改成白底胶囊按钮。'],
+['修复','首页口径与速览统一：209 条考点 → 169 张考点卡。']
+]},
 {v:'3.11.0',ps:'15',d:'2026-11-17',kind:'patch',sum:'搜索跳转高亮延长到 10 秒',items:[
 ['调整','命中段落的朱红高亮从 2 秒延长到 10 秒（前 7 秒保持清晰，后 3 秒渐隐），足够看清落在哪一句。']
 ]},
