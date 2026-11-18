@@ -1826,6 +1826,14 @@ html[data-theme="night"] .quiz-opt .you{background:rgba(255,255,255,.16);color:#
 .tq-a{margin-top:7px}
 .tq-a summary{cursor:pointer;font-size:calc(11px*var(--fs));color:#8A5D12;background:color-mix(in srgb,#B8892F 9%,var(--card));border:1px dashed color-mix(in srgb,#B8892F 35%,var(--line-2));border-radius:7px;padding:5px 9px;list-style:none}
 .tq-a summary::-webkit-details-marker{display:none}
+
+.r-jump{margin-left:6px;border:1px solid color-mix(in srgb,#2E7D6B 35%,var(--line-2));background:color-mix(in srgb,#2E7D6B 8%,transparent);color:#1F6152;border-radius:999px;padding:1px 8px;font-size:calc(10px*var(--fs));font-family:inherit;cursor:pointer}
+.r-abh{display:flex;align-items:center;gap:6px;width:100%;background:none;border:0;padding:0;font-family:inherit;cursor:pointer;text-align:left}
+.r-abi{font-size:calc(9.6px*var(--fs));color:#1F6152;opacity:.75;border:1px dashed color-mix(in srgb,#2E7D6B 35%,transparent);border-radius:4px;padding:0 5px;font-weight:400}
+
+.kh.flash{background:color-mix(in srgb,var(--c,#2E7D6B) 18%,var(--card));outline:1.5px solid color-mix(in srgb,var(--c,#2E7D6B) 50%,transparent);border-radius:6px;transition:background .3s,outline .3s}
+.kp.flash{background:color-mix(in srgb,var(--c,#2E7D6B) 12%,var(--card));outline:1.5px solid color-mix(in srgb,var(--c,#2E7D6B) 40%,transparent);border-radius:6px;transition:background .3s,outline .3s}
+.ksec.flash{background:color-mix(in srgb,var(--c,#2E7D6B) 8%,var(--card));border-radius:8px}
 </style>
 </head>
 <body>
@@ -2884,7 +2892,7 @@ function toggleCard(n){
   const body=el.querySelector('.card-body'), foot=el.querySelector('.card-foot');
   const open=el.classList.toggle('open');
   if(open){
-    if(!body.innerHTML) body.innerHTML=bodyHTML(PTS.find(p=>p.n===n));
+    if(!body.innerHTML) body.innerHTML=bodyHTML(PTS.find(p=>p.n===n)||PTS.find(p=>String(p.n)===String(n)));
     body.style.display='block'; foot.style.display='flex';
     S.seen[n]=now(); save();
   }else{
@@ -3411,7 +3419,7 @@ function renderRecite(){
   const askHtml=stripMeta(askHtml0);
   const ansInner=e.ansBlocks
     ? e.ansBlocks.map(function(b){
-        return '<div class="r-ab">'+(b.h?'<div class="r-abh">'+esc(b.h)+'</div>':'')+runsHtml(b.runs,'rk')+'</div>';
+        return '<div class="r-ab">'+(b.h?'<button class="r-abh" data-an="'+esc(b.h)+'" onclick="openCardJump('+e.n+',this.dataset.an)">'+esc(b.h)+'<span class="r-abi">速览</span></button>':'')+runsHtml(b.runs,'rk')+'</div>';
       }).join('')
     : runsHtml(e.ans,'rk');
   const ansHtml=stripMeta(isMask?e.ansLine:ansInner);
@@ -3432,7 +3440,7 @@ function renderRecite(){
   const srsCur=S.srs[ekey(e)];
   const memTag=TODAY_MODE?`<span class="memtag ${srsCur?'review':'new'}">${srsCur?('复习 · 第'+(srsCur.r+1)+'次'):'新学'}</span>`:'';
   card.innerHTML=`
-    <div class="r-meta"><i class="dot" style="background:${cOf(p.cat||p.ch)}"></i>${p.ch}${p.sub&&p.sub!==p.ch?' · '+p.sub:''} · ${pad3(pnum(p.n))} · 第 ${e.kth} 条 ${memTag}<button class="bug-mini" onclick="bugFromRecite(event)" aria-label="记录问题"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><rect x="8" y="6" width="8" height="13" rx="4"/><path d="M12 6V4M9 9h.01M15 9h.01M12 12v6M5 10l-2-1M19 10l2-1M5 15l-2 1M19 15l2 1"/></svg></button></div>
+    <div class="r-meta"><i class="dot" style="background:${cOf(p.cat||p.ch)}"></i>${p.ch}${p.sub&&p.sub!==p.ch?' · '+p.sub:''} · ${pad3(pnum(p.n))} · 第 ${e.kth} 条 ${memTag}<button class="r-jump" onclick="openCardJump(${p.n})">速览 §${pad3(pnum(p.n))}</button><button class="bug-mini" onclick="bugFromRecite(event)" aria-label="记录问题"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><rect x="8" y="6" width="8" height="13" rx="4"/><path d="M12 6V4M9 9h.01M15 9h.01M12 12v6M5 10l-2-1M19 10l2-1M5 15l-2 1M19 15l2 1"/></svg></button></div>
     <div class="r-title${titleCls}" style="font-size:calc(${titleFs}px * var(--fs))">${esc(titleTxt)}</div>
     <div class="r-rule"></div>
     ${RSHOW
@@ -3764,7 +3772,7 @@ function findAnchor(cardEl, name){
   /* 只认「确实包含该名称」的块：先取所有命中，再取文本最短的那个（最贴合的一行），
      同长度按文档先后。这样不会因为前缀相似就跳到别的段落。 */
   /* 命中块按文档顺序取第一个：整段/整行级别，不会只框住半句，也不会因为前缀相似跑到别的段落 */
-  const hits=[...body.querySelectorAll('.mth,.bh,.bp,.it,.mtp,.mtx,.mnline')]
+  const hits=[...body.querySelectorAll('.kh,.mth,.bh,.bp,.it,.mtp,.mtx,.mnline,.kp,.bl')]
     .filter(e=>normalizeText(e.textContent).includes(t));
   return hits.length?hits[0]:null;
 }
@@ -3779,7 +3787,7 @@ function openCardJump(n, anchor){
     if(!el.classList.contains('open')) toggleCard(n);
     const h=anchor?findAnchor(el, anchor):null;
     if(h){
-      document.querySelectorAll('.bh.flash,.bp.flash,.bl.flash').forEach(x=>x.classList.remove('flash'));
+      document.querySelectorAll('.flash').forEach(x=>x.classList.remove('flash'));
       h.classList.add('flash');
       /* 顶栏 + 筛选区是固定的，滚动时把它们的高度扣掉，别把命中行顶到看不见的地方 */
       const sc=document.scrollingElement||document.documentElement;
@@ -3788,7 +3796,13 @@ function openCardJump(n, anchor){
       const abs=h.getBoundingClientRect().top+(sc.scrollTop||0);
       const to=Math.max(0, abs-bar-tool-24);
       try{ sc.scrollTo({top:to,behavior:'smooth'}); }catch(e){ sc.scrollTop=to; }
-      setTimeout(()=>h.classList.remove('flash'), 2600);
+      /* 平滑滚动结束后再校正一次：确保命中行不被固定头部压住 */
+      setTimeout(function(){
+        const r=h.getBoundingClientRect();
+        const need=(bar+tool+12)-r.top;
+        if(need>0){ try{ sc.scrollBy({top:-need,behavior:'auto'}); }catch(e){ sc.scrollTop-=need; } }
+      },600);
+      setTimeout(()=>h.classList.remove('flash'), 10000);
     }else{
       el.scrollIntoView({behavior:'smooth',block:'center'});
     }
@@ -6776,8 +6790,14 @@ migrateSrs();
 applyMode(); chipRow(); renderHome(); renderList(); renderCloze();
 
 const VER='3.11.0';
-const PATCH='21';   /* 同一版本内的补丁号；0 表示版本本体 */
+const PATCH='22';   /* 同一版本内的补丁号；0 表示版本本体 */
 const CHANGELOG = [
+{v:'3.11.0',ps:'17',d:'2026-11-18',kind:'patch',sum:'背诵卡一点直达速览：卡头与背面小标题都能跳，高亮 10 秒',items:[
+['新增','抽背卡右上角「速览 §007」按钮：点一下切到速览断代史，自动展开该考点卡并滚到位置。'],
+['新增','背面每个小标题（禹刑、甘誓…）可点：跳到同一条考点卡，并把那一段用底色框住高亮 10 秒，松手就撤。'],
+['修复','跳转落点被固定头部压住：平滑滚动结束后再校正一次，命中的小标题一定落在搜索栏与筛选条下面。'],
+['修复','命中锚点原来只在少数块类型里找，卡片正文的小标题/段落（.kh/.kp）认不到；现已纳入，并补了对应的高亮样式。']
+]},
 {v:'3.11.0',ps:'17',d:'2026-11-18',kind:'patch',sum:'背诵模块抽背卡：题面只放问题，要背的原文全在背面',items:[
 ['重构','抽背卡不再「把原文放题面、挖空术语名」。现在题面只给问题（人工逐卡写的考试问法，如「夏朝有哪些主要立法？」），整段书原文连同小标题全部留在背面，揭晓后按小标题分段对照。'],
 ['修复','问句与碎片答案错配：一个考点拆成多张小卡时，问句问的是整题、答案却只有一句。现在带问句的考点合成一张卡，问句与答案一一对应；没有问句的碎片卡只露分类名或极短引子。'],
