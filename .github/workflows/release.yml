@@ -16,11 +16,11 @@ jobs:
   release:
     runs-on: ubuntu-latest
     env:
-      SRC: https://aka.doubaocdn.com/s/kx0PGJPJPu
-      APPSRC: https://aka.doubaocdn.com/s/tJduqdWIDm
-      SWURL: https://aka.doubaocdn.com/s/XAnRr1nMxO
+      SRC: https://aka.doubaocdn.com/s/iwjcosCpgg
+      APPSRC: https://aka.doubaocdn.com/s/r5YsZdj7EN
+      SWURL: https://aka.doubaocdn.com/s/AwjlNKGG72
       VER: "3.14.0"
-      PATCH: "2"
+      PATCH: "3"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -44,7 +44,7 @@ jobs:
           curl -fsSL --http1.1 -L --retry 3 --max-time 120 -o sw.js "$SWURL" || { echo "::notice::sw 拉不到，跳过"; exit 0; }
           if ! grep -q "app-$VER-p$PATCH" sw.js; then echo "::notice::sw 版本不匹配，跳过"; exit 0; fi
           if [ "$(stat -c%s sw.js)" -lt 1000 ]; then echo "::notice::sw 为空，跳过"; exit 0; fi
-          printf '{\n  "version": "%s",\n  "patch": %s,\n  "s": %s,\n  "date": "2026-11-19"\n}\n' "$VER" "$PATCH" "$asz" > version.json
+          printf '{\n  "version": "%s",\n  "patch": %s,\n  "s": %s,\n  "date": "2026-11-20"\n}\n' "$VER" "$PATCH" "$asz" > version.json
           echo ok
 
       - name: Commit
