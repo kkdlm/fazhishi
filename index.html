@@ -60,8 +60,6 @@ html,body{margin:0;padding:0;background:#EAEDE1}
 #boot p{color:#5b6660;margin:0 0 6px}
 #boot button{padding:12px 20px;border:0;border-radius:10px;background:#2C4A3E;color:#fff;font-size:15px;margin-top:10px}
 #appframe{position:fixed;inset:0;width:100%;height:100%;border:0;z-index:1;background:#EAEDE1}
-@keyframes slipIn{from{opacity:0;transform:scaleY(.12) translateY(-8px)}to{opacity:1;transform:none}}
-@keyframes splashIn{from{opacity:0;transform:rotate(-4deg) scale(.72)}to{opacity:1;transform:rotate(-4deg) scale(1)}}
 </style>
 </head>
 <body>
@@ -85,21 +83,57 @@ html,body{margin:0;padding:0;background:#EAEDE1}
 </div></div>
 <script>
 (function(){
-  var VER='3.11.0-p36';
+  var VER='3.11.0-p37';
   var fill=document.getElementById('spFill'),pct=document.getElementById('spPct'),
       status=document.getElementById('spStatus'),splash=document.getElementById('splash'),
       boot=document.getElementById('boot');
-  var got=0,total=0,lastAt=Date.now(),slow=false,finishing=false,done=false;
+  var got=0,total=0,lastAt=Date.now(),slow=false,finishing=false,done=false,mounted=false;
+  var target=0,shown=0,gate=0,startAt=Date.now();
 
   function mb(n){ return (n/1048576).toFixed(2); }
   function paint(){
-    var p = total>0 ? Math.min(99, Math.floor(got/total*100)) : (got>0?1:0);
-    fill.style.width=p+'%';
-    pct.textContent = p+'%' + (total>0 ? (' · '+mb(got)+'/'+mb(total)+' MB') : (got>0? (' · '+mb(got)+' MB'):''));
+    fill.style.width = shown.toFixed(1)+'%';
+    var pi = shown>=99.9?100:Math.floor(shown);
+    var size = '';
+    if(total>0 && got>=total) size=' · 已下载 '+mb(total)+' MB';
+    else if(total>0 && got>0) size=' · '+mb(got)+'/'+mb(total)+' MB';
+    else if(got>0) size=' · '+mb(got)+' MB';
+    pct.textContent = pi+'%'+size;
   }
-  paint();
-  function label(s){ status.firstChild.textContent=s; }
-  function fail(t,d,offline){
+
+  /* 俏皮话：按进度换台词，别一直一句「正在下载」 */
+  var LINES=[
+    [0 ,'先把夏商周的条文搬进脑子…'],
+    [22,'西周礼刑正在对号入座…'],
+    [40,'唐律疏议一页页装订中…'],
+    [62,'大明律、大清律例排队入库…'],
+    [82,'马三疯正在找他的驴…'],
+    [95,'书翻开了，马上开讲…']
+  ];
+  var lineIdx=-1;
+  function line(){
+    if(slow) return '网络较慢，已下载 '+mb(got)+' MB，仍在加载…';
+    var i=0;
+    for(var k=0;k<LINES.length;k++){ if(shown>=LINES[k][0]) i=k; }
+    if(i===lineIdx) return null;
+    lineIdx=i; return LINES[i][1];
+  }
+  function label(s){ if(s) status.firstChild.textContent=s; }
+
+  /* 真实字节 → 目标值；条子按真实值走，但每帧最多挪 1.6%，让它看得见地爬 */
+  function tick(){
+    if(mounted && Date.now()>gate) target=100;
+    if(target>shown){
+      var d=target-shown, step=Math.min(1.6, Math.max(0.5, d*0.09));
+      shown=Math.min(target, shown+step);
+    }
+    paint();
+    var s=line(); if(s) label(s);
+    if(mounted && shown>=99.9 && Date.now()-startAt>=1800){ reveal(); return; }
+    requestAnimationFrame(tick);
+  }
+
+  function fail(t,d){
     boot.style.display='flex';
     document.getElementById('bootT').textContent=t;
     document.getElementById('bootD').textContent=d;
@@ -110,16 +144,15 @@ html,body{margin:0;padding:0;background:#EAEDE1}
     setTimeout(function(){ location.replace(location.pathname+'?t='+Date.now()); },600);
   };
 
-  /* 慢提示只看「字节有没有前进」，不是从打开就倒计时 */
-  setInterval(function(){
-    if(done||finishing) return;
-    if(!slow && Date.now()-lastAt>4000){ slow=true; label('网络较慢，已下载 '+mb(got)+' MB，仍在加载…'); }
-  },500);
+  function reveal(){
+    if(done) return; done=true;
+    shown=100; paint(); label('准备就绪，进去背吧');
+    splash.classList.add('hide');
+    setTimeout(function(){ if(splash.parentNode) splash.remove(); },480);
+  }
 
   function mount(html){
-    finishing=true; fill.style.width='99%'; pct.textContent='99% · '+mb(got)+'/'+mb(total||got)+' MB';
-    label('正在显示…');
-    /* 把完整正文直接交给 iframe（不再二次下载）；补 base 让相对路径仍指向站点 */
+    finishing=true; target=99; gate=Date.now()+320;   /* 99% 停一小下再给 100 */
     try{
       var base='<base href="'+location.origin+location.pathname+'">';
       html=html.replace(/<head([^>]*)>/i,'<head$1>'+base);
@@ -130,19 +163,9 @@ html,body{margin:0;padding:0;background:#EAEDE1}
     fr.id='appframe'; fr.src=url;
     document.body.appendChild(fr);
     var t0=Date.now();
-    fr.addEventListener('load',function(){
-      footer();
-    });
-    function footer(){
-      if(done) return; done=true;
-      fill.style.width='100%'; pct.textContent='100%'; label('准备就绪');
-      setTimeout(function(){
-        splash.classList.add('hide');
-        setTimeout(function(){ if(splash.parentNode) splash.remove(); },480);
-      }, 600);
-    }
+    fr.addEventListener('load',function(){ if(!mounted){ mounted=true; gate=Math.max(gate,Date.now()+120); } });
     /* iframe 迟迟不来内容：8 秒后照样揭开，避免永远挡着 */
-    setTimeout(function(){ if(!done && Date.now()-t0>8000) footer(); },8000);
+    setTimeout(function(){ if(!mounted && Date.now()-t0>8000){ mounted=true; gate=Date.now()+120; } },8000);
   }
 
   async function run(){
@@ -154,25 +177,22 @@ html,body{margin:0;padding:0;background:#EAEDE1}
       var res=await fetch('app.html?v='+VER);
       if(!res.ok) throw new Error('HTTP '+res.status);
       var cl=Number(res.headers.get('content-length')||0);
-      /* content-length 常是压缩后的传输大小；只有拿不到 version.json 且量级接近时才用它 */
       if(cl && (!total || Math.abs(cl-total)<total*0.35)) total=cl;
       if(!res.body || !res.body.getReader){
-        var txt=await res.text(); got=txt.length; mount(txt); return;
+        var txt=await res.text(); got=txt.length; target=99; mount(txt); return;
       }
       var rd=res.body.getReader(), chunks=[], dec=new TextDecoder('utf-8');
       var buf='';
-      label('正在下载…');
       while(true){
         var step=await rd.read();
         if(step.done) break;
         chunks.push(step.value); got+=step.value.length;
-        lastAt=Date.now(); slow=false; label('正在下载…');
-        paint();
+        lastAt=Date.now(); slow=false;
+        target = total>0 ? Math.min(99, Math.floor(got/total*100)) : 1;
+        if(target<shown) target=shown;
       }
-      label('正在解析…');
       for(var i=0;i<chunks.length;i++) buf+=dec.decode(chunks[i],{stream:true});
       buf+=dec.decode();
-      paint();
       mount(buf);
     }catch(err){
       var off=!navigator.onLine;
@@ -181,15 +201,20 @@ html,body{margin:0;padding:0;background:#EAEDE1}
     }
   }
 
-  /* 外壳负责注册 SW：iframe 里是 blob 文档，注册不了；注册成功后才能离线缓存 app.html */
+  /* 慢提示只看「字节有没有前进」 */
+  setInterval(function(){
+    if(done||finishing) return;
+    if(!slow && Date.now()-lastAt>4000){ slow=true; lineIdx=-1; }
+  },500);
+
   try{
     var swOK=(location.protocol==='https:')||location.hostname==='localhost'||location.hostname==='127.0.0.1';
-    if('serviceWorker' in navigator && swOK){
-      navigator.serviceWorker.register('sw.js',{scope:'./'}).catch(function(){});
-    }
+    if('serviceWorker' in navigator && swOK){ navigator.serviceWorker.register('sw.js',{scope:'./'}).catch(function(){}); }
   }catch(e){}
 
   window.addEventListener('error',function(e){ if(!finishing) fail('页面出错了','启动时遇到脚本错误，重开一次通常就好。'); });
+  paint();
+  requestAnimationFrame(tick);
   run();
 })();
 </script>
