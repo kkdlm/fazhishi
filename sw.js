@@ -1,4 +1,4 @@
-const CACHE='app-3.11.0-p40';
+const CACHE='app-3.11.0-p41';
 const CORE=['manifest.webmanifest','icon-192.png','icon-512.png','apple-touch-icon.png'];
 
 self.addEventListener('install',e=>{
@@ -85,6 +85,13 @@ self.addEventListener('fetch',e=>{
   if(r.mode==='navigate'){
     e.respondWith((async()=>{
       const c=await caches.open(CACHE);
+      /* 手动更新（带 ?v=）必须走网络，否则永远拿回旧壳，看起来像「点了没反应」 */
+      if(url.searchParams.has('v')){
+        const fresh=await withTimeout(fetch(r,{cache:'no-store'}),12000);
+        if(fresh && fresh.ok){ try{ await remember(c,fresh.clone(),await remoteVer()); }catch(err){} return fresh; }
+        const h0=await c.match('index.html');
+        return (h0 && await cacheOk(c,h0)) ? h0 : offlinePage();
+      }
       const hit=await c.match('index.html');
       /* 有缓存就立即返回，不在响应链里等任何网络请求；缓存损坏则不用 */
       if(hit && await cacheOk(c,hit)){

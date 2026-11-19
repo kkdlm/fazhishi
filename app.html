@@ -7317,7 +7317,7 @@ try{
 }
 
 const VER='3.11.0';
-const PATCH='40';   /* 同一版本内的补丁号；0 表示版本本体 */
+const PATCH='41';   /* 同一版本内的补丁号；0 表示版本本体 */
 const CHANGELOG = [
 {v:'3.11.0',ps:'28',d:'2026-11-19',kind:'patch',sum:'启动进度改成前段虚拟、后段真实，台词精简不断行',items:[
 ['优化','以前打开先卡在 0% 一两秒（在等 version.json 和首个字节），再猛冲到 99；现在点开就走虚拟曲线，2 秒内稳稳推到 50%，之后交给真实字节映射到 50→99，全程不再有停顿和瞬跳'],
@@ -7782,11 +7782,37 @@ function verBar(msg,btnTxt,onAct,sticky,verTag,altTxt){
   clearTimeout(el._t);
   if(!sticky) el._t=setTimeout(()=>el.classList.remove('show'),8000);
 }
+function updOverlay(txt){
+  let d=document.getElementById('updMask');
+  if(!d){
+    if(!document.getElementById('updSpin')){
+      const st=document.createElement('style'); st.id='updSpin';
+      st.textContent='@keyframes upspin{to{transform:rotate(360deg)}}';
+      document.head.appendChild(st);
+    }
+    d=document.createElement('div'); d.id='updMask';
+    d.style.cssText='position:fixed;inset:0;z-index:99998;background:rgba(246,245,240,.97);display:flex;align-items:center;justify-content:center;flex-direction:column;gap:16px;font:15px/1.7 -apple-system,system-ui,sans-serif;color:#22302B;text-align:center;padding:28px';
+    d.innerHTML='<div style="width:44px;height:44px;border-radius:50%;border:3px solid #D8D2C0;border-top-color:#A5342E;animation:upspin .9s linear infinite"></div><div id="updTxt" style="max-width:300px"></div><div style="font-size:12px;color:#8a938d">清理缓存后会自动重开，不用手动刷新</div>';
+    document.body.appendChild(d);
+  }
+  const t=d.querySelector('#updTxt'); if(t) t.textContent=txt||'正在更新…';
+}
 async function refreshApp(){
+  updOverlay('正在更新：清理缓存…');
   try{ localStorage.setItem(KEY+':upTry',String((parseInt(localStorage.getItem(KEY+':upTry')||'0',10)||0)+1)); }catch(e){}
   try{ const rs=await navigator.serviceWorker.getRegistrations(); await Promise.all(rs.map(x=>x.unregister())); }catch(e){}
   try{ const ks=await caches.keys(); await Promise.all(ks.map(k=>caches.delete(k))); }catch(e){}
-  restartApp();
+  /* restartApp 在启动兜底的 IIFE 里，只挂了 window.__restartApp；直接调会 ReferenceError，
+     于是「点更新」清完缓存就断在那儿，看着像没反应 */
+  try{
+    if(typeof window.__restartApp==='function') window.__restartApp();
+    else window.parent.postMessage({t:'fz-restart',hard:1},'*');
+  }catch(e){ try{ window.parent.postMessage({t:'fz-restart',hard:1},'*'); }catch(e2){} }
+  /* 兜底：外壳没接住消息 / 消息被拦，2.5 秒后自己硬跳一次 */
+  setTimeout(function(){
+    try{ location.replace(new URL('./?v='+Date.now(), document.baseURI||location.href).href); }
+    catch(e){ try{ location.reload(); }catch(e2){} }
+  },2500);
 }
 async function checkRemote(manual){
   try{

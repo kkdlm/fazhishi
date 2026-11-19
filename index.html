@@ -84,7 +84,7 @@ html,body{margin:0;padding:0;background:#EAEDE1}
 </div></div>
 <script>
 (function(){
-  var VER='3.11.0-p40';
+  var VER='3.11.0-p41';
   var fill=document.getElementById('spFill'),pct=document.getElementById('spPct'),
       status=document.getElementById('spStatus'),splash=document.getElementById('splash'),
       boot=document.getElementById('boot');
@@ -172,7 +172,7 @@ html,body{margin:0;padding:0;background:#EAEDE1}
         var v=await fetch('version.json?ts='+Date.now(),{cache:'no-store'}).then(function(r){return r.json();});
         if(v && v.s) total=Number(v.s)||0;
       }catch(e){}
-      var res=await fetch('app.html?v='+VER);
+      var res=await fetch('app.html?v='+VER+(navigator.onLine?('&n='+Date.now()):''));
       if(!res.ok) throw new Error('HTTP '+res.status);
       var cl=Number(res.headers.get('content-length')||0);
       if(cl && (!total || Math.abs(cl-total)<total*0.35)) total=cl;
@@ -208,8 +208,21 @@ html,body{margin:0;padding:0;background:#EAEDE1}
   },500);
 
   /* 正文在 iframe（blob）里跑，它自己跳转会拿到 blob 地址；重启交给外壳 */
+  /* 更新：先在外壳层清 SW 与缓存，再硬跳到带版本参数的地址（SW 见 ?v= 会跳过缓存） */
+  async function hardReload(){
+    try{ var rs=await navigator.serviceWorker.getRegistrations(); await Promise.all(rs.map(function(r){return r.unregister();})); }catch(err){}
+    try{ var ks=await caches.keys(); await Promise.all(ks.map(function(k){return caches.delete(k);})); }catch(err){}
+    location.replace(location.pathname+'?v='+Date.now());
+  }
   window.addEventListener('message',function(e){
-    try{ if(e && e.data && e.data.t==='fz-restart'){ location.replace(location.pathname+'?v='+Date.now()); } }catch(err){}
+    try{
+      if(e && e.data && (e.data.t==='fz-restart'||e.data.t==='fz-reload')){
+        boot.style.display='flex';
+        try{ document.getElementById('bootT').textContent='正在应用更新'; }catch(x){}
+        try{ document.getElementById('bootD').textContent='清理缓存后自动重开…'; }catch(x){}
+        setTimeout(hardReload,60);
+      }
+    }catch(err){}
   });
   try{
     var swOK=(location.protocol==='https:')||location.hostname==='localhost'||location.hostname==='127.0.0.1';
