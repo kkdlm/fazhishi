@@ -15,25 +15,44 @@
 <title>法制史一点通</title>
 <style>
 html,body{margin:0;padding:0;background:#EAEDE1}
-#splash{position:fixed;inset:0;z-index:9999;background:#EAEDE1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+:root{--zhu:#A5342E;--bamboo:#3C6B52;--ink:#151C17;--ink-3:#7C857A}
+#splash{position:fixed;inset:0;z-index:9999;background-color:#EAEDE1;background-image:radial-gradient(rgba(96,124,102,.07) 1px,transparent 1px);
+  background-size:16px 16px;display:flex;flex-direction:column;align-items:center;justify-content:center;margin:0;
   transition:opacity .42s ease;font-family:"PingFang SC","HarmonyOS Sans SC",system-ui,-apple-system,sans-serif}
-#splash.hide{opacity:0;visibility:hidden}
+#splash.hide{opacity:0;visibility:hidden;pointer-events:none}
+.splash-inner{display:flex;flex-direction:column;align-items:center}
 .splash-slips{display:flex;gap:4px;margin-bottom:22px}
-.splash-slips i{display:block;width:10px;height:66px;border-radius:3px;background:#F3EEDC;
-  box-shadow:inset 0 0 0 1px rgba(60,80,60,.10);animation:slipIn .5s both}
-.splash-slips i:nth-child(2){animation-delay:.04s}.splash-slips i:nth-child(3){animation-delay:.08s}
-.splash-slips i:nth-child(4){animation-delay:.12s}.splash-slips i:nth-child(5){animation-delay:.16s}
-.splash-seal{width:84px;height:84px;border-radius:8px;background:#A5342E;color:#FBF2E3;
-  display:flex;align-items:center;justify-content:center;font-size:40px;font-weight:600;font-family:"Songti SC",serif;
+.splash-slips i{display:block;width:10px;height:66px;border-radius:3px;position:relative;overflow:hidden;
+  background:linear-gradient(180deg,#E0D5B9,#CBBE9C);
+  box-shadow:inset -1px 0 0 rgba(120,102,64,.28),inset 1px 0 0 rgba(255,250,236,.5),0 3px 8px -5px rgba(60,52,30,.6);
+  transform-origin:top center;animation:slipIn .5s cubic-bezier(.2,.8,.3,1) both}
+.splash-slips i:before{content:"";position:absolute;left:50%;top:7px;bottom:7px;width:1px;margin-left:-.5px;
+  background:rgba(96,82,52,.3)}
+.splash-slips i:after{content:"";position:absolute;left:2px;right:2px;top:26px;height:1px;
+  background:rgba(96,82,52,.22)}
+.splash-slips i:nth-child(1){animation-delay:.02s}
+.splash-slips i:nth-child(2){animation-delay:.07s}
+.splash-slips i:nth-child(3){animation-delay:.12s}
+.splash-slips i:nth-child(4){animation-delay:.17s}
+.splash-slips i:nth-child(5){animation-delay:.22s}
+.splash-seal{width:84px;height:84px;border-radius:8px;background:var(--zhu);color:#FBF2E3;
+  display:grid;place-items:center;font-size:46px;letter-spacing:2px;font-family:"Songti SC",serif;
+  box-shadow:0 18px 38px -16px rgba(140,44,38,.7),inset 0 0 0 3px rgba(255,240,214,.24),inset 0 0 0 5px rgba(140,44,38,.9);
   animation:splashIn .62s cubic-bezier(.2,.7,.3,1) both}
-.splash-title{margin:24px 0 9px;font-size:26px;letter-spacing:.16em;color:#151C17;font-weight:600;font-family:"Songti SC",serif}
-.splash-sub{margin:0;font-size:12.5px;letter-spacing:.1em;color:#7C857A}
-.splash-strip{margin-top:22px;display:flex;align-items:center;gap:7px;font-size:11px;letter-spacing:.18em;color:#3C6B52;opacity:.8}
-.splash-strip s{display:block;width:26px;height:1px;background:#3C6B52;opacity:.45;text-decoration:none}
+.splash-title{margin:24px 0 9px;font-size:26px;letter-spacing:.16em;color:var(--ink);font-weight:600;font-family:"Songti SC",serif;
+  animation:splashFade .42s ease both}
+.splash-sub{margin:0;font-size:12.5px;letter-spacing:.1em;color:var(--ink-3);animation:splashFade .42s ease both}
+.splash-strip{margin-top:22px;display:flex;align-items:center;gap:7px;font-size:11px;letter-spacing:.18em;
+  color:var(--bamboo);opacity:.8;animation:splashFade .5s ease both}
+.splash-strip s{display:block;width:26px;height:1px;background:var(--bamboo);opacity:.45;text-decoration:none}
 .sp-bar{width:200px;max-width:62vw;height:3px;border-radius:99px;background:rgba(46,83,68,.15);margin-top:24px;overflow:hidden}
-.sp-fill{height:100%;width:0%;border-radius:99px;background:#3C6B52;transition:width .18s linear}
-.sp-status{margin:11px 0 0;font-size:10.5px;letter-spacing:.08em;color:#7C857A;min-height:15px}
-.sp-pct{margin-left:10px;color:#3C6B52;font-variant-numeric:tabular-nums}
+.sp-fill{height:100%;width:0%;border-radius:99px;background:var(--bamboo);transition:width .28s ease}
+.sp-status{margin:11px 0 0;font-size:10.5px;letter-spacing:.08em;color:var(--ink-3);min-height:15px}
+.sp-pct{margin-left:10px;color:var(--bamboo);font-variant-numeric:tabular-nums}
+@keyframes slipIn{from{opacity:0;transform:scaleY(.12) translateY(-8px)}to{opacity:1;transform:none}}
+@keyframes splashIn{from{opacity:0;transform:rotate(-4deg) scale(.72)}to{opacity:1;transform:rotate(-4deg) scale(1)}}
+@keyframes splashFade{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.splash-seal,.splash-title,.splash-sub,.splash-slips i,.splash-strip{animation:none}}
 #boot{position:fixed;inset:0;z-index:10001;background:#F6F5F0;color:#22302B;display:none;align-items:center;justify-content:center;
   font:16px/1.75 -apple-system,system-ui,sans-serif;padding:28px}
 #boot .in{max-width:420px}
@@ -46,15 +65,15 @@ html,body{margin:0;padding:0;background:#EAEDE1}
 </style>
 </head>
 <body>
-<div id="splash">
-  <div style="display:flex;flex-direction:column;align-items:center">
+<div id="splash" aria-hidden="true">
+  <div class="splash-inner">
     <div class="splash-slips"><i></i><i></i><i></i><i></i><i></i></div>
     <div class="splash-seal">史</div>
     <h1 class="splash-title">法制史一点通</h1>
-    <p class="splash-sub">2027 法硕非法学 · 169 条考点</p>
+    <p class="splash-sub">2027 法硕非法学 · <b style="color:var(--zhu);font-weight:600">169 条考点</b></p>
     <div class="splash-strip"><s></s>断代史 / 专题史 · 背诵一本通<s></s></div>
     <div class="sp-bar"><div class="sp-fill" id="spFill"></div></div>
-    <p class="sp-status" id="spStatus">正在连接…<span class="sp-pct" id="spPct"></span></p>
+    <p class="sp-status" id="spStatus">正在打开…<span class="sp-pct" id="spPct"></span></p>
   </div>
 </div>
 <div id="boot"><div class="in">
@@ -66,7 +85,7 @@ html,body{margin:0;padding:0;background:#EAEDE1}
 </div></div>
 <script>
 (function(){
-  var VER='3.11.0-p34';
+  var VER='3.11.0-p35';
   var fill=document.getElementById('spFill'),pct=document.getElementById('spPct'),
       status=document.getElementById('spStatus'),splash=document.getElementById('splash'),
       boot=document.getElementById('boot');
@@ -76,8 +95,9 @@ html,body{margin:0;padding:0;background:#EAEDE1}
   function paint(){
     var p = total>0 ? Math.min(99, Math.floor(got/total*100)) : (got>0?1:0);
     fill.style.width=p+'%';
-    pct.textContent = total>0 ? (p+'% · '+mb(got)+'/'+mb(total)+' MB') : (got>0? (mb(got)+' MB'):'');
+    pct.textContent = p+'%' + (total>0 ? (' · '+mb(got)+'/'+mb(total)+' MB') : (got>0? (' · '+mb(got)+' MB'):''));
   }
+  paint();
   function label(s){ status.firstChild.textContent=s; }
   function fail(t,d,offline){
     boot.style.display='flex';
