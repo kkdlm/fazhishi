@@ -1,4 +1,4 @@
-const CACHE='app-3.11.0-p31';
+const CACHE='app-3.11.0-p32';
 const CORE=['manifest.webmanifest','icon-192.png','icon-512.png','apple-touch-icon.png'];
 
 self.addEventListener('install',e=>{
@@ -40,7 +40,7 @@ async function remember(c,res,v){
 async function cacheOk(c,hit){
   try{
     const size=(await hit.clone().blob()).size;
-    if(size < 1500000) return false;
+    if(size < 6000) return false;          /* index.html 现在是几 KB 的启动壳 */
     const m=await c.match('v.json'); if(!m) return false;
     const j=await m.json();
     if(j && j.s && Math.abs(size-j.s) > 4096) return false;
