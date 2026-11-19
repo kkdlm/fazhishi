@@ -1,4 +1,4 @@
-const CACHE='app-3.13.0-p1';
+const CACHE='app-3.14.0-p1';
 const CORE=['manifest.webmanifest','icon-192.png','icon-512.png','apple-touch-icon.png'];
 
 self.addEventListener('install',e=>{
@@ -8,6 +8,13 @@ self.addEventListener('activate',e=>{
   e.waitUntil((async()=>{
     const ks=await caches.keys();
     await Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)));
+    /* 清掉历史上以 ?v=/&n= 为键存下的 app.html 碎片（每份 4.9MB） */
+    try{
+      const c=await caches.open(CACHE);
+      const reqs=await c.keys();
+      const base=new URL('app.html',self.location.href).href;
+      await Promise.all(reqs.filter(q=>q.url.indexOf(base+'?')===0).map(q=>c.delete(q)));
+    }catch(e){}
     await self.clients.claim();
   })());
 });
@@ -23,7 +30,10 @@ function withTimeout(p,ms){
 async function remoteVer(){
   const r=await withTimeout(fetch('version.json?ts='+Date.now(),{cache:'no-store'}),5000);
   if(!r||!r.ok) return null;
-  try{ const j=await r.json(); return j&&j.version?String(j.version):null; }catch(e){ return null; }
+  try{ const j=await r.json();
+    if(!j||!j.version) return null;
+    return String(j.version)+(j.patch?('-p'+j.patch):'');
+  }catch(e){ return null; }
 }
 async function cachedVer(c){
   try{
@@ -117,10 +127,11 @@ self.addEventListener('fetch',e=>{
   if(url.pathname.endsWith('/app.html')){
     e.respondWith((async()=>{
       const c=await caches.open(CACHE);
-      const hit=await c.match(r);
+      const KEY=new URL('app.html',self.location.href).href;   /* 固定键，忽略 ?v=&n= */
+      const hit=await c.match(KEY);
       if(hit){ try{ if((await hit.clone().blob()).size>1000000) return hit; }catch(err){} }
       const res=await withTimeout(fetch(r,{cache:'no-store'}),60000);
-      if(res && res.ok){ try{ await c.put(r,res.clone()); }catch(err){} return res; }
+      if(res && res.ok){ try{ await c.put(KEY,res.clone()); }catch(err){} return res; }
       if(hit) return hit;
       return new Response('',{status:504});
     })());
