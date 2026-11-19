@@ -1,4 +1,4 @@
-const CACHE='app-3.11.0-p33';
+const CACHE='app-3.11.0-p34';
 const CORE=['manifest.webmanifest','icon-192.png','icon-512.png','apple-touch-icon.png'];
 
 self.addEventListener('install',e=>{
@@ -103,6 +103,20 @@ self.addEventListener('fetch',e=>{
 
   if(url.pathname.endsWith('/version.json')){
     e.respondWith(withTimeout(fetch(r,{cache:'no-store'}),5000).then(x=>x||new Response('{}',{headers:{'Content-Type':'application/json'}})));
+    return;
+  }
+
+  /* 完整正文体积大、首次下载慢，单独放宽超时并确保能缓存（离线/二次打开要用） */
+  if(url.pathname.endsWith('/app.html')){
+    e.respondWith((async()=>{
+      const c=await caches.open(CACHE);
+      const hit=await c.match(r);
+      if(hit){ try{ if((await hit.clone().blob()).size>1000000) return hit; }catch(err){} }
+      const res=await withTimeout(fetch(r,{cache:'no-store'}),60000);
+      if(res && res.ok){ try{ await c.put(r,res.clone()); }catch(err){} return res; }
+      if(hit) return hit;
+      return new Response('',{status:504});
+    })());
     return;
   }
 
