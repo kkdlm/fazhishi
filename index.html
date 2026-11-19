@@ -83,7 +83,7 @@ html,body{margin:0;padding:0;background:#EAEDE1}
 </div></div>
 <script>
 (function(){
-  var VER='3.11.0-p37';
+  var VER='3.11.0-p38';
   var fill=document.getElementById('spFill'),pct=document.getElementById('spPct'),
       status=document.getElementById('spStatus'),splash=document.getElementById('splash'),
       boot=document.getElementById('boot');
@@ -212,6 +212,10 @@ html,body{margin:0;padding:0;background:#EAEDE1}
     if('serviceWorker' in navigator && swOK){ navigator.serviceWorker.register('sw.js',{scope:'./'}).catch(function(){}); }
   }catch(e){}
 
+  /* 正文在 iframe（blob）里跑，它自己跳转会拿到 blob 地址；重启的事交给外壳做 */
+  window.addEventListener('message',function(e){
+    try{ if(e && e.data && e.data.t==='fz-restart'){ location.replace(location.pathname+'?v='+Date.now()); } }catch(err){}
+  });
   window.addEventListener('error',function(e){ if(!finishing) fail('页面出错了','启动时遇到脚本错误，重开一次通常就好。'); });
   paint();
   requestAnimationFrame(tick);

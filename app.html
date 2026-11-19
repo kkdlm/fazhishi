@@ -1978,9 +1978,18 @@ tr.hit-row,tr.hit-row td,tr.hit-row th,.bk-kv-row.hit-row,.bk-kv-row.hit-row>div
   window.__hardReset=function(){
     try{ if(navigator.serviceWorker) navigator.serviceWorker.getRegistrations().then(function(rs){rs.forEach(function(x){x.unregister();});}); }catch(e){}
     try{ if(window.caches) caches.keys().then(function(ks){ks.forEach(function(k){caches.delete(k);});}); }catch(e){}
-    setTimeout(function(){ try{ location.replace(location.pathname+'?v='+Date.now()); }catch(e){ location.reload(); } },600);
+    setTimeout(restartApp,600);
   };
-  window.__bootOk=function(){ window.__booted=true; var d=document.getElementById('bootFail'); if(d&&d.parentNode) d.parentNode.removeChild(d); };
+    function restartApp(){
+    var inShell=false;
+    try{ inShell=!!(window.__shellMounted || (window.parent && window.parent!==window)); }catch(e){ inShell=true; }
+    if(inShell){ try{ window.parent.postMessage({t:'fz-restart'},'*'); return; }catch(e){} }
+    var path='/';
+    try{ path=new URL(document.baseURI||location.href).pathname||'/'; }catch(e){ try{ path=location.pathname; }catch(e2){} }
+    try{ location.replace(path+'?v='+Date.now()); }catch(e){ location.reload(); }
+  }
+  window.__restartApp=restartApp;
+window.__bootOk=function(){ window.__booted=true; var d=document.getElementById('bootFail'); if(d&&d.parentNode) d.parentNode.removeChild(d); };
   window.addEventListener('error',function(e){
     if(window.__booted) return;
     panel('页面出错了','启动时遇到脚本错误，重开一次通常就好。'+(e&&e.message?('（'+String(e.message).slice(0,60)+'）'):''),!navigator.onLine);
@@ -7181,8 +7190,12 @@ try{
 }
 
 const VER='3.11.0';
-const PATCH='37';   /* 同一版本内的补丁号；0 表示版本本体 */
+const PATCH='38';   /* 同一版本内的补丁号；0 表示版本本体 */
 const CHANGELOG = [
+{v:'3.11.0',ps:'27',d:'2026-11-19',kind:'patch',sum:'点更新后跳 404 的 bug 修掉',items:[
+['修复','点「更新」后重启进了 GitHub 的 404 页：正文是挂在 blob 的 iframe 里跑的，里面 location.pathname 拿到的是 blob 地址（…/<uuid>），照着它跳就成了不存在的网页；现在外壳内改成让外壳重启到真实站点地址，直链打开时才用 baseURI 的路径'],
+['修复','同一处隐患一并修：启动失败面板的「清缓存重启」按钮也按 blob 地址跳，已改用同一个重启函数']
+]},
 {v:'3.11.0',ps:'26',d:'2026-11-19',kind:'patch',sum:'启动进度条不再瞬跳，加俏皮加载台词',items:[
 ['优化','进度条以前真实但一闪就 0→99→100（缓存命中时几乎看不见）；现在按真实字节给目标，条子每帧最多挪 1.6%，最少显示 1.8 秒，99% 停一小下再给 100，肉眼能看出在加载'],
 ['优化','状态文字按进度换台词：夏商周条文进脑 → 西周礼刑对号入座 → 唐律疏议装订 → 大明律大清律例入库 → 马三疯找驴 → 书翻开了马上开讲']
@@ -7641,7 +7654,7 @@ async function refreshApp(){
   try{ localStorage.setItem(KEY+':upTry',String((parseInt(localStorage.getItem(KEY+':upTry')||'0',10)||0)+1)); }catch(e){}
   try{ const rs=await navigator.serviceWorker.getRegistrations(); await Promise.all(rs.map(x=>x.unregister())); }catch(e){}
   try{ const ks=await caches.keys(); await Promise.all(ks.map(k=>caches.delete(k))); }catch(e){}
-  try{ location.replace(location.pathname+'?v='+Date.now()); }catch(e){ location.reload(); }
+  restartApp();
 }
 async function checkRemote(manual){
   try{
