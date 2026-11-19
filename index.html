@@ -47,8 +47,8 @@ html,body{margin:0;padding:0;background:#EAEDE1}
 .splash-strip s{display:block;width:26px;height:1px;background:var(--bamboo);opacity:.45;text-decoration:none}
 .sp-bar{width:200px;max-width:62vw;height:3px;border-radius:99px;background:rgba(46,83,68,.15);margin-top:24px;overflow:hidden}
 .sp-fill{height:100%;width:0%;border-radius:99px;background:var(--bamboo);transition:width .28s ease}
-.sp-status{margin:11px 0 0;font-size:10.5px;letter-spacing:.08em;color:var(--ink-3);min-height:15px}
-.sp-pct{margin-left:10px;color:var(--bamboo);font-variant-numeric:tabular-nums}
+.sp-status{margin:12px 0 0;max-width:78vw;text-align:center;font-size:12.5px;line-height:1.55;letter-spacing:.06em;color:#4C5B50;min-height:17px;white-space:normal;word-break:break-word}
+.sp-meta{margin:5px 0 0;font-size:10.5px;letter-spacing:.1em;color:var(--ink-3);font-variant-numeric:tabular-nums;min-height:14px}
 @keyframes slipIn{from{opacity:0;transform:scaleY(.12) translateY(-8px)}to{opacity:1;transform:none}}
 @keyframes splashIn{from{opacity:0;transform:rotate(-4deg) scale(.72)}to{opacity:1;transform:rotate(-4deg) scale(1)}}
 @keyframes splashFade{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
@@ -71,7 +71,8 @@ html,body{margin:0;padding:0;background:#EAEDE1}
     <p class="splash-sub">2027 法硕非法学 · <b style="color:var(--zhu);font-weight:600">169 条考点</b></p>
     <div class="splash-strip"><s></s>断代史 / 专题史 · 背诵一本通<s></s></div>
     <div class="sp-bar"><div class="sp-fill" id="spFill"></div></div>
-    <p class="sp-status" id="spStatus">正在打开…<span class="sp-pct" id="spPct"></span></p>
+    <p class="sp-status" id="spStatus">法制史正在进入大脑…</p>
+    <p class="sp-meta" id="spPct"></p>
   </div>
 </div>
 <div id="boot"><div class="in">
@@ -83,76 +84,74 @@ html,body{margin:0;padding:0;background:#EAEDE1}
 </div></div>
 <script>
 (function(){
-  var VER='3.11.0-p38';
+  var VER='3.11.0-p39';
   var fill=document.getElementById('spFill'),pct=document.getElementById('spPct'),
       status=document.getElementById('spStatus'),splash=document.getElementById('splash'),
       boot=document.getElementById('boot');
-  var got=0,total=0,lastAt=Date.now(),slow=false,finishing=false,done=false,mounted=false;
-  var target=0,shown=0,gate=0,startAt=Date.now();
+  var got=0,total=0,mounted=false,gate=0,done=false,finishing=false,slow=false,lastAt=Date.now();
+  var startAt=Date.now(), VIRT_MS=1500, P2_MS=1300, MIN_MS=3300;   /* 前 50% 走虚拟曲线，最少看 3.2 秒 */
+  var shown=0, real=0;
 
   function mb(n){ return (n/1048576).toFixed(2); }
   function paint(){
     fill.style.width = shown.toFixed(1)+'%';
-    var pi = shown>=99.9?100:Math.floor(shown);
-    var size = '';
+    var pi = Math.min(99, Math.floor(shown));   /* 100 只在真正揭开时给 */
+    var size='';
     if(total>0 && got>=total) size=' · 已下载 '+mb(total)+' MB';
     else if(total>0 && got>0) size=' · '+mb(got)+'/'+mb(total)+' MB';
     else if(got>0) size=' · '+mb(got)+' MB';
     pct.textContent = pi+'%'+size;
   }
 
-  /* 俏皮话：按进度换台词，别一直一句「正在下载」 */
+  /* 台词：四句，够用不啰嗦，整行能显示完 */
   var LINES=[
-    [0 ,'先把夏商周的条文搬进脑子…'],
-    [22,'西周礼刑正在对号入座…'],
-    [40,'唐律疏议一页页装订中…'],
-    [62,'大明律、大清律例排队入库…'],
-    [82,'马三疯正在找他的驴…'],
-    [95,'书翻开了，马上开讲…']
+    [0 ,'法制史正在进入大脑…'],
+    [34,'一条条条文码进脑子里…'],
+    [64,'别急，正在翻开书…'],
+    [88,'书翻开了，马上开讲…']
   ];
   var lineIdx=-1;
-  function line(){
-    if(slow) return '网络较慢，已下载 '+mb(got)+' MB，仍在加载…';
+  function label(){
+    if(slow){ var t='网络较慢，还在下载'; if(total>0) t+='（'+mb(got)+'/'+mb(total)+' MB）'; t+='…'; status.textContent=t; lineIdx=-1; return; }
     var i=0;
     for(var k=0;k<LINES.length;k++){ if(shown>=LINES[k][0]) i=k; }
-    if(i===lineIdx) return null;
-    lineIdx=i; return LINES[i][1];
+    if(i!==lineIdx){ lineIdx=i; status.textContent=LINES[i][1]; }
   }
-  function label(s){ if(s) status.firstChild.textContent=s; }
 
-  /* 真实字节 → 目标值；条子按真实值走，但每帧最多挪 1.6%，让它看得见地爬 */
+  function virtualPct(t){
+    if(t>=VIRT_MS) return 50;
+    var x=t/VIRT_MS; return 50*(1-Math.pow(1-x,2.6));
+  }
+
   function tick(){
-    if(mounted && Date.now()>gate) target=100;
-    if(target>shown){
-      var d=target-shown, step=Math.min(1.6, Math.max(0.5, d*0.09));
-      shown=Math.min(target, shown+step);
+    var now=Date.now();
+    var vt=virtualPct(now-startAt);
+    var rt=50+49*Math.min(1,real);          /* 真实字节映射到 50→99 */
+    /* 前 1.5 秒只走虚拟曲线（0→50）；之后时间曲线推到 99，但不能跑在真实字节前面 */
+    var p2=Math.min(1, Math.max(0, (now-startAt-VIRT_MS)/(P2_MS)));
+    var timePhase=50+49*(1-Math.pow(1-p2,1.7));
+    var want = vt<50 ? vt : Math.min(Math.max(50,timePhase), Math.max(50,rt));
+    if(mounted){
+      var left=startAt+MIN_MS-now;
+      if(left>420) want=Math.min(want,99);                       /* 没到收尾就最多停在 99 */
+      else want=Math.max(want,99.6);                             /* 最后半拍补到 100 */
     }
-    paint();
-    var s=line(); if(s) label(s);
-    if(mounted && shown>=99.9 && Date.now()-startAt>=1800){ reveal(); return; }
+    var d=want-shown;
+    if(d>0){ var step=Math.min(1.1, Math.max(0.3, d*0.12)); shown=Math.min(want, shown+step); }
+    paint(); label();
+    if(mounted && shown>=99.6 && now-startAt>=MIN_MS){ reveal(); return; }
     requestAnimationFrame(tick);
   }
 
-  function fail(t,d){
-    boot.style.display='flex';
-    document.getElementById('bootT').textContent=t;
-    document.getElementById('bootD').textContent=d;
-  }
-  window.resetAll=function(){
-    try{ if(navigator.serviceWorker) navigator.serviceWorker.getRegistrations().then(function(rs){rs.forEach(function(x){x.unregister();});}); }catch(e){}
-    try{ if(window.caches) caches.keys().then(function(ks){ks.forEach(function(k){caches.delete(k);});}); }catch(e){}
-    setTimeout(function(){ location.replace(location.pathname+'?t='+Date.now()); },600);
-  };
-
   function reveal(){
     if(done) return; done=true;
-    shown=100; paint(); label('准备就绪，进去背吧');
+    shown=100; fill.style.width='100%'; pct.textContent='100%'+(total>0?' · 已下载 '+mb(total)+' MB':''); status.textContent='准备就绪，进去背吧';
     splash.classList.add('hide');
     setTimeout(function(){ if(splash.parentNode) splash.remove(); },480);
   }
 
   function mount(html){
-    finishing=true; target=99; gate=Date.now()+320;   /* 99% 停一小下再给 100 */
+    finishing=true; gate=Date.now()+420; real=1;
     try{
       var base='<base href="'+location.origin+location.pathname+'">';
       html=html.replace(/<head([^>]*)>/i,'<head$1>'+base);
@@ -163,9 +162,8 @@ html,body{margin:0;padding:0;background:#EAEDE1}
     fr.id='appframe'; fr.src=url;
     document.body.appendChild(fr);
     var t0=Date.now();
-    fr.addEventListener('load',function(){ if(!mounted){ mounted=true; gate=Math.max(gate,Date.now()+120); } });
-    /* iframe 迟迟不来内容：8 秒后照样揭开，避免永远挡着 */
-    setTimeout(function(){ if(!mounted && Date.now()-t0>8000){ mounted=true; gate=Date.now()+120; } },8000);
+    fr.addEventListener('load',function(){ if(!mounted){ mounted=true; gate=Math.max(gate,Date.now()+150); } });
+    setTimeout(function(){ if(!mounted && Date.now()-t0>8000){ mounted=true; gate=Math.max(gate,Date.now()+150); } },8000);
   }
 
   async function run(){
@@ -179,44 +177,46 @@ html,body{margin:0;padding:0;background:#EAEDE1}
       var cl=Number(res.headers.get('content-length')||0);
       if(cl && (!total || Math.abs(cl-total)<total*0.35)) total=cl;
       if(!res.body || !res.body.getReader){
-        var txt=await res.text(); got=txt.length; target=99; mount(txt); return;
+        var txt=await res.text(); got=txt.length; real=1; mount(txt); return;
       }
-      var rd=res.body.getReader(), chunks=[], dec=new TextDecoder('utf-8');
-      var buf='';
+      var rd=res.body.getReader(), chunks=[], dec=new TextDecoder('utf-8'), buf='';
       while(true){
         var step=await rd.read();
         if(step.done) break;
         chunks.push(step.value); got+=step.value.length;
         lastAt=Date.now(); slow=false;
-        target = total>0 ? Math.min(99, Math.floor(got/total*100)) : 1;
-        if(target<shown) target=shown;
+        if(total>0){
+          var r=got/total; if(r>real) real=r;   /* 只进不退 */
+        }else{
+          var fb=Math.min(0.7, got/(1024*1024*6.6)); if(fb>real) real=fb;
+        }
       }
       for(var i=0;i<chunks.length;i++) buf+=dec.decode(chunks[i],{stream:true});
       buf+=dec.decode();
-      mount(buf);
+      real=1; mount(buf);
     }catch(err){
       var off=!navigator.onLine;
-      fail(off?'现在没有网络':'页面没加载出来',
-           off?'连上网后点「重新加载」；也可以清缓存重启。':'启动资源没拿到（'+(err&&err.message?err.message.slice(0,40):'unknown')+'），点「重新加载」再试一次。');
+      boot.style.display='flex';
+      document.getElementById('bootT').textContent=off?'现在没有网络':'页面没加载出来';
+      document.getElementById('bootD').textContent=off?'连上网后点「重新加载」；也可以清缓存重启。':'启动资源没拿到（'+(err&&err.message?err.message.slice(0,40):'unknown')+'），点「重新加载」再试一次。';
     }
   }
 
-  /* 慢提示只看「字节有没有前进」 */
   setInterval(function(){
     if(done||finishing) return;
-    if(!slow && Date.now()-lastAt>4000){ slow=true; lineIdx=-1; }
+    if(!slow && Date.now()-lastAt>4000){ slow=true; }
   },500);
 
+  /* 正文在 iframe（blob）里跑，它自己跳转会拿到 blob 地址；重启交给外壳 */
+  window.addEventListener('message',function(e){
+    try{ if(e && e.data && e.data.t==='fz-restart'){ location.replace(location.pathname+'?v='+Date.now()); } }catch(err){}
+  });
   try{
     var swOK=(location.protocol==='https:')||location.hostname==='localhost'||location.hostname==='127.0.0.1';
     if('serviceWorker' in navigator && swOK){ navigator.serviceWorker.register('sw.js',{scope:'./'}).catch(function(){}); }
   }catch(e){}
 
-  /* 正文在 iframe（blob）里跑，它自己跳转会拿到 blob 地址；重启的事交给外壳做 */
-  window.addEventListener('message',function(e){
-    try{ if(e && e.data && e.data.t==='fz-restart'){ location.replace(location.pathname+'?v='+Date.now()); } }catch(err){}
-  });
-  window.addEventListener('error',function(e){ if(!finishing) fail('页面出错了','启动时遇到脚本错误，重开一次通常就好。'); });
+  window.addEventListener('error',function(){ if(!finishing){ boot.style.display='flex'; document.getElementById('bootT').textContent='页面出错了'; document.getElementById('bootD').textContent='启动时遇到脚本错误，重开一次通常就好。'; } });
   paint();
   requestAnimationFrame(tick);
   run();
