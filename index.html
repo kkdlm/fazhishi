@@ -17,6 +17,20 @@
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
 <link rel="manifest" href="manifest.webmanifest">
 <title>法制史一点通</title>
+<style id="splash-critical">
+/* 最早解析：弱网下文档没下完时先给窗口米色背景并画出启动屏，避免白屏 */
+html{background:#EAEDE1 !important}
+#splash{position:fixed;inset:0;z-index:9999;background:#EAEDE1;display:flex;flex-direction:column;align-items:center;justify-content:center;margin:0}
+#splash .splash-inner{display:flex;flex-direction:column;align-items:center}
+#splash .splash-seal{width:84px;height:84px;border-radius:8px;background:#A5342E;color:#FBF2E3;display:flex;align-items:center;justify-content:center;font-size:40px;font-weight:600;font-family:"Songti SC",serif}
+#splash .splash-title{margin:24px 0 9px;font-size:26px;letter-spacing:.16em;color:#151C17;font-weight:600;font-family:"Songti SC",serif}
+#splash .splash-sub{margin:0;font-size:12.5px;letter-spacing:.1em;color:#7C857A}
+#splash .splash-strip{margin-top:22px;display:flex;align-items:center;gap:7px;font-size:11px;letter-spacing:.18em;color:#3C6B52}
+#splash .sp-bar{width:200px;max-width:62vw;height:3px;border-radius:99px;background:rgba(46,83,68,.15);margin-top:24px;overflow:hidden}
+#splash .sp-fill{height:100%;width:0%;border-radius:99px;background:#3C6B52;transition:width .28s ease}
+#splash .sp-status{margin:11px 0 0;font-size:10.5px;letter-spacing:.08em;color:#7C857A;min-height:15px}
+#splash .sp-pct{margin-left:10px;color:#3C6B52;font-variant-numeric:tabular-nums}
+</style>
 <style>
 :root{
   --cc-b:#1F5C8C;--cc-r:#A8322A;--cc-p:#6A3F92;--cc-o:#B4650F;--cc-gr:#3F6B33;
@@ -121,11 +135,11 @@ svg{display:block}
   box-shadow:0 18px 38px -16px rgba(140,44,38,.7),inset 0 0 0 3px rgba(255,240,214,.24),inset 0 0 0 5px rgba(140,44,38,.9);
   animation:splashIn .62s cubic-bezier(.2,.7,.3,1) both}
 .splash-title{margin:24px 0 9px;font-size:26px;letter-spacing:.16em;color:var(--ink);font-weight:600;
-  animation:splashFade .6s .3s ease both}
+  animation:splashFade .42s ease both}
 .splash-sub{margin:0;font-size:12.5px;letter-spacing:.1em;color:var(--ink-3);
-  animation:splashFade .6s .42s ease both}
+  animation:splashFade .42s ease both}
 .splash-strip{margin-top:22px;display:flex;align-items:center;gap:7px;font-size:11px;letter-spacing:.18em;
-  color:var(--bamboo);opacity:.8;animation:splashFade .6s .54s ease both}
+  color:var(--bamboo);opacity:.8;animation:splashFade .5s ease both}
 .splash-strip s{display:block;width:26px;height:1px;background:var(--bamboo);opacity:.45;text-decoration:none}
 @keyframes slipIn{from{opacity:0;transform:scaleY(.12) translateY(-8px)}to{opacity:1;transform:none}}
 @keyframes splashIn{from{opacity:0;transform:rotate(-4deg) scale(.72)}to{opacity:1;transform:rotate(-4deg) scale(1)}}
@@ -1856,6 +1870,77 @@ tr.hit-row,tr.hit-row td,tr.hit-row th,.bk-kv-row.hit-row,.bk-kv-row.hit-row>div
 </style>
 </head>
 <body>
+<div class="splash" id="splash" aria-hidden="true">
+  <div class="splash-inner">
+    <div class="splash-slips"><i></i><i></i><i></i><i></i><i></i></div>
+    <div class="splash-seal">史</div>
+    <h1 class="splash-title">法制史一点通</h1>
+    <p class="splash-sub">2027 法硕非法学 · <b id="spTotal" style="color:var(--zhu);font-weight:600">169 条考点</b></p>
+    <div class="splash-strip"><s></s>断代史 / 专题史 · 背诵一本通<s></s></div>
+    <div class="sp-bar"><div class="sp-fill" id="spFill"></div></div>
+    <p class="sp-status" id="spStatus">正在打开…<span class="sp-pct" id="spPct"></span></p>
+  </div>
+</div>
+<script>
+/* ---------- 启动屏控制器（进度按真实阶段推进，不依赖主脚本） ---------- */
+(function setupSplash(){
+  var el=document.getElementById('splash');
+  if(!el) return;
+  var fill=document.getElementById('spFill');
+  var status=document.getElementById('spStatus');
+  var pct=document.getElementById('spPct');
+  var startAt=Date.now();
+  var gone=false,dataReady=false,slowShown=false,finishing=false;
+  var progress=0,cap=52;
+
+  function paint(){
+    if(fill) fill.style.width=progress.toFixed(1)+'%';
+    if(pct) pct.textContent=Math.round(progress)+'%';
+  }
+  var tick=setInterval(function(){
+    if(gone) return;
+    if(progress<cap){
+      progress=Math.min(cap,progress+Math.max(.6,(cap-progress)*.16));
+      paint();
+    }
+    if(!slowShown&&Date.now()-startAt>2500){
+      slowShown=true;
+      if(status) status.firstChild.textContent='网络较慢，轻触屏幕可直接进入';
+    }
+  },110);
+
+  var EV=['touchstart','pointerdown','mousedown','click','keydown','wheel'];
+  function off(){ EV.forEach(function(ev){ document.removeEventListener(ev,onAny,true); }); }
+  function removeEl(){
+    el.addEventListener('transitionend',function(e){ if(e.propertyName==='opacity') el.remove(); });
+    setTimeout(function(){ if(el.parentNode) el.remove(); },560);
+  }
+  function finish(){
+    if(gone) return; gone=true; clearInterval(tick); off();
+    progress=100; paint();
+    if(status) status.firstChild.textContent='准备就绪';
+    var wait=Math.max(0,1100-(Date.now()-startAt));   /* 最短停留 1.1 秒，避免一闪而过 */
+    setTimeout(function(){ el.classList.add('hide'); removeEl(); },wait+240);
+  }
+  function onAny(e){
+    if(!window.__booted && Date.now()-startAt<2000) return;   /* 太早点击先不跳过，避免空白 */
+    if(e.cancelable) e.preventDefault(); e.stopPropagation(); finish();
+  }
+  EV.forEach(function(ev){ document.addEventListener(ev,onAny,true); });
+
+  window.__splashDataReady=function(){
+    if(dataReady||finishing) return; dataReady=true; finishing=true;
+    cap=92;
+    progress=Math.max(progress,88); paint();          /* 数据已就绪：进度直接抬到 88，再平滑收尾 */
+    if(status) status.firstChild.textContent='即将完成…';
+    setTimeout(finish,520);
+  };
+  if(document.readyState!=='loading'){ cap=70; }
+  else{ document.addEventListener('DOMContentLoaded',function(){ if(cap<70) cap=70; }); }
+  window.addEventListener('load',function(){ if(!dataReady) window.__splashDataReady(); });
+  setTimeout(finish,8000);
+})();
+</script>
 
 <script>
 /* ---------- 启动兜底（独立于主脚本：主脚本挂了也能提示并自救） ---------- */
@@ -1896,15 +1981,6 @@ tr.hit-row,tr.hit-row td,tr.hit-row th,.bk-kv-row.hit-row,.bk-kv-row.hit-row>div
   setTimeout(function(){ if(!window.__booted) panel(navigator.onLine?'页面加载超时':'现在没有网络',navigator.onLine?'网络或服务器响应太慢，点一下「重新加载」。':'连上网后点「重新加载」；也可以点「清缓存重启」用本地缓存打开。',!navigator.onLine); }, 6000);
 })();
 </script>
-<div class="splash" id="splash" aria-hidden="true">
-  <div class="splash-inner">
-    <div class="splash-slips"><i></i><i></i><i></i><i></i><i></i></div>
-    <div class="splash-seal">史</div>
-    <h1 class="splash-title">法制史一点通</h1>
-    <p class="splash-sub">2027 法硕非法学 · <b id="spTotal" style="color:var(--zhu);font-weight:600">169 条考点</b></p>
-    <div class="splash-strip"><s></s>断代史 / 专题史 · 背诵一本通<s></s></div>
-  </div>
-</div>
 
 <header class="topbar">
   <div class="wrap">
@@ -7078,10 +7154,12 @@ window.addEventListener('scroll',()=>{
 },{passive:true});
 /* 页内启动页已移除（见顶部注释） */
 try{
+  
   normalizeState();
   migrateSrs();
   applyMode(); chipRow(); renderHome(); renderList(); renderCloze();
   if(window.__bootOk) window.__bootOk();
+  if(window.__splashDataReady) window.__splashDataReady();
   if(!navigator.onLine){ try{ mtoast('当前离线：已用本地缓存打开，内容照常看'); }catch(e){} }
 }catch(err){
   try{ console.error(err); }catch(e){}
@@ -7089,8 +7167,13 @@ try{
 }
 
 const VER='3.11.0';
-const PATCH='30';   /* 同一版本内的补丁号；0 表示版本本体 */
+const PATCH='31';   /* 同一版本内的补丁号；0 表示版本本体 */
 const CHANGELOG = [
+{v:'3.11.0',ps:'22',d:'2026-11-19',kind:'patch',sum:'启动画面即时显示 + 真实加载进度条',items:[
+['修复','以前打开先是白屏，等整页下载解析完才闪出启动画面；现在启动画面写在 body 最前面、样式放在 head 最前，浏览器一拿到文档就显示，不再空白。'],
+['进度','进度条按真实阶段推进：解析页面 → 读取题库与卡片 → 渲染首页 → 就绪，只在完成时才淡出（最短 1.5 秒）；慢网 2.6 秒后提示「网络较慢，正在本地读取」。'],
+['兜底','数据读不出来时照旧弹启动失败面板并移除启动屏；离线有缓存则直接进，没缓存出离线提示页。']
+]},
 {v:'3.11.0',ps:'21',d:'2026-11-19',kind:'patch',sum:'导图改用书上原图（裁剪嵌入）',items:[
 ['改版','不再用文字硬拼框图：从《2027 法硕背诵一本通》PDF 按 OCR 版式坐标把导图区域裁下来，直接放进「背诵导图」卡片，点开是书上的原图。'],
 ['覆盖','婚姻·七出、三不去、车家继承、数罪并罚、秦/汉三公九卿、三省六部、宋二府三司、元四等人、债权等 11 张已换成原图；其余 9 张原文本身是纯文字列表或图谱未识别出坐标，仍用分层清单显示。'],
@@ -7586,18 +7669,12 @@ if('serviceWorker' in navigator){
   });
 }
 
-/* ---------- 启动页：首帧对齐 iOS 启动图，约 1.55s 后淡出 ---------- */
+/* ---------- 启动页：数据量写入 ---------- */
 (function(){
-  const sp=document.getElementById('splash'); if(!sp) return;
-  const tot=document.getElementById('spTotal');
-  try{ if(tot && typeof PTS!=='undefined' && PTS.length) tot.textContent=PTS.length+' 条考点'; }catch(e){}
-  const t0=(performance&&performance.now)?performance.now():Date.now();
-  const hideSp=()=>{
-    const now=(performance&&performance.now)?performance.now():Date.now();
-    const wait=Math.max(220, 1420-(now-t0));
-    setTimeout(()=>{ sp.classList.add('hide'); setTimeout(()=>{ if(sp.parentNode) sp.parentNode.removeChild(sp); },480); }, wait);
-  };
-  if(document.readyState==='complete') hideSp(); else window.addEventListener('load',hideSp,{once:true});
+  try{
+    const tot=document.getElementById('spTotal');
+    if(tot && typeof PTS!=='undefined' && PTS.length) tot.textContent=PTS.length+' 条考点';
+  }catch(e){}
 })();
 </script>
 </body>
