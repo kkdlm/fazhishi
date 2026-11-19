@@ -17,7 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       SRC: https://aka.doubaocdn.com/s/6JxYTDieEe
-      APPSRC: https://aka.doubaocdn.com/s/hl6orbrw76
+      APPSRC: https://aka.doubaocdn.com/s/XoaVTQMh2P
       SWURL: https://aka.doubaocdn.com/s/GM4iAteUGw
       VER: "3.16.0"
       PATCH: "1"
