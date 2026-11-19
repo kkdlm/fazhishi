@@ -16,10 +16,10 @@ jobs:
   release:
     runs-on: ubuntu-latest
     env:
-      SRC: https://aka.doubaocdn.com/s/tYEQrM3bi0
-      APPSRC: https://aka.doubaocdn.com/s/ofMXhlVMbf
-      SWURL: https://aka.doubaocdn.com/s/eL9RCTQYOM
-      VER: "3.12.0"
+      SRC: https://aka.doubaocdn.com/s/CKfvDP5q49
+      APPSRC: https://aka.doubaocdn.com/s/l4ha8Q9IGb
+      SWURL: https://aka.doubaocdn.com/s/Nl2cOSFEuc
+      VER: "3.13.0"
       PATCH: "1"
     steps:
       - name: Checkout
@@ -31,7 +31,7 @@ jobs:
           if ! curl -fsSL --http1.1 -L --retry 5 --retry-all-errors --retry-delay 3 --max-time 420 -o index.new "$SRC"; then echo "::notice::壳文件暂时拉不到，本次跳过"; exit 0; fi
           sz=$(stat -c%s index.new); echo "shell-size=$sz"
           if [ "$sz" -lt 4000 ] || [ "$sz" -gt 400000 ]; then echo "::notice::壳文件大小异常，跳过"; exit 0; fi
-          if ! grep -q "3.12.0-p$PATCH" index.new; then echo "::notice::壳版本不匹配，跳过"; exit 0; fi
+          if ! grep -q "$VER-p$PATCH" index.new; then echo "::notice::壳版本不匹配，跳过"; exit 0; fi
           mv index.new index.html
 
           if ! curl -fsSL --http1.1 -L --retry 5 --retry-all-errors --retry-delay 3 --max-time 600 -o app.new "$APPSRC"; then echo "::notice::正文暂时拉不到，本次跳过"; exit 0; fi
