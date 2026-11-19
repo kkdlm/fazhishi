@@ -1868,6 +1868,63 @@ html[data-theme="night"] .quiz-opt .you{background:rgba(255,255,255,.16);color:#
 
 tr.hit-row,tr.hit-row td,tr.hit-row th,.bk-kv-row.hit-row,.bk-kv-row.hit-row>div{background:color-mix(in srgb,var(--c,#2E7D6B) 16%,transparent)!important;transition:background .3s}
 </style>
+
+<style>
+/* ===== 闪卡皮肤（背诵 · 闪卡） ===== */
+.flashdots{display:flex;gap:4px;margin:-2px 0 10px;overflow:hidden}
+.flashdots i{width:5px;height:5px;border-radius:50%;background:rgba(0,0,0,.13);flex:0 0 auto;transition:.2s}
+.flashdots i.on{background:var(--red);width:15px;border-radius:3px}
+#rCard{background:linear-gradient(160deg,#FFFDF6,#F7F2E4);border-color:rgba(165,52,46,.14);
+  border-radius:20px;box-shadow:0 18px 40px -30px rgba(60,50,30,.55),inset 0 1px 0 rgba(255,255,255,.9)}
+#rCard:before{content:"";position:absolute;inset:8px;border:.5px solid rgba(165,52,46,.16);
+  border-radius:14px;pointer-events:none}
+#rCard .wm{position:absolute;right:18px;bottom:56px;font-family:var(--serif);font-size:52px;
+  color:rgba(165,52,46,.07);letter-spacing:.08em;pointer-events:none}
+#rCard .r-title{font-size:calc(27px * var(--fs));letter-spacing:.02em}
+#rCard .r-meta{padding-right:2px}
+
+/* ===== 挖空 · 行内遮词 ===== */
+.ik{cursor:pointer;border-radius:4px;padding:0 3px;color:transparent;
+  background:rgba(165,52,46,.1);box-decoration-break:clone;-webkit-box-decoration-break:clone;transition:.15s}
+.ik.on{background:transparent;color:color-mix(in srgb,var(--red) 88%,var(--ink));font-weight:600;padding:0 1px}
+.ikbody{font-size:calc(14.5px * var(--fs));line-height:2;color:var(--ink-2)}
+.ikbody p{margin:6px 0}
+.ikbody.covmode .cov{margin:5px 0}
+.ikbody .ih{font-family:var(--serif);font-size:calc(15px * var(--fs));font-weight:600;color:var(--ink);margin:14px 0 4px}
+.cloze-tools{gap:8px}
+.hintbar2{margin:12px 0 0;padding:9px 12px;border-radius:9px;background:rgba(60,107,82,.06);
+  font-size:11.5px;line-height:1.8;color:#4A5A4D}
+
+/* ===== 专题 · 朝代长卷 ===== */
+.era-track2{display:flex;overflow-x:auto;gap:0;padding:0 2px 10px;scrollbar-width:none;
+  position:relative;margin-top:4px}
+.era-track2::-webkit-scrollbar{display:none}
+.era-track2:before{content:"";position:absolute;left:0;right:0;top:36px;height:1px;background:var(--line)}
+.etn{flex:0 0 auto;width:58px;text-align:center;background:none;border:0;padding:4px 0 0}
+.etn b{display:block;font-family:var(--serif);font-size:16px;color:var(--ink-3);font-weight:500}
+.etn i{display:block;font-style:normal;font-size:8px;color:var(--ink-3);opacity:.7;margin-top:2px;
+  white-space:nowrap;transform:scale(.92)}
+.etn .dot{width:7px;height:7px;border-radius:50%;background:rgba(0,0,0,.16);margin:7px auto 0;
+  position:relative;z-index:2;transition:.2s}
+.etn.on b{color:var(--red);font-weight:600}
+.etn.on .dot{width:11px;height:11px;background:var(--red);box-shadow:0 0 0 4px rgba(165,52,46,.14)}
+.eraCard2{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px 16px 12px;
+  box-shadow:0 14px 30px -26px rgba(0,0,0,.5);margin-top:2px}
+.eraCard2 .big{font-family:var(--serif);font-size:30px;line-height:1.15;color:var(--red);letter-spacing:.04em}
+.eraCard2 .cap{font-size:10px;letter-spacing:.14em;color:var(--ink-3);margin-top:6px}
+.eraCard2 .one{margin-top:10px;font-family:var(--serif);font-size:calc(14.5px * var(--fs));line-height:1.9;color:var(--ink-2)}
+.eraCard2 .its{margin-top:10px}
+.ec-it{display:flex;align-items:flex-start;gap:9px;padding:10px 0;border-top:.5px dashed var(--line)}
+.ec-it .n{font-family:var(--serif);font-size:11px;color:var(--red);width:18px;flex:0 0 auto;padding-top:2px}
+.ec-it .tx{flex:1;min-width:0}
+.ec-it .nm{font-size:calc(13px * var(--fs));font-weight:600;color:var(--ink);line-height:1.6}
+.ec-it .yr{font-size:9.5px;color:var(--ink-3);margin-top:2px}
+.ec-it .note{display:none;margin-top:5px;font-size:11.5px;line-height:1.75;color:#5C6B5E}
+.ec-it.open .note{display:block}
+.ec-it .ey{flex:0 0 auto;font-size:9.5px;padding:4px 7px;border-radius:99px;
+  background:rgba(60,107,82,.1);color:#3C6B52;border:0}
+.eraHint{font-size:10.5px;color:var(--ink-3);margin:10px 0 0;line-height:1.7}
+</style>
 </head>
 <body>
 <div class="splash" id="splash" aria-hidden="true">
@@ -2116,7 +2173,7 @@ window.__bootOk=function(){ window.__booted=true; var d=document.getElementById(
 <section class="view" id="v-recite">
   <div class="wrap stage">
     <div class="tabs subseg" style="margin-top:2px">
-      <button data-s="rec" class="on" onclick="setSub('rec')">抽背</button>
+      <button data-s="rec" class="on" onclick="setSub('rec')">闪卡</button>
       <button data-s="clo" onclick="setSub('clo')">挖空</button>
     </div>
     <div class="recite-top">
@@ -2126,6 +2183,7 @@ window.__bootOk=function(){ window.__booted=true; var d=document.getElementById(
         <svg width="9" height="9" viewBox="0 0 12 12"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.4" fill="none"/></svg>
       </button>
     </div>
+    <div class="flashdots" id="rDots"></div>
     <div class="r-card" id="rCard"></div>
     <div class="bottom-row" id="rBottom">
       <button onclick="rPrev()">上一张</button>
@@ -2141,7 +2199,7 @@ window.__bootOk=function(){ window.__booted=true; var d=document.getElementById(
 <section class="view" id="v-cloze">
   <div class="wrap stage">
     <div class="tabs subseg" style="margin-top:2px">
-      <button data-s="rec" class="on" onclick="setSub('rec')">抽背</button>
+      <button data-s="rec" class="on" onclick="setSub('rec')">闪卡</button>
       <button data-s="clo" onclick="setSub('clo')">挖空</button>
     </div>
     <div class="cloze-tools">
@@ -3542,6 +3600,7 @@ function renderRecite(){
           <button onclick="go('home')">回总览</button>
         </div>`;
     }
+    updateFlashDots(RQ.length,RQ.length);
     document.getElementById('rBottom').style.display='none';
     document.getElementById('rTip').style.display='none';
     return;
@@ -3560,6 +3619,7 @@ function renderRecite(){
     document.getElementById('rBar').style.width=((RIDX+1)/RQ.length*100)+'%';
   }
   document.getElementById('rScope').textContent=RSCOPE;
+  updateFlashDots(RIDX,RQ.length);
   card.style.setProperty('--c', cOf(p.cat||p.ch));
   const runsHtml=(runs,cls)=>runs.map(([t,isK])=>isK?`<b class="${cls}">${esc(t)}</b>`:esc(t)).join('');
   /* 题干整句都是红字时按正文色显示：红是留给答案的，别让题干变成一整堵红墙 */
@@ -3599,6 +3659,7 @@ function renderRecite(){
   const jumpAn=(e.ansBlocks&&e.ansBlocks[0])?String(e.ansBlocks[0].runs.map(r=>r[0]).join('')).slice(0,18):String((e.ans||[]).map(r=>r[0]).join('')).slice(0,18);
   card.innerHTML=`
     <div class="r-meta"><i class="dot" style="background:${cOf(p.cat||p.ch)}"></i>${p.ch}${p.sub&&p.sub!==p.ch?' · '+p.sub:''} · ${pad3(pnum(p.n))} · 第 ${e.kth} 条 ${memTag}<button class="r-jump" data-n="${p.n}" data-an="" data-alt="${esc(jumpHead)}" data-sub="${esc(p.sub||'')}" data-ch="${esc(p.ch||'')}" onclick="jumpBookFromCard(this)">背诵一本通 §${pad3(pnum(p.n))}</button><button class="bug-mini" onclick="bugFromRecite(event)" aria-label="记录问题"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><rect x="8" y="6" width="8" height="13" rx="4"/><path d="M12 6V4M9 9h.01M15 9h.01M12 12v6M5 10l-2-1M19 10l2-1M5 15l-2 1M19 15l2 1"/></svg></button></div>
+    <div class="wm">${esc(p.ch)}</div>
     <div class="r-title${titleCls}" style="font-size:calc(${titleFs}px * var(--fs))">${esc(titleTxt)}</div>
     <div class="r-rule"></div>
     ${RSHOW
@@ -3971,24 +4032,55 @@ function openCardJump(n, anchor){
 
 /* ---------- 挖空 ---------- */
 let CIDX=0;
+function ikSpan(t){ return '<span class="ik" onclick="ikToggle(this)">'+esc(t)+'</span>'; }
+function ikToggle(el){ el.classList.toggle('on'); clozeStat(); haptic(); }
+/* 行内只遮关键词（红字要点），其余正文保留，读句子时能顺着上下文回忆 */
+function inlineCover(p){
+  const its=itemsOf(p.n);
+  let h='';
+  if(its&&its.length){
+    its.forEach(it=>{
+      if(it.label){ h+='<p class="ih">'+it.a.map(x=>esc(x[0])).join('')+'</p>'; return; }
+      if(it.mn){ h+='<p style="font-size:11.5px;color:#8A6A2E;margin:8px 0 0">口诀 · '+it.a.map(x=>esc(x[0])).join('')+'</p>'; return; }
+      const q=it.q&&it.q.length?('<b style="color:var(--ink-3);font-weight:500">'+it.q.map(([t,k])=>esc(t)).join('')+'</b>'):'';
+      const body=it.a.map(([t,f])=>f==='k'?ikSpan(t):esc(t)).join('');
+      h+='<p>'+q+body+'</p>';
+    });
+  }else{
+    (p.lines||[]).forEach(l=>{
+      const t=l.map(s=>s[0]).join('').trim();
+      if(/[：？]$/.test(t)){ h+='<p style="color:var(--ink-3);font-size:12px">'+esc(t)+'</p>'; return; }
+      h+='<p>'+l.map(([tt,f])=>f==='k'?ikSpan(tt):esc(tt)).join('')+'</p>';
+    });
+  }
+  return h||(p.lines||[]).map(l=>'<p>'+l.map(([t,f])=>f==='k'?ikSpan(t):esc(t)).join('')+'</p>').join('');
+}
 function renderCloze(){
   const p=PTS[CIDX];
   const card=document.getElementById('cCard');
   card.style.setProperty('--c', cOf(p.cat||p.ch));
   card.innerHTML=`
     <div class="r-meta"><i class="dot" style="background:${cOf(p.cat||p.ch)}"></i>${p.ch}${p.sub&&p.sub!==p.ch?' · '+p.sub:''} · ${pad3(pnum(p.n))}</div>
-    <div class="r-title" style="font-size:calc(21px * var(--fs))">${esc(p.title)}</div>
+    <div class="r-title" style="font-size:calc(23px * var(--fs))">${esc(p.title)}</div>
     <div class="r-rule"></div>
-    <div class="r-body" style="max-height:none;overflow:visible;margin-top:12px">${bodyCover(p)}</div>`;
-  const n=card.querySelectorAll('.cov').length;
-  document.getElementById('clozeCount').textContent = n ? `${n} 行待揭示` : '问句已全部露出';
+    <div class="ikbody${(inlineCover(p).match(/class="ik"/g)||[]).length<3?' covmode':''}">${(inlineCover(p).match(/class="ik"/g)||[]).length<3?bodyCover(p):inlineCover(p)}</div>
+    ${p.mn?'<div class="hintbar2">口诀 · '+esc(p.mn)+'</div>':''}
+    <div class="hintbar2">遮住的都是红字要点：先顺着句子在心里补齐，再轻点词块对答案；一条卡就一套提示，看完再翻下一条。</div>`;
+  clozeStat();
+}
+function clozeStat(){
+  const all=document.querySelectorAll('#cCard .ik, #cCard .cov');
+  const on=document.querySelectorAll('#cCard .ik.on, #cCard .cov.on');
+  const el=document.getElementById('clozeCount');
+  if(el) el.textContent = all.length ? ('已露 '+on.length+' / '+all.length) : '这条没有可遮的关键词';
 }
 function revealAll(){
-  document.querySelectorAll('#cCard .cov').forEach(b=>b.classList.add('on'));
-  haptic();
+  document.querySelectorAll('#cCard .ik, #cCard .cov').forEach(b=>b.classList.add('on'));
+  clozeStat(); haptic();
 }
 function resetBlanks(){
-  document.querySelectorAll('#cCard .cov').forEach(b=>b.classList.remove('on'));
+  document.querySelectorAll('#cCard .ik, #cCard .cov').forEach(b=>b.classList.remove('on'));
+  clozeStat();
 }
 function clozeNext(){ CIDX=(CIDX+1)%PTS.length; renderCloze(); }
 function clozePrev(){ CIDX=(CIDX-1+PTS.length)%PTS.length; renderCloze(); }
@@ -5512,19 +5604,27 @@ function renderTopic(){
   if(TOPIC==='kb'){ box.innerHTML=renderKbTab(); return; }
   if(TOPIC==='vt'){ box.innerHTML=renderVT(); centerVTChip(); return; }
   if(TOPIC==='tl'){
-    let h='<div class="topic-grid">';
-    MEET.forEach(g=>{
-      h+=`<div class="era-wrap"><div class="era"><b>${esc(g.era)}</b><span>${esc(g.span)}</span></div><div class="tl">`;
-      g.items.forEach(m=>{
-        const tier=/^中共.*大$/.test(m.name)?1:(/全会/.test(m.name)?2:3);
-        h+=`<button class="node t${tier}" id="mt-${encodeURIComponent(m.name)}" onclick="openCardJump(${m.n},'${esc(m.name)}')">
-          <div class="yr">${esc(m.y)}</div><div class="nm">${esc(m.name)}</div><div class="nt">${esc(m.note)}</div>
-        </button>`;
-      });
-      h+='</div></div>';
+    if(!MEET||!MEET.length){ box.innerHTML='<div class="empty">暂无朝代节点</div>'; return; }
+    if(ERASEL>=MEET.length) ERASEL=0;
+    const g=MEET[ERASEL];
+    let h='<div class="era-track2" id="eraTrack">';
+    MEET.forEach((it,i)=>{
+      h+=`<button class="etn${i===ERASEL?' on':''}" onclick="setEra(${i})"><b>${esc(it.era)}</b><i>${esc(it.span)}</i><div class="dot"></div></button>`;
     });
     h+='</div>';
+    h+=`<div class="eraCard2"><div class="big">${esc(g.era)}</div>
+      <div class="cap">${g.span?esc(g.span)+' · ':''}共 ${g.items.length} 个节点</div>
+      ${g.items.length>2?`<div class="one">${esc(g.items.map(m=>m.name).join(' · '))}</div>`:''}<div class="its">`;
+    g.items.forEach((m,idx)=>{
+      const k='eo-'+ERASEL+'-'+idx;
+      h+=`<div class="ec-it${ERAOPEN[k]?' open':''}"><span class="n">${idx+1}</span>
+        <div class="tx"><div class="nm"><button style="all:unset;font:inherit;color:inherit;cursor:pointer" onclick="openCardJump(${m.n},'${esc(m.name)}')">${esc(m.name)}</button></div>
+        <div class="yr">${esc(m.y)}</div><div class="note">${esc(m.note)}</div></div>
+        <button class="ey" onclick="toggleEraNote('${k}',this)">${ERAOPEN[k]?'收起':'提示'}</button></div>`;
+    });
+    h+=`</div></div><div class="eraHint">共 ${MEET.length} 个朝代 · 左右滑动朝代轴切换 · 点制度名进速览卡片 · 点「提示」看这一条的提示</div>`;
     box.innerHTML=h+renderBoxGallery();
+    setTimeout(centerEraTrack,60);
   }else{
     const lines=(MEET_MN||[]);
     box.innerHTML=`<div class="mn-head">朝代口诀 · 共 ${lines.length} 句 · 先自己默写法典顺序，再点开对答案</div>
@@ -7016,6 +7116,33 @@ function bindSwipe(el,handlers){
   },{passive:true});
 }
 
+/* ---------- 闪卡进度点 / 朝代长卷 ---------- */
+function updateFlashDots(i,n){
+  const d=document.getElementById('rDots'); if(!d) return;
+  const cap=Math.min(n,22);
+  if(!cap){ d.innerHTML=''; return; }
+  let h='';
+  for(let k=0;k<cap;k++){
+    const pos=Math.min(cap-1,Math.round((i/Math.max(1,n))*cap));
+    const on=(n<=22)?(k<=i):(k<=pos);
+    h+='<i class="'+(on?'on':'')+'"></i>';
+  }
+  d.innerHTML=h;
+}
+let ERASEL=0; const ERAOPEN={};
+function setEra(i){ ERASEL=i; renderTopic(); setTimeout(centerEraTrack,80); }
+function centerEraTrack(){
+  const t=document.getElementById('eraTrack'); if(!t) return;
+  const on=t.querySelector('.etn.on'); if(!on) return;
+  t.scrollTo({left:Math.max(0,on.offsetLeft-(t.clientWidth/2-30)),behavior:'smooth'});
+}
+function toggleEraNote(k,btn){
+  ERAOPEN[k]=!ERAOPEN[k];
+  const row=btn.closest('.ec-it'); if(row) row.classList.toggle('open',!!ERAOPEN[k]);
+  btn.textContent=ERAOPEN[k]?'收起':'提示';
+  haptic();
+}
+
 /* ---------- 路由 ---------- */
 const SCROLLMEM={};
 function blocked(){ return sbOn() && !authOk(); }
@@ -7190,7 +7317,7 @@ try{
 }
 
 const VER='3.11.0';
-const PATCH='39';   /* 同一版本内的补丁号；0 表示版本本体 */
+const PATCH='40';   /* 同一版本内的补丁号；0 表示版本本体 */
 const CHANGELOG = [
 {v:'3.11.0',ps:'28',d:'2026-11-19',kind:'patch',sum:'启动进度改成前段虚拟、后段真实，台词精简不断行',items:[
 ['优化','以前打开先卡在 0% 一两秒（在等 version.json 和首个字节），再猛冲到 99；现在点开就走虚拟曲线，2 秒内稳稳推到 50%，之后交给真实字节映射到 50→99，全程不再有停顿和瞬跳'],
