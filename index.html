@@ -84,13 +84,13 @@ html,body{margin:0;padding:0;background:#EAEDE1}
 </div></div>
 <script>
 (function(){
-  var VER='3.14.0-p1';
+  var VER='3.14.0-p2';
   var fill=document.getElementById('spFill'),pct=document.getElementById('spPct'),
       status=document.getElementById('spStatus'),splash=document.getElementById('splash'),
       boot=document.getElementById('boot');
   var got=0,total=0,mounted=false,gate=0,done=false,finishing=false,slow=false,lastAt=Date.now();
   var startAt=Date.now(), VIRT_MS=1500, P2_MS=1300, MIN_MS=3300;   /* 前 50% 走虚拟曲线，最少看 3.2 秒 */
-  var shown=0, real=0;
+  var shown=0, real=0, stallFrom=0;
   /* 总字节三级回退：本次响应头 / version.json / 上次成功下载的字节数 / 默认估值
      —— 任何一个取不到都不会让分母变 0，进度不会卡在 50% */
   var EXPECT=(function(){ try{ return Number(localStorage.getItem('fz_pkg')||0)||0; }catch(e){ return 0; } })();
@@ -139,11 +139,13 @@ html,body{margin:0;padding:0;background:#EAEDE1}
     var p2=Math.min(1, Math.max(0, (now-startAt-VIRT_MS)/(P2_MS)));
     var timePhase=50+49*(1-Math.pow(1-p2,1.7));
     var want = vt<50 ? vt : Math.min(Math.max(50,timePhase), Math.max(50,rt));
-    /* 下载中途停住（弱网、被系统挂起）时缓慢蠕升到 92，别让画面死在一个数字上 */
-    if(!mounted && now-lastAt>900){
-      var creep=50+Math.min(42,(now-lastAt)/1000*6);   /* 断流 7 秒左右爬到 92，不干等 */
-      if(creep>want) want=Math.min(creep,92);
-    }
+    /* 真断流（连续 1.2 秒没有任何新字节）才在当前位置缓慢往上爬，最多到 92；
+       只要还在收到数据就不爬，避免「只下了 0.02MB 就冲到 92%」的假进度 */
+    if(!mounted && now-lastAt>1200 && shown<90){
+      if(!stallFrom) stallFrom=Math.max(50,shown);          /* 断流起点固定，避免越算越快地滚雪球 */
+      var creep=stallFrom+Math.min(38,(now-lastAt-1200)/1000*4);
+      if(creep>want) want=Math.min(creep,90);
+    }else if(now-lastAt<=1200){ stallFrom=0; }
     if(!isFinite(want)) want=50;
     if(mounted){
       var left=startAt+MIN_MS-now;
