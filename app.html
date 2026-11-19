@@ -2695,13 +2695,13 @@ function integBodyHTML(){
   const nb=integBlocks(x);
   let h='<div class="vt-book">'+esc(x.n)+'<span class="bk-pg">'+esc(x.srcShort||'')+(nb?' · '+ss.length+' 节 '+nb+' 段':' · '+ss.length+' 张原表')+'</span></div>';
   if(ss.length<=1){
-    h+=ss.map(s=>'<div class="bk-itg-body"><div class="bk-src">'+esc(s.src||'')+'</div>'+(s.blocks||[]).map(bkBlock).join('')+'</div>').join('');
+    h+=ss.map(s=>'<div class="bk-itg-body"><div class="bk-src">'+esc(s.src||'')+'</div>'+bkGlue(s.blocks||[]).map(bkBlock).join('')+'</div>').join('');
     return h;
   }
   h+=ss.map(function(s){
       var nb2=(s.blocks||[]).filter(function(b){return b.t!=='img';}).length;
       return '<div class="vt-sec"><div class="vt-sec-h" onclick="bkFoldRow(this)"><b>'+esc(s.n)+'</b><span class="vt-sec-meta">'+(nb2?nb2+' 段':'')+'</span><i class="chev"></i></div>'+
-      '<div class="bk-secs-body" style="display:none"><div class="bk-src">'+esc(s.src||'')+'</div>'+(s.blocks||[]).map(function(b,bi){return '<div class="bk-b" data-b="'+bi+'">'+bkBlock(b)+'</div>';}).join('')+'</div></div>';
+      '<div class="bk-secs-body" style="display:none"><div class="bk-src">'+esc(s.src||'')+'</div>'+(bkGlue(s.blocks||[])).map(function(b,bi){return '<div class="bk-b" data-b="'+bi+'">'+bkBlock(b)+'</div>';}).join('')+'</div></div>';
     }).join('');
   return h;
 }
@@ -5833,6 +5833,50 @@ function bkT(t,wr){
   out+=s.slice(p);
   return bkInline(out).replace(/\u0001/g,'<u class="wv">').replace(/\u0002/g,'</u>');
 }
+/* 提示行的引导语（“……如下：”“本节复盘背诵：”“[背诵提示 3]”）后面紧跟的表格/段落
+   本来属于同一条提示，转录时被拆成了两个块；这里把它们并回提示框里 */
+const BK_GLUE_T={table:1,p:1,nums:1,box:1,quote:1,fig:1};
+function bkNoteKind(b,next){
+  /* 'bare'：整块只有一句标签（本节复盘背诵： / [背诵提示 3]），正文全在下一块里
+     'lead'：一句引导语以冒号收尾（……如下： / ……参见下表：），或一句短标签（六部分篇 / 朝审 VS 大审），
+             后面紧跟的表格、示图也是这条提示的一部分 */
+  if(!b||b.t!=='note') return '';
+  const raw=String(b.x||'').trim();
+  const t=raw.replace(/\s/g,'');
+  if(!t) return '';
+  if(/^[\[【(（]?背诵提示[\d一二三四五六七八九十]*[\]】)）]?[：:]?$/.test(t)) return 'bare';
+  if(/^(本节复盘背诵|复盘背诵|本节思维导图|本节考点一览|本节一览)[：:]?$/.test(t)) return 'bare';
+  if(/[：:]$/.test(t)) return 'lead';
+  if(next && (next.t==='table'||next.t==='fig') && t.length<=12 && !/[。！？」”]$/.test(t)) return 'lead';
+  return '';
+}
+function bkGlue(bs){
+  if(!bs||!bs.length) return bs||[];
+  const out=[];
+  for(let i=0;i<bs.length;i++){
+    const b=bs[i];
+    const kind=bkNoteKind(b,bs[i+1]);
+    if(kind && !b.glue){
+      const gb=[]; let j=i+1, budget=4;
+      while(j<bs.length && budget>0 && BK_GLUE_T[bs[j].t]){
+        const nb=bs[j];
+        if(nb.t==='p' && String(nb.x||'').length>120) break;   /* 长段落是正文，不是提示内容 */
+        gb.push(nb); j++; budget--;
+      }
+      if(gb.length){
+        if(kind==='bare'){
+          const lbl=String(b.x||'').replace(/\s/g,'').replace(/[：:]$/,'').replace(/^[\[【(（]/,'').replace(/[\]】)）]$/,'').replace(/(背诵提示)(\d)/,'$1 $2').trim();
+          out.push(Object.assign({},b,{glue:gb,lbl:lbl}));
+        }else{
+          out.push(Object.assign({},b,{glue:gb}));
+        }
+        i=j-1; continue;
+      }
+    }
+    out.push(b);
+  }
+  return out;
+}
 function bkTipHTML(label,inner,cls){
   if(!inner || !String(inner).replace(/<[^>]*>/g,'').trim()) return '';   /* 正文为空就别画一个空框 */
   return `<div class="bk-tipwrap t-${cls}"><button class="bk-tip" onclick="bkTipFold(this)"><span class="bk-tipi">${cls==='mn'?'🧠':'💡'}</span><span class="bk-tipl">${esc(label)}</span><b class="bk-tipx">展开</b></button><div class="bk-tipb" style="display:none"><div class="bk-tipt">${inner}</div></div></div>`;
@@ -5972,7 +6016,11 @@ function bkBlock(b){
     case 'nums': return `<div class="bk-nums">${(b.xs||[]).map((x,i)=>`<div class="bk-num">${bkT(x,b.w&&b.w['n'+i])}</div>`).join('')}</div>`;
     case 'box': return `<div class="bk-box">${bkT(b.x,b.w)}</div>`;
     case 'quote': return `<div class="bk-quote">${bkT(b.x,b.w)}</div>`;
-    case 'note': return bkTipHTML('背诵提示'+(b.n?' '+b.n:''), (b.fig||/[├└]/.test(String(b.x||'')))? bkFigHTML(b.x) : bkT(b.x,b.w),'note');
+    case 'note': {
+      const txt=(b.fig||/[├└]/.test(String(b.x||'')))? bkFigHTML(b.x) : bkT(b.x,b.w);
+      const glue=b.glue? b.glue.map(bkBlock).join('') : '';
+      return bkTipHTML(b.lbl? b.lbl : ('背诵提示'+(b.n?' '+b.n:'')), (b.lbl? '' : txt)+glue, 'note');
+    }
     case 'mn': return bkTipHTML('背诵口诀',bkT(b.x,b.w),'mn');
     case 'fig': if(!String(b.x||'').trim()&&!b.img64) return ''; {
       const inner=b.img64?`<div class="bk-figimg"><img src="${b.img64}" alt="背诵一本通原图" loading="lazy"></div>`:`<div class="bk-tipt bk-figt">${bkFigHTML(b.x)}</div>`;
@@ -5997,7 +6045,7 @@ function bkBlock(b){
       if(ncol<=2 && !head.length){
         return `<div class="bk-kv${b.cls?' '+b.cls:''}">${rows.map((r,ri)=>`<div class="bk-kv-row"><div class="bk-kv-k">${bkT(r[0],b.w&&b.w['c'+ri+'-0'])}</div><div class="bk-kv-v">${bkT(r[1],b.w&&b.w['c'+ri+'-1'])}</div></div>`).join('')}</div>`;
       }
-      const cols = ncol===3 ? ['28%','36%','36%'] : [];
+      const cols = ncol===3 ? ['20%','40%','40%'] : [];
       const cg = cols.length?`<colgroup>${cols.map(w=>`<col style="width:${w}">`).join('')}</colgroup>`:'';
       return `<div class="bk-tbl-wrap"><table class="bk-tbl">${cg}${head.length?`<thead><tr>${head.map((h,hi)=>`<th>${bkInline(h)}</th>`).join('')}</tr></thead>`:''}<tbody>${rows.map((r,ri)=>`<tr>${r.map((c,ci)=>`<td>${bkT(c,b.w&&b.w['c'+ri+'-'+ci])}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
     }
@@ -6032,7 +6080,7 @@ function bkText(b){
 }
 function bkGroups(sec){
   const gs=[];
-  (sec.blocks||[]).forEach(b=>{
+  bkGlue(sec.blocks||[]).forEach(b=>{          /* 先合并再按「一、二、三」分组：跨小标题不可合并，但同组内必须合 */
     if(b.t==='h3'){ gs.push({t:String(b.x||''),bs:[]}); return; }
     if(!gs.length) gs.push({t:'',bs:[]});
     gs[gs.length-1].bs.push(b);
@@ -7431,8 +7479,15 @@ try{
 }
 
 const VER='3.14.0';
-const PATCH='2';   /* 同一版本内的补丁号；0 表示版本本体 */
+const PATCH='3';   /* 同一版本内的补丁号；0 表示版本本体 */
 const CHANGELOG = [
+{v:'3.14.0',ps:'3',d:'2026-11-20',kind:'patch',sum:'修背诵提示只剩一句引导语：表格、示图掉在提示框外面',items:[
+['修复','背诵一本通里有一类「提示」原文被拆成了两个块：提示只剩一句引导语（「本节复盘背诵：」「……参见下表：」「六部分篇」），真正的表格/示图被排在了提示框外面，点开提示只看到一句话。典型就是第四章·第四节婚姻家庭（P115 本节复盘·婚姻制度），展开只有「本节复盘背诵：」，婚姻的缔结/婚姻的解除那张表在框外'],
+['修复','现在按书意把两者并回同一条提示：提示只有一句标签（本节复盘背诵／[背诵提示 3]）→ 标签直接当提示标题，表格整块进提示框；提示是一句引导语（冒号收尾）或一句短标签 → 引导语留在框内，紧跟的表格、示图、段落一起进框，最多接 4 块，长段落不吸'],
+['修复','全书共 26 处这类提示被合并（立法·主要立法成果、刑事·罪名/刑种/定罪量刑、民事·物权/债权/婚姻/继承、宪法与近代立法各节），合计 242 个表格单元格/段落重新回到提示框里，没有丢内容、没有重复渲染'],
+['优化','三列表（朝代＋两列对照）列宽由 28/36/36 调成 20/40/40，婚姻缔结与解除这类对照表在手机上少折两行'],
+['说明','提示内容来自《背诵一本通》原书；合并只在「同一节的相邻块」之间做，跨小标题、跨节不合并，不会把下一段正文吞进提示']
+]},
 {v:'3.14.0',ps:'2',d:'2026-11-19',kind:'patch',sum:'修启动屏卡在 50%、进度显示「4.8/0」',items:[
 ['修复','启动屏卡在 50% 不动：外壳取不到文件总字节数时（CDN 压缩传输、响应头缺失、version.json 没取到），真实进度那段的分母变成 0，进度就一直停在前段上限 50%'],
 ['修复','总字节改三级回退：本次响应头 → version.json 里的包体字节 → 上次成功下载的真实字节（记在本机） → 4.9MB 估值；任一环节拿不到都不会再除以 0'],
