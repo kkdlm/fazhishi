@@ -66,7 +66,7 @@ html,body{margin:0;padding:0;background:#EAEDE1}
 </div></div>
 <script>
 (function(){
-  var VER='3.11.0-p32';
+  var VER='3.11.0-p33';
   var fill=document.getElementById('spFill'),pct=document.getElementById('spPct'),
       status=document.getElementById('spStatus'),splash=document.getElementById('splash'),
       boot=document.getElementById('boot');
@@ -134,7 +134,8 @@ html,body{margin:0;padding:0;background:#EAEDE1}
       var res=await fetch('app.html?v='+VER);
       if(!res.ok) throw new Error('HTTP '+res.status);
       var cl=Number(res.headers.get('content-length')||0);
-      if(cl) total=cl;
+      /* content-length 常是压缩后的传输大小；只有拿不到 version.json 且量级接近时才用它 */
+      if(cl && (!total || Math.abs(cl-total)<total*0.35)) total=cl;
       if(!res.body || !res.body.getReader){
         var txt=await res.text(); got=txt.length; mount(txt); return;
       }
