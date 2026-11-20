@@ -87,7 +87,7 @@ html,body{margin:0;padding:0;background:#EAEDE1}
 </div></div>
 <script>
 (function(){
-  var VER='3.16.0-p13';
+  var VER='3.16.0-p14';
   var fill=document.getElementById('spFill'),pct=document.getElementById('spPct'),
       status=document.getElementById('spStatus'),splash=document.getElementById('splash'),
       boot=document.getElementById('boot');
@@ -269,7 +269,7 @@ html,body{margin:0;padding:0;background:#EAEDE1}
     if('serviceWorker' in navigator && swOK){ navigator.serviceWorker.register('sw.js',{scope:'./'}).catch(function(){}); }
   }catch(e){}
 
-  window.addEventListener('error',function(){ if(!finishing){ boot.style.display='flex'; document.getElementById('bootT').textContent='页面出错了'; document.getElementById('bootD').textContent='启动时遇到脚本错误，重开一次通常就好。'; } });
+  window.addEventListener('error',function(){ if(!finishing && Date.now()-startAt>1500){ boot.style.display='flex'; document.getElementById('bootT').textContent='页面出错了'; document.getElementById('bootD').textContent='启动时遇到脚本错误，重开一次通常就好。'; } });
   paint();
   requestAnimationFrame(tick);
   run();

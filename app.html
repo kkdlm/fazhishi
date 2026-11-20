@@ -2141,6 +2141,15 @@ tr.hit-row,tr.hit-row td,tr.hit-row th,.bk-kv-row.hit-row,.bk-kv-row.hit-row>div
 /* ---------- 启动兜底（独立于主脚本：主脚本挂了也能提示并自救） ---------- */
 (function(){
   window.__booted=false;
+  var T0=Date.now(), WAIT=2000, pend=null;
+  /* 启动头 2 秒内一律不弹错误卡：先记住，等启动页画完再判定，避免重启时闪一下“加载超时” */
+  function safePanel(title,desc,offline){
+    if(window.__booted) return;
+    if(Date.now()-T0<WAIT){ pend=[title,desc,offline]; return; }
+    panel(title,desc,offline);
+  }
+  function flush(){ if(pend){ var a=pend; pend=null; if(!window.__booted) panel(a[0],a[1],a[2]); } }
+  setTimeout(flush,WAIT+50);
   function panel(title, desc, offline){
     if(document.getElementById('bootFail')) return;
     var d=document.createElement('div');
@@ -2176,11 +2185,11 @@ tr.hit-row,tr.hit-row td,tr.hit-row th,.bk-kv-row.hit-row,.bk-kv-row.hit-row>div
 window.__bootOk=function(){ window.__booted=true; var d=document.getElementById('bootFail'); if(d&&d.parentNode) d.parentNode.removeChild(d); };
   window.addEventListener('error',function(e){
     if(window.__booted) return;
-    panel('页面出错了','启动时遇到脚本错误，重开一次通常就好。'+(e&&e.message?('（'+String(e.message).slice(0,60)+'）'):''),!navigator.onLine);
+    safePanel('页面出错了','启动时遇到脚本错误，重开一次通常就好。'+(e&&e.message?('（'+String(e.message).slice(0,60)+'）'):''),!navigator.onLine);
   });
   window.addEventListener('unhandledrejection',function(){
     if(window.__booted) return;
-    panel('页面出错了','启动时有一处数据没读出来，重开一次通常就好。',!navigator.onLine);
+    safePanel('页面出错了','启动时有一处数据没读出来，重开一次通常就好。',!navigator.onLine);
   });
   setTimeout(function(){ if(!window.__booted) panel(navigator.onLine?'页面加载超时':'现在没有网络',navigator.onLine?'网络或服务器响应太慢，点一下「重新加载」。':'连上网后点「重新加载」；也可以点「清缓存重启」用本地缓存打开。',!navigator.onLine); }, 6000);
 })();
@@ -8161,8 +8170,12 @@ try{
 }
 
 const VER='3.16.0';
-const PATCH='13';   /* 同一版本内的补丁号；0 表示版本本体 */
+const PATCH='14';   /* 同一版本内的补丁号；0 表示版本本体 */
 const CHANGELOG = [
+{v:'3.16.0',ps:'14',d:'2026-11-20',kind:'patch',sum:'杀启动前那一闪：重启后头 2 秒内不再弹任何错误/超时卡片，先让启动页画完再判定，超时阈值仍按原来的 6 秒',items:[
+['修复','点「更新/重启」后、启动页出来之前会闪一秒钟的「加载超时」卡片：错误卡改为延迟判定——启动头 2 秒内只记录不显示，启动页画完后仍失败才弹出'],
+['修复','外壳层同理：启动 1.5 秒内的脚本报错不再立刻盖错误页，避免刚切到更新画面就被错误页抢位'],
+]},
 {v:'3.16.0',ps:'13',d:'2026-11-20',kind:'patch',sum:'背诵卡片全书核对：214 页 OCR 行级比对 + 数字/书名/年份事实级全量比对，修 5 处与书不一致；全库 274 处半角引号统一回中文引号',items:[
 ['修复','第二章第二节 文景废肉刑·刑制改革表（书 P61）：文帝列首行漏了「黥刑（墨刑）改为髡钳城旦舂」，劓刑、斩左趾两行的「东汉初期」格与箠令行末格被写成空白，已按原书补回「/」'],
 ['修复','下编第四章第二节 北洋商事法规（书 P172）：《证券交易所法》漏「所」字，数据写成《证券交易法》，已改回'],
