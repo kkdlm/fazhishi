@@ -16,12 +16,12 @@ jobs:
   release:
     runs-on: ubuntu-latest
     env:
-      SRC: https://aka.doubaocdn.com/s/UxDPR3ULPg
-      APPSRC: https://aka.doubaocdn.com/s/LFpMcVSzvn
-      SWURL: https://aka.doubaocdn.com/s/kqG18lddIl
-      ADMSRC: https://aka.doubaocdn.com/s/vF9xKF7VIO
-      VER: "3.17.0"
-      PATCH: "2"
+      SRC: https://aka.doubaocdn.com/s/iQOGdLqrUT
+      APPSRC: https://aka.doubaocdn.com/s/zOAjsbDiGU
+      SWURL: https://aka.doubaocdn.com/s/0gljXUpjz9
+      ADMSRC: https://aka.doubaocdn.com/s/oPLZm4mlTu
+      VER: "3.18.0"
+      PATCH: "1"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -52,7 +52,7 @@ jobs:
             if [ "$asz2" -gt 6000 ] && grep -q 'BLOB=' admin.new; then mv admin.new admin/index.html; else echo "::notice::后台文件异常，保留原样"; fi
           else echo "::notice::后台拉不到，保留原样"; fi
 
-          printf '{\n  "version": "%s",\n  "patch": %s,\n  "s": %s,\n  "date": "2026-11-20"\n}\n' "$VER" "$PATCH" "$asz" > version.json
+          printf '{\n  "version": "%s",\n  "patch": %s,\n  "s": %s,\n  "date": "2026-11-21"\n}\n' "$VER" "$PATCH" "$asz" > version.json
           echo ok
 
       - name: Commit
