@@ -1338,6 +1338,7 @@ html[data-theme="night"] .vt-era2{background:color-mix(in srgb,var(--ink) 40%,#0
 .bk-h3{font-family:var(--serif,serif);font-size:calc(15px*var(--fs));font-weight:800;color:var(--ink);margin:16px 0 8px;padding-left:9px;border-left:4px solid var(--red);line-height:1.45}
 .bk-h4{display:inline-block;font-size:calc(14px*var(--fs));font-weight:700;color:#7a2b18;margin:20px 0 8px;line-height:1.5;padding:3px 10px;border-radius:6px;background:color-mix(in srgb,var(--red) 9%,transparent);border-left:3px solid var(--red)}
 .bk-itg-body .bk-h4,.bk-secs-body .bk-h4{margin-top:18px}
+.bk-b,.bk-sub,.vt-sec{scroll-margin-top:calc(var(--hdr,58px) + 96px)}
 .bk-subnav{position:sticky;top:0;z-index:5;display:flex;gap:6px;overflow-x:auto;padding:6px 0 8px;margin:0 0 6px;background:linear-gradient(var(--bg,#fdfcf7),color-mix(in srgb,var(--bg,#fdfcf7) 92%,transparent));-webkit-overflow-scrolling:touch}
 .bk-subnav::-webkit-scrollbar{display:none}
 .bk-subnav .bk-nav{flex:0 0 auto;white-space:nowrap;border:1px solid color-mix(in srgb,var(--ink) 14%,transparent);background:#fff;color:var(--ink-2,#444);border-radius:999px;padding:4px 10px;font-size:calc(12px*var(--fs));line-height:1.3}
@@ -6589,10 +6590,10 @@ function jumpHit(kind,chKey,si,gi,bi){
     if(HKW){ row=deepestHit(tgt,HKW); if(row&&(row.tagName==='TD'||row.tagName==='TH')) row=row.parentElement; }
     if(row&&row!==tgt){
       row.classList.add(row.tagName==='TR'?'hit-row':'hit-seg');
-      row.scrollIntoView({behavior:'smooth',block:'center'});
+      jjScrollTop(row);
       setTimeout(()=>row.classList.remove('hit-row','hit-seg'),10200);
     } else {
-      tgt.scrollIntoView({behavior:'smooth',block:'center'}); tgt.classList.add('hit-hl'); setTimeout(()=>tgt.classList.remove('hit-hl'),10200);
+      jjScrollTop(tgt); setTimeout(function(){jjScrollFix(tgt);},600); setTimeout(function(){jjScrollFix(tgt);},1100); tgt.classList.add('hit-hl'); setTimeout(()=>tgt.classList.remove('hit-hl'),10200);
     }
   }
   haptic();
@@ -6735,6 +6736,31 @@ function jjSearchHTML(q){
   document.getElementById('qCount').textContent='精讲一本通 · 「'+kw+'」命中 '+total+' 段';
   return '<div class="hit-list">'+rows.join('')+'</div>';
 }
+/* 跳转落点：让目标标题刚好露在吸顶栏（顶栏 + 工具条 + 分段条）下方 */
+function jjCover(){
+  let cover=0;
+  document.querySelectorAll('header.topbar,.toolbar,.tabs,.bk-subnav').forEach(function(x){
+    const c=getComputedStyle(x);
+    if(c.position!=='fixed' && c.position!=='sticky') return;
+    if(c.display==='none' || !x.offsetHeight) return;
+    const r=x.getBoundingClientRect();
+    if(r.top<=cover+40 && r.bottom>0) cover=Math.max(cover,r.bottom);
+  });
+  if(!cover){ cover=parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--hdr'))||0; }
+  return cover;
+}
+function jjScrollTop(el){
+  if(!el) return;
+  const cover=jjCover();
+  const y=el.getBoundingClientRect().top+(window.scrollY||window.pageYOffset)-cover-10;
+  window.scrollTo({top:Math.max(0,y),behavior:'smooth'});
+}
+function jjScrollFix(el){
+  if(!el) return;
+  const cover=jjCover();
+  const d=el.getBoundingClientRect().top-cover-10;
+  if(d>6 || d<-2) window.scrollTo({top:Math.max(0,(window.scrollY||0)+d),behavior:'auto'});
+}
 function jjGo(ci,si,gi,bi){
   const ch=JTOPIC.chs[ci]; if(!ch) return;
   Q=''; const qi=document.getElementById('q'); if(qi) qi.value='';
@@ -6749,7 +6775,7 @@ function jjGo(ci,si,gi,bi){
       if(gEl){ const gb=gEl.querySelector('.bk-sub-b'); if(gb && gb.style.display==='none'){ const gh=gEl.querySelector('.bk-sub-h'); if(gh) gh.click(); } }
       setTimeout(function(){
         const t=document.getElementById('jjb'+si+'-'+gi+'-'+bi)||gEl||secEl;
-        if(t) t.scrollIntoView({behavior:'smooth',block:'start'});
+        if(t){ jjScrollTop(t); setTimeout(function(){ jjScrollFix(t); },600); setTimeout(function(){ jjScrollFix(t); },1100); }
         if(t){ t.classList.add('jj-hl'); setTimeout(function(){ t.classList.remove('jj-hl'); },2400); }
       },80);
     })();
@@ -6843,7 +6869,7 @@ function jjLocate(chK,si,anchor){
     };
     const hit=(loose)=>{
       for(let i=0;i<gs.length;i++){
-        if(test({x:gs[i].t},loose)) return {gi:i,bi:0};
+        if(test({x:gs[i].t},loose)) return {gi:i,bi:-1};
         for(let j=0;j<(gs[i].bs||[]).length;j++){
           const b=gs[i].bs[j];
           if((b.t==='h4'||b.t==='h3'||b.t==='p') && test(b,loose)) return {gi:i,bi:j};
@@ -6882,10 +6908,26 @@ function btJjSheet(secKey,group){
     }).join('')+'</div>';
   openSheet('🔗 精讲一本通 · 逐条对照',html); haptic();
 }
+function btJumpGroup(ch,si,g){
+  btJump(ch,si,0,0);
+  setTimeout(function(){
+    const sec=document.querySelectorAll('#list .vt-sec')[si]; if(!sec) return;
+    const subs=[].slice.call(sec.querySelectorAll('.bk-sub'));
+    const key=String(g||'').replace(/\s/g,'');
+    let sub=subs.find(function(x){const t=x.querySelector('.bk-sub-t');return t && t.innerText.replace(/\s/g,'')===key;});
+    if(!sub) sub=subs.find(function(x){return x.innerText.replace(/\s/g,'').indexOf(key.slice(0,8))>=0;});
+    if(!sub) return;
+    const sb=sub.querySelector('.bk-sub-b');
+    if(sb && sb.style.display==='none'){ const sh=sub.querySelector('.bk-sub-h'); if(sh) sh.click(); }
+    document.querySelectorAll('#list .hit-hl').forEach(function(x){x.classList.remove('hit-hl');});
+    jjScrollTop(sub); setTimeout(function(){jjScrollFix(sub);},600); setTimeout(function(){jjScrollFix(sub);},1100);
+    sub.classList.add('hit-hl'); setTimeout(function(){sub.classList.remove('hit-hl');},4200);
+  },650);
+}
 function jjBtSheet(chK,si){
   const list=(typeof BREV!=='undefined'&&BREV[chK+':'+si])?BREV[chK+':'+si]:[];
   const html='<div class="sheet-sec"><h4>这一节 ↔ 背诵一本通<span class="bt-cnt">'+list.length+' 处</span></h4>'+
-    (list.length?list.map(x=>'<button class="jjl-row" onclick="closeSheet();btJump(\''+x.ch+'\','+x.si+',0,0)"><b>'+esc(x.n)+'</b><span>'+esc(x.g)+'</span></button>').join('')
+    (list.length?list.map(x=>'<button class="jjl-row" onclick="closeSheet();btJumpGroup(\''+x.ch+'\','+x.si+',\''+esc(String(x.g).replace(/'/g,'&#39;'))+'\')"><b>'+esc(x.n)+'</b><span>'+esc(x.g)+'</span></button>').join('')
      :'<div class="vt-empty">这节暂无对应条目</div>')+'</div>';
   openSheet('🔗 背诵一本通 · 同一知识点',html); haptic();
 }
@@ -7985,8 +8027,14 @@ try{
 }
 
 const VER='3.16.0';
-const PATCH='5';   /* 同一版本内的补丁号；0 表示版本本体 */
+const PATCH='6';   /* 同一版本内的补丁号；0 表示版本本体 */
 const CHANGELOG = [
+{v:'3.16.0',ps:'6',d:'2026-11-20',kind:'patch',sum:'跳转落点对准：不再“跳过去还得往上滑”，小节标题刚好露在吸顶栏下方 10px，一眼能看见跳对了没有',items:[
+['修复','跳转后被吸顶栏（顶栏 57px + 搜索/来源/章节条）挡住标题：改为先把吸顶栏实际底边量出来，再把目标标题滚到它下方 10px；落地后再做两次位置校正，避免展开分组时高度变化把标题顶上去'],
+['修复','落到大标题（如「二、修律活动」「四、南京国民政府」）时，现在停在标题本身并整组高亮，不再只把该标题下的第一个小标题顶到屏外'],
+['修复','精讲→背诵反向跳转：现在按「朝代分组」落到背诵那一条并高亮整组，不再是落到节首的「背诵提示」框；旧的 10 秒高亮残留也一并清掉，不再出现两处同时高亮'],
+['优化','320/390/430 三档实测：目标标题距吸顶栏底部均为 10px，横向溢出 0、报错 0'],
+]},
 {v:'3.16.0',ps:'5',d:'2026-11-20',kind:'patch',sum:'背诵 ⇄ 精讲改成「知识点对知识点」：背诵的每个朝代分组都有「精讲」键，一点直接落到精讲对应小节的标题并高亮，不再是关键字搜索',items:[
 ['重写','两本书之间 43 节 / 150 组 / 262 个对应点全部落到了精讲的具体小节（如「民事·第四节 婚姻家庭 · 四、明」→ 精讲 第五章·第三节 明 →「（二）婚姻家庭与继承制度的变化」），点开就是白话解释正文，页内高亮 2 秒'],
 ['新增','背诵每节标题右侧 🔗：按组列出这一节在精讲里的全部落点（朝代 + 精讲小节名 + 印刷页码），一处对多处时可逐条挑，不再只给一个模糊结果'],
