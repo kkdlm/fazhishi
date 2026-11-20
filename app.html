@@ -5958,10 +5958,10 @@ function tlScoreFind(scope,kw,snip,era){
   return best;
 }
 function tlJumpBook(k,si,g,a,era){
-  S.mode='zhuan'; S.ztsrc='book'; save(); applyMode(); chipRow(); go('browse');
+  S.mode='zhuan'; S.ztsrc='book'; save(); applyMode(); go('browse');
   setTimeout(function(){
     Q=''; var qi=document.getElementById('q'); if(qi) qi.value='';
-    VT=k; renderList();
+    VT=k; renderList(); chipRow();
     var sec=document.querySelectorAll('#list .vt-sec')[si]; if(!sec) return;
     var body=sec.querySelector('.bk-secs-body'), h=sec.querySelector('.vt-sec-h');
     if(body && body.style.display==='none' && h) h.click();
