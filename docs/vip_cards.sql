@@ -1,4 +1,4 @@
--- 法制史一点通 · 会员／卡密／邀请／设备 服务端结构（v3.18.0 补丁 2 版，幂等可重复执行）
+-- 法制史一点通 · 会员／卡密／邀请／设备 服务端结构（v3.19.0 版，幂等可重复执行）
 -- 用法：Supabase Dashboard → SQL Editor → New query → 整段粘贴 → Run（只需一次）
 -- 自动：push 本文件后 .github/workflows/db.yml 会尝试执行（需 secret SUPABASE_DB_URL）
 -- 说明：profiles 表里 pro_until（会员到期）、banned（封禁）、role（权限）都是已有字段，
@@ -73,7 +73,7 @@ end $$;
 revoke all on function public.redeem_card(text) from public;
 grant execute on function public.redeem_card(text) to authenticated;
 
--- ============ 5) 邀请码（v3.18.0 追加，幂等） ============
+-- ============ 5) 邀请码（幂等） ============
 alter table public.profiles add column if not exists invite_code text;
 create unique index if not exists profiles_invite_code_uidx
   on public.profiles (upper(invite_code)) where invite_code is not null;
@@ -83,7 +83,7 @@ create table if not exists public.referrals (
   code           text not null,
   inviter        uuid not null references auth.users(id) on delete cascade,
   invitee        uuid not null unique references auth.users(id) on delete cascade,
-  reward_inviter int not null default 7,
+  reward_inviter int not null default 3,
   reward_invitee int not null default 3,
   created_at     timestamptz default now()
 );
@@ -119,7 +119,7 @@ begin
 end $$;
 grant execute on function public.ensure_invite_code() to authenticated;
 
--- 填邀请码：一次性，双方加会员天数（天数从 app_config 读，可随时改）
+-- 填邀请码：一次性，双方各加 3 天（天数从 app_config 读，可后台改）
 create or replace function public.claim_invite(p_code text)
 returns jsonb language plpgsql security definer set search_path = public as $$
 declare v_inviter uuid; v_me uuid := auth.uid(); v_until timestamptz;
@@ -129,7 +129,7 @@ begin
   if not public.cfg_bool('invite_enabled', true) then
     return jsonb_build_object('ok', false, 'msg', '邀请活动暂时关闭');
   end if;
-  v_ri := public.cfg_int('invite_reward_inviter', 7);
+  v_ri := public.cfg_int('invite_reward_inviter', 3);
   v_re := public.cfg_int('invite_reward_invitee', 3);
   if exists (select 1 from public.referrals where invitee = v_me) then
     return jsonb_build_object('ok', false, 'msg', '这个账号已经用过邀请码了');
@@ -156,7 +156,7 @@ begin
 end $$;
 grant execute on function public.claim_invite(text) to authenticated;
 
--- ============ 6) 设备绑定（v3.18.0 追加，幂等） ============
+-- ============ 6) 设备绑定（幂等） ============
 create table if not exists public.devices (
   uid        uuid not null references auth.users(id) on delete cascade,
   device_id  text not null,
@@ -185,7 +185,6 @@ declare v_me uuid := auth.uid(); v_known boolean; v_n int; v_list jsonb;
 begin
   if v_me is null then raise exception '请先登录'; end if;
   if coalesce(trim(p_device),'') = '' then raise exception '设备标识为空'; end if;
-  /* 上限与活跃窗口以 app_config 为准；显式传 p_limit 时以传参为准（便于临时测试） */
   v_limit := case when coalesce(p_limit,0) > 0 then p_limit else public.cfg_int('device_limit', 3) end;
   v_win   := public.cfg_int('device_window_days', 45);
 
@@ -223,7 +222,7 @@ begin
 end $$;
 grant execute on function public.unbind_device(text) to authenticated;
 
--- ============ 7) 后台操作审计（v3.18.0 追加，幂等） ============
+-- ============ 7) 后台操作审计（幂等） ============
 create table if not exists public.audit_log (
   id         bigserial primary key,
   actor      uuid,
@@ -239,7 +238,7 @@ create policy audit_admin_only on public.audit_log
   for all using (
     exists (select 1 from public.profiles p where p.uid = auth.uid() and p.role = 'admin'));
 
--- ============ 8) 玩法参数配置（v3.18.0 追加，幂等；奖励天数只改这里） ============
+-- ============ 8) 玩法参数配置（奖励天数只改这里 / 后台「配置」页也可改） ============
 create table if not exists public.app_config (
   key        text primary key,
   val        jsonb not null,
@@ -247,7 +246,6 @@ create table if not exists public.app_config (
   updated_at timestamptz default now()
 );
 alter table public.app_config enable row level security;
--- 所有登录用户可读（前端只用于展示文案）；只有管理员可改
 drop policy if exists app_config_read on public.app_config;
 create policy app_config_read on public.app_config for select using (true);
 drop policy if exists app_config_admin on public.app_config;
@@ -259,13 +257,13 @@ create policy app_config_admin on public.app_config
 
 insert into public.app_config(key, val, note) values
   ('invite_enabled',        'true'::jsonb, '邀请活动总开关（false=停止发放，已发放不受影响）'),
-  ('invite_reward_inviter', '7'::jsonb,    '邀请人加会员天数'),
+  ('invite_reward_inviter', '3'::jsonb,    '邀请人加会员天数'),
   ('invite_reward_invitee', '3'::jsonb,    '被邀请人加会员天数'),
   ('device_limit',          '3'::jsonb,    '同一账号同时活跃设备上限'),
   ('device_window_days',    '45'::jsonb,   '设备活跃统计窗口（天）')
 on conflict (key) do nothing;
 
--- 取整数配置，缺失/非法时回落到默认值（保证老库未建配置表也能跑）
+-- 取整数配置，缺失/非法时回落到默认值
 create or replace function public.cfg_int(p_key text, p_def int)
 returns int language sql stable security definer set search_path = public as $$
   select coalesce(
@@ -275,7 +273,7 @@ returns int language sql stable security definer set search_path = public as $$
 $$;
 grant execute on function public.cfg_int(text, int) to anon, authenticated;
 
--- 切换开关键，允许 true/false 字符串
+-- 开关配置，允许 true/false
 create or replace function public.cfg_bool(p_key text, p_def boolean)
 returns boolean language sql stable security definer set search_path = public as $$
   select coalesce(
