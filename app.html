@@ -5957,6 +5957,28 @@ function tlScoreFind(scope,kw,snip,era){
   });
   return best;
 }
+function tlBlockIdx(k,si,g,a,era){
+  try{
+    var ch=(BTOPIC.chs||[]).filter(function(c){ return c.k===k; })[0]; if(!ch) return -1;
+    var sec=(ch.secs||[])[si]; if(!sec) return -1;
+    var bs=(sec.blocks||[]);
+    var a2=gsNorm(a), g2=gsNorm(g), e2=gsNorm(era||'').slice(0,2);
+    var i, x;
+    for(i=0;i<bs.length;i++){ x=gsNorm(bs[i].x||''); if(a2 && x && (x===a2 || x.indexOf(a2)>=0)) return i; }
+    if(g2){
+      var st=-1;
+      for(i=0;i<bs.length;i++){ if(bs[i].t==='h3' && gsNorm(bs[i].x||'').indexOf(g2)>=0){ st=i; break; } }
+      if(st>=0 && e2){
+        for(i=st+1;i<bs.length;i++){
+          if(bs[i].t==='h3') break;
+          if(bs[i].t==='h4' && gsNorm(bs[i].x||'').indexOf(e2)>=0) return i;
+        }
+      }
+      if(st>=0) return st+1;
+    }
+  }catch(e){}
+  return -1;
+}
 function tlJumpBook(k,si,g,a,era){
   S.mode='zhuan'; S.ztsrc='book'; save(); applyMode(); go('browse');
   setTimeout(function(){
@@ -5966,8 +5988,9 @@ function tlJumpBook(k,si,g,a,era){
     var body=sec.querySelector('.bk-secs-body'), h=sec.querySelector('.vt-sec-h');
     if(body && body.style.display==='none' && h) h.click();
     setTimeout(function(){
+      var tgt=null;
       var subs=[].slice.call(sec.querySelectorAll('.bk-sub'));
-      var tgt=null, key=gsNorm(g);
+      var key=gsNorm(g);
       subs.forEach(function(sb){
         if(tgt) return;
         var t=sb.querySelector('.bk-sub-t');
@@ -5977,6 +6000,7 @@ function tlJumpBook(k,si,g,a,era){
         }
       });
       if(!tgt) tgt=tlScoreFind(sec,a,key,era);
+      if(tgt && !tgt.classList.contains('bk-b')) tgt=tgt.querySelector&&tgt.querySelector('.bk-b')||tgt;
       gsFlash(tgt);
     },380);
   },140);
