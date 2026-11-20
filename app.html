@@ -2853,12 +2853,14 @@ function chipRow(){
   centerChips();
 }
 function setZtSrc(v){
+  if(!isVip() && v==='book'){ askVip('《背诵一本通》全文是会员功能，非会员可用「整合版」'); return; }
   S.ztsrc=(v==='book'?'book':'card'); save();
   if(S.mode!=='zhuan'){ S.mode='zhuan'; }
   applyMode(); chipRow(); renderList(); centerChips();
   mtoast(S.ztsrc==='book'?'已切到背诵一本通：整本书原文':'已切回整合版：目录照背诵一本通，正文是四份文件');
 }
 function setSrcSeg(v){
+  if(!isVip()){ askVip('精讲一本通是会员功能，非会员可用「专题史 · 整合版」'); return; }
   if(S.mode==='zhuan'){ setZtSrc(v==='book'?'book':'card'); return; }
   setDaiSrc(v==='jj'?'jj':'card');
 }
@@ -3864,8 +3866,25 @@ function startRandom(){
   for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; }
   startRecite(a,'随机 100');
 }
+function renderFreeLimit(){
+  const card=document.getElementById('rCard');
+  const idx=document.getElementById('rIdx'); if(idx) idx.textContent='非会员 · 今日 5 张已用完';
+  const bar=document.getElementById('rBar'); if(bar) bar.style.width='100%';
+  if(!card) return;
+  card.style.setProperty('--c', cOf(CH[0].k));
+  card.innerHTML=`<div class="sum">
+    <div class="sk">今 日 免 费 额 度 用 完</div>
+    <div class="sc">5 / 5</div>
+    <div class="sd">非会员每天可背 5 张卡，明天 0 点自动恢复；已看过的卡当天仍可复习，不重复占用额度。</div>
+    <div class="sum-acts">
+      <button class="primary" onclick="openVip()">开通会员 · 不限量</button>
+      <button onclick="go('home')">回总览</button>
+    </div></div>`;
+  try{ markScroll(); }catch(e){}
+}
 function renderRecite(){
   const card=document.getElementById('rCard');
+  if(!REND && !isVip() && RQ[RIDX] && !freeBookAllow(RQ[RIDX])){ renderFreeLimit(); return; }
   if(REND){
     const t=Math.round((Date.now()-RSTAT.t)/1000);
     const done=RSTAT.ok+RSTAT.mid+RSTAT.no;
@@ -5773,6 +5792,7 @@ function startHatQuiz(){
 }
 
 function toggleMode(){
+  if(!isVip()){ askVip('断代史视图与精讲一本通是会员功能，非会员可用「专题史 · 整合版」'); return; }
   S.mode = (S.mode==='zhuan'?'dai':'zhuan'); save();
   applyMode();
   renderHome(); chipRow(); renderList();
@@ -5806,6 +5826,7 @@ function applyMode(){
     : (S.daisrc==='jj' ? '搜精讲一本通全文，如「禹刑」「六礼」「春秋决狱」' : '搜考点，如「唐律疏议」「春秋决狱」「十恶」');
 }
 function setTopic(t){
+  if(!isVip() && t!=='y'){ askVip('专题的其余视图需要会员，非会员可看「一图流原页」'); return; }
   TOPIC=t||'tl';
   document.querySelectorAll('#topicSeg button').forEach(b=>b.classList.toggle('on',b.dataset.t===TOPIC));
   const hd=document.getElementById('topicHead');
@@ -6913,6 +6934,7 @@ function jumpBookByPoint(n, altTerm){
   return true;
 }
 function jumpBookFromCard(btn){
+  if(!isVip()){ askVip('《背诵一本通》全文是会员功能；非会员每天可背 5 张闪卡，卡内含原文'); return true; }
   const d=(btn&&btn.dataset)||{};
   if(d.n && jumpBookByPoint(+d.n, d.an||'')) return true;
   return jumpBookByText({q:d.an||d.alt||'', alt:d.alt||'', sub:d.sub||'', ch:d.ch||''});
@@ -7815,6 +7837,43 @@ const CARDKEY_ON=true; /* 卡密已启用 */
 const CARD_SECRET='FZ2027-vip-1a7c9e';
 function vipUntilMs(){ return Number(S.vipUntil||0); }
 function isVip(){ return vipUntilMs()>Date.now(); }
+/* ---------- 非会员免费额度（v3.19.0）----------
+   规则：速览只能用「专题史 · 整合版」；专题只能用「一图流原页」；
+        背诵闪卡每天 5 张（按卡片去重计数，跨设备不同步、按本机自然日重置）；
+        刷题、挖空默写、断代史、精讲一本通、背诵一本通、时间轴等需会员。 */
+const FREE_BK=5;
+function freeDay(){
+  const d=new Date();
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+function freeBookUsed(){
+  const f=(S&&S.freeBk)||{};
+  if(!f||f.d!==freeDay()) return {d:freeDay(),ids:[]};
+  return {d:f.d,ids:Array.isArray(f.ids)?f.ids.slice():[]};
+}
+function freeBookAllow(e){
+  if(isVip()) return true;
+  if(!e) return true;
+  const u=freeBookUsed();
+  const k=ekey(e);
+  if(u.ids.indexOf(k)>=0){ S.freeBk=u; return true; }
+  if(u.ids.length>=FREE_BK){ S.freeBk=u; save(); return false; }
+  u.ids.push(k); S.freeBk=u; save();
+  return true;
+}
+function askVip(msg){
+  mtoast(msg||'这个功能需要会员');
+  try{ openVip(); }catch(e){}
+}
+/* 每次进入受限视图时把状态收敛到免费允许的唯一路径 */
+function applyFreeLocks(){
+  if(isVip()) return;
+  let ch=false;
+  if(S.mode!=='zhuan'){ S.mode='zhuan'; ch=true; }
+  if(S.ztsrc==='book'){ S.ztsrc='card'; ch=true; }
+  if(typeof TOPIC!=='undefined' && TOPIC!=='y'){ TOPIC='y'; ch=true; }
+  if(ch){ try{ save(); applyMode(); }catch(e){} }
+}
 function vipLeftDays(){ const ms=vipUntilMs()-Date.now(); return ms>0?Math.ceil(ms/86400000):0; }
 function vipDayStr(){ if(!isVip()) return '未开通'; return new Date(vipUntilMs()).toISOString().slice(0,10); }
 async function sha8(txt){
@@ -7857,11 +7916,11 @@ function openVip(){
   openSheet('会员 · 卡密兑换',`
     <div class="sheet-sec">
       <h4>现在的状态</h4>
-      <div class="me-note">${isVip()?('VIP 有效期至 '+vipDayStr()+'（剩 '+vipLeftDays()+' 天）'):'普通用户：只开背诵、考点卡、时间轴；全站搜索与真题解析需要开通'}</div>
+      <div class="me-note">${isVip()?('VIP 有效期至 '+vipDayStr()+'（剩 '+vipLeftDays()+' 天）'):'普通用户：速览仅「专题史 · 整合版」，专题仅「一图流原页」，背诵闪卡每天 5 张；刷题、挖空、断代史、精讲与背诵全文需开通'}</div>
     </div>
     <div class="sheet-sec">
       <h4>会员权益</h4>
-      <div class="me-note">· 全站搜索（五源一次搜完）<br>· 真题解析、错项分析、避坑提示<br>· 精讲一本通全文与时间轴纵向视图<br>· 后续新增的导出、统计增强</div>
+      <div class="me-note">· 背诵闪卡不限量（非会员每天 5 张）<br>· 刷题全库与真题解析、错项分析、避坑提示<br>· 断代史视图、精讲一本通全文、背诵一本通全文<br>· 时间轴、老龚点睛、复盘一览、知识表等专题视图<br>· 全站搜索（五源一次搜完）</div>
     </div>
     <div class="sheet-sec">
       <h4>兑换卡密</h4>
@@ -7937,7 +7996,7 @@ function renderAcct(){
 }
 function meCard(inner){ return '<div class="me-card">'+inner+'</div>'; }
 /* ---------- 邀请码 / 设备绑定（v3.18.0） ---------- */
-let EXTRA={code:'',n:0,dead:false,devBlocked:false,rwI:7,rwE:3,invOn:true,cfgOk:false};
+let EXTRA={code:'',n:0,dead:false,devBlocked:false,rwI:3,rwE:3,invOn:true,cfgOk:false};
 function devId(){
   try{
     let v=localStorage.getItem(KEY+':dev');
@@ -7953,11 +8012,11 @@ function inviteCardHTML(){
   if(EXTRA.dead) return meCard(`<h3>邀请有礼</h3><div class="me-note">邀请功能暂未开通，稍后再来（不影响刷题与同步）。</div>`);
   if(EXTRA.invOn===false) return meCard(`<h3>邀请有礼</h3><div class="me-note">邀请活动暂时关闭，已发放的会员不受影响。</div>`);
   const code=EXTRA.code||'——';
-  const ri=EXTRA.rwI||7, re=EXTRA.rwE||3;
+  const ri=EXTRA.rwI||3, re=EXTRA.rwE||3;
   return meCard(`<h3>邀请有礼</h3>
     <div class="me-note">把邀请码发给同学：对方首次登录填一次，你得 <b>+${ri} 天</b>会员，对方得 <b>+${re} 天</b>；每个账号终身只能填一次，不能填自己的码。</div>
     <div class="me-inv"><b id="invCode">${esc(code)}</b><button onclick="copyInvite()">复制</button></div>
-    <div class="me-note">已邀请 <b>${EXTRA.n||0}</b> 人${EXTRA.n?(' · 累计 +'+((EXTRA.n*(EXTRA.rwI||7)))+' 天'):''}</div>
+    <div class="me-note">已邀请 <b>${EXTRA.n||0}</b> 人${EXTRA.n?(' · 累计 +'+((EXTRA.n*(EXTRA.rwI||3)))+' 天'):''}</div>
     <div class="me-row"><input id="invIn" maxlength="16" style="text-transform:uppercase" placeholder="填别人的邀请码"><button onclick="claimInvite(this)">兑换</button></div>
     <div class="me-note" id="invMsg"></div>`);
 }
@@ -8745,6 +8804,7 @@ function markLocked(){
 }
 function setSub(m){
   if(blocked()){ askLogin(); return; }
+  if(m==='clo' && !isVip()){ askVip('挖空默写是会员功能，非会员可先背闪卡（每天 5 张）'); return; }
   S.sub=m; save();
   document.querySelectorAll('.view').forEach(x=>x.classList.remove('on'));
   const tgt=document.getElementById(m==='clo'?'v-cloze':'v-recite');
@@ -8773,8 +8833,10 @@ function topLayer(){
 addEventListener('scroll',topLayer,{passive:true});
 function go(v){
   if(v!=='home' && v!=='me' && blocked()){ askLogin(); return; }
+  if(!isVip() && v==='quiz'){ askVip('刷题是会员功能：非会员可先背 5 张/天、看专题整合版'); return; }
   if(v==='recite'){ setSub('rec'); return; }
   if(v==='cloze'){ setSub('clo'); return; }
+  if(!isVip()) applyFreeLocks();
   const cur=document.querySelector('.view.on');
   if(cur){ SCROLLMEM[cur.id.replace('v-','')]=window.scrollY; }
   document.querySelectorAll('.view').forEach(x=>x.classList.remove('on'));
@@ -8782,8 +8844,8 @@ function go(v){
   if(el) el.classList.add('on');
   document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('on',b.dataset.v===v));
   if(v==='home') renderHome();
-  if(v==='browse'){ chipRow(); renderList(); }
-  if(v==='topic') setTopic(TOPIC);
+  if(v==='browse'){ applyFreeLocks(); applyMode(); chipRow(); renderList(); }
+  if(v==='topic'){ applyFreeLocks(); setTopic(TOPIC); }
   if(v==='quiz'){ if(!QZ) renderQuizSetup(); else renderQuiz(); }
   if(v==='me'){ renderAcct(); }
   // 渲染完成后恢复该视图上次的滚动位置
@@ -8900,9 +8962,19 @@ try{
   if(window.__bootFail) window.__bootFail('页面没加载出来','启动时有一处数据读不出来，重开一次通常就好。',!navigator.onLine);
 }
 
-const VER='3.18.0';
-const PATCH='3';   /* 同一版本内的补丁号；0 表示版本本体 */
+const VER='3.19.0';
+const PATCH='1';   /* 同一版本内的补丁号；0 表示版本本体 */
 const CHANGELOG = [
+{v:'3.19.0',ps:'1',d:'2026-11-21',kind:'feature',sum:'非会员免费额度定稿：速览仅专题史整合版、专题仅一图流原页、背诵每天 5 张、刷题与挖空关闭；后台新增「配置」页可直接改邀请奖励与设备参数',items:[
+['新增','非会员速览锁定「专题史 · 整合版」：断代史、精讲一本通、背诵一本通一律弹会员（进入即自动收敛到整合版）'],
+['新增','非会员专题锁定「一图流原页」：时间轴、老龚点睛、复盘一览、知识表弹会员'],
+['新增','非会员背诵闪卡每天 5 张：按卡片去重计数，本机 0 点重置；第 6 张显示「今日免费额度用完」并给开通入口，已看过卡片仍可复习'],
+['新增','刷题对非会员整体关闭（进页面即弹会员）；挖空默写同样需会员'],
+['新增','后台「配置」页：邀请人/被邀请人天数、设备上限、活跃窗口、邀请开关，改完保存即生效，无需发版'],
+['调整','邀请奖励默认改为双方各 3 天（服务端默认与前端回滚值同步）'],
+['调整','会员弹层权益说明按新额度重写；背诵一本通全文入口对非会员拦截，防止绕过额度'],
+['说明','规则见 开发规则.md 8.1 与 8.7；参数仍以 app_config 为唯一来源'],
+]},
 {v:'3.18.0',ps:'3',d:'2026-11-21',kind:'fix',sum:'邀请功能未开通时的提示改为面向用户的话术，不再显示内部文件名',items:[
 ['修正','表未建时邀请卡提示“邀请功能暂未开通，稍后再来（不影响刷题与同步）”'],
 ]},
