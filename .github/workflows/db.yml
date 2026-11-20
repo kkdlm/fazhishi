@@ -1,0 +1,45 @@
+name: db-migrate
+
+# 以后所有数据库结构变更：把 SQL 追加到 docs/vip_cards.sql，push 后这里自动执行（幂等）
+# 前置：仓库 Settings → Secrets and variables → Actions 里加一条 SUPABASE_DB_URL
+#      取值：Supabase Dashboard → Project Settings → Database → Connection string → URI（postgres://...）
+# 没配置这个 secret 时，本工作流会直接跳过，不会报错。
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'docs/*.sql'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: db-migrate
+  cancel-in-progress: false
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    env:
+      DBURL: ${{ secrets.SUPABASE_DB_URL }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Skip when secret missing
+        if: env.DBURL == ''
+        run: echo "::notice::未配置 SUPABASE_DB_URL，跳过数据库迁移"
+
+      - name: Install psql
+        if: env.DBURL != ''
+        run: sudo apt-get update -qq && sudo apt-get install -y postgresql-client
+
+      - name: Apply docs/vip_cards.sql
+        if: env.DBURL != ''
+        run: |
+          set -e
+          echo "执行 docs/vip_cards.sql（全部语句均为 if not exists / drop policy if exists，可重复跑）"
+          psql "$DBURL" -v ON_ERROR_STOP=1 --single-transaction -f docs/vip_cards.sql
+          psql "$DBURL" -c "select column_name from information_schema.columns where table_name='profiles' order by 1;"
+          psql "$DBURL" -c "select to_regclass('public.cards') as cards_table;"
