@@ -333,6 +333,16 @@ h1 em{font-style:normal;color:var(--red)}
 .chip.on{background:var(--ink);color:var(--paper);border-color:var(--ink)}
 .chip .n{opacity:.6;margin-left:4px;font-variant-numeric:tabular-nums}
 .q-count{font-size:11px;color:var(--ink-3);margin:2px 2px 8px}
+.search .gs-btn{flex:0 0 auto;border:1px solid var(--line);background:var(--card);color:#5b6660;font-size:11.5px;line-height:1;padding:5px 8px;border-radius:999px;letter-spacing:.4px}
+.search .gs-btn:active{background:var(--paper-2,#F1F1E9)}
+.gs-chips{display:flex;flex-wrap:wrap;gap:8px;margin:4px 0 6px}
+.gs-sum{font-size:12.5px;color:#5b6660;margin:2px 0 10px}
+.gs-sum b{color:var(--ink);font-weight:600}
+#sheetBody .hit{margin:0 0 8px;display:block;padding:9px 11px}
+#sheetBody .hit .hit-loc{font-size:11px;color:var(--ink-3);margin:0 0 5px;line-height:1.4;white-space:normal;max-width:none;border-right:0;padding:0}
+#sheetBody .hit .hit-tx{font-size:12.5px;line-height:1.62;display:block;color:var(--ink)}
+#sheetBody .hit .chev{display:none}
+#sheetBody h4 .bt-cnt{margin-left:7px}
 
 .card{
   background:var(--card);border:1px solid var(--line);border-radius:var(--r);
@@ -2290,6 +2300,7 @@ window.__bootOk=function(){ window.__booted=true; var d=document.getElementById(
       <div class="search">
         <svg viewBox="0 0 16 16"><circle cx="7" cy="7" r="4.6" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M10.5 10.5L14 14" stroke="currentColor" stroke-width="1.5"/></svg>
         <input id="q" placeholder="搜考点，如「唐律疏议」「春秋决狱」「十恶」" autocomplete="off" enterkeyhint="search">
+        <button class="gs-btn" onclick="openGlobalSearch()" aria-label="全站搜索">全站</button>
       </div>
       <div class="seg3" id="srcSeg" style="display:none">
         <button data-z="card" onclick="setSrcSeg('card')">考点卡</button>
@@ -5768,7 +5779,7 @@ function applyMode(){
   if(sr) sr.style.display='';
   const qi=document.getElementById('q');
   if(qi) qi.placeholder = (S.mode==='zhuan')
-    ? '搜正文，如「无讼」「唐律疏议」「宗法」'
+    ? '搜正文，如「无讼」「春秋决狱」'
     : (S.daisrc==='jj' ? '搜精讲一本通全文，如「禹刑」「六礼」「春秋决狱」' : '搜考点，如「唐律疏议」「春秋决狱」「十恶」');
 }
 function setTopic(t){
@@ -6643,7 +6654,8 @@ function jumpHit(kind,chKey,si,gi,bi){
   const sub=subs[gi];
   if(sub){ const sh=sub.querySelector('.bk-sub-h'), sb=sub.querySelector('.bk-sub-b');
     if(sb && sb.style.display==='none') sh.click(); }
-  const tgt=sec.querySelector('.bk-b[data-b="'+bi+'"]');
+  const scope=(subs[gi]&&subs[gi].querySelector('.bk-sub-b'))?subs[gi].querySelector('.bk-sub-b'):(subs[gi]||sec);
+  const tgt=scope.querySelector('.bk-b[data-b="'+bi+'"]')||sec.querySelector('.bk-b[data-b="'+bi+'"]');
   if(tgt){
     let row=null;
     if(HKW){ row=deepestHit(tgt,HKW); if(row&&(row.tagName==='TD'||row.tagName==='TH')) row=row.parentElement; }
@@ -6664,8 +6676,9 @@ function vtSearchHTML(q){
     (ch.secs||[]).forEach((sec,si)=>{
       const gs=bkGroups(sec);
       gs.forEach((g,gi)=>{
-        (g.bs||[]).forEach((b,bi)=>{
-          const txt=bkText(b);
+        /* 落点必须按「渲染单元」算：背诵页会把连续正文合并成一个 .bk-b，用块序号会落到上一块 */
+        bkUnits(g.bs).forEach((u,bi)=>{
+          const txt=gsUnitText(u);
           if(txt.indexOf(kw)<0) return;
           total++; secs.add(ch.k+'|'+si);
           if(rows.length>=150) return;
@@ -6810,6 +6823,219 @@ function jjSearchHTML(q){
   document.getElementById('qCount').textContent='精讲一本通 · 「'+kw+'」命中 '+total+' 段';
   return '<div class="hit-list">'+rows.join('')+'</div>';
 }
+/* ================= 全站搜索：一次搜遍 考点卡 / 背诵 / 精讲 / 真题 / 朝代 ================= */
+var GSKW='', GSH=[];
+function gsNorm(t){ return String(t==null?'':t).replace(/\s+/g,''); }
+function gsSnip(t){ var x=String(t||'').replace(/\s+/g,' ').trim(); return x.slice(0,26); }
+function gsUnitText(u){
+  if(!u) return '';
+  if(u.kind==='block') return bkText(u.b);
+  if(u.kind==='exam') return bkText(u.stem)+' '+(u.ans||[]).map(bkText).join(' ');
+  if(u.kind==='ans') return (u.bs||[]).map(bkText).join(' ');
+  return '';
+}
+function gsPtText(p){
+  var a=[p.title||'',p.ch||'',p.sub||''];
+  (p.lines||[]).forEach(function(l){ (l||[]).forEach(function(t){ a.push((t&&t[0])||'') }); });
+  return a.join(' ');
+}
+function gsHistory(){ try{ return JSON.parse(localStorage.getItem(KEY+':gsh')||'[]')||[] }catch(e){ return [] } }
+function gsHistPush(kw){
+  kw=String(kw||'').trim(); if(!kw) return;
+  var h=gsHistory().filter(function(x){ return x!==kw; }); h.unshift(kw); h=h.slice(0,8);
+  try{ localStorage.setItem(KEY+':gsh',JSON.stringify(h)) }catch(e){}
+}
+function gsClearHist(){ try{ localStorage.removeItem(KEY+':gsh') }catch(e){} mtoast('搜索历史已清空'); openGlobalSearch(); }
+
+function gsGroupPoint(kw){
+  var rows=[], total=0;
+  PTS.forEach(function(p){
+    if(gsPtText(p).indexOf(kw)<0) return; total++;
+    if(rows.length>=8) return;
+    GSH.push({kind:'pt',n:p.n});
+    rows.push(hitRow(kw,'<b>考点卡</b> › '+esc(p.ch||''),gsPtText(p),'gsGo('+(GSH.length-1)+')'));
+  });
+  return {total:total,rows:rows};
+}
+function gsGroupBook(kw){
+  var rows=[], total=0;
+  BTOPIC.chs.forEach(function(ch){
+    (ch.secs||[]).forEach(function(sec,si){
+      bkGroups(sec).forEach(function(g,gi){
+        bkUnits(g.bs).forEach(function(u,bi){
+          var t=gsUnitText(u);
+          if(t.indexOf(kw)<0) return; total++;
+          if(rows.length>=8) return;
+          GSH.push({kind:'book',ch:ch.k,si:si,kw:kw,snip:gsSnip(t)});
+          var loc='<b>背诵一本通</b> · '+esc(ch.n)+' › '+esc(sec.n)+' · P'+esc(sec.pgs||'');
+          rows.push(hitRow(kw,loc,t,'gsGo('+(GSH.length-1)+')'));
+        });
+      });
+    });
+  });
+  return {total:total,rows:rows};
+}
+function gsGroupJj(kw){
+  var rows=[], total=0;
+  JTOPIC.chs.forEach(function(ch,ci){
+    (ch.secs||[]).forEach(function(sec,si){
+      jjGroups(sec).forEach(function(g,gi){
+        (g.bs||[]).forEach(function(b,bi){
+          var t=bkText(b);
+          if(t.indexOf(kw)<0) return; total++;
+          if(rows.length>=8) return;
+          GSH.push({kind:'jj',ci:ci,si:si,gi:gi,bi:bi,ch:ch.k,kw:kw,snip:gsSnip(t)});
+          var loc='<b>精讲一本通</b> · '+esc(ch.n)+' › '+esc(sec.n)+' · P'+esc(String(b.pg||sec.pgs||''));
+          rows.push(hitRow(kw,loc,t,'gsGo('+(GSH.length-1)+')'));
+        });
+      });
+    });
+  });
+  return {total:total,rows:rows};
+}
+function gsGroupQ(kw){
+  var rows=[], total=0;
+  (typeof REALQ!=='undefined'?REALQ:[]).forEach(function(q){
+    var t=(q.stem||'')+' '+(q.opts||[]).join(' ')+' '+((Array.isArray(q.exp)?q.exp.join(' '):(q.exp||'')))+' ';
+    if(t.indexOf(kw)<0) return; total++;
+    if(rows.length>=8) return;
+    GSH.push({kind:'q',id:q.id});
+    var loc='<b>真题</b> › '+esc(q.chap||q.ch||'')+(q.sec?' › '+esc(q.sec):'')+' · 书 P'+esc(q.page||'');
+    rows.push(hitRow(kw,loc,(q.stem||'')+' '+((q.opts||[]).join(' ')),'gsGo('+(GSH.length-1)+')'));
+  });
+  return {total:total,rows:rows};
+}
+function gsGroupEra(kw){
+  var rows=[], total=0;
+  var eras=(typeof TLX!=='undefined'&&TLX&&TLX.eras)||[];
+  eras.forEach(function(g,i){
+    var nm=String(g.era||'');
+    if(nm.indexOf(kw)<0 && kw.indexOf(nm)<0) return; total++;
+    if(rows.length>=4) return;
+    var n=0; (g.groups||[]).forEach(function(x){ n+=(x.items||[]).length; });
+    GSH.push({kind:'era',i:i});
+    rows.push(hitRow(kw,'<b>朝代时间轴</b> › 第 '+(i+1)+' 个节点','<b>'+esc(nm)+'</b> · '+n+' 条要点，分 '+((g.groups||[]).length)+' 组','gsGo('+(GSH.length-1)+')'));
+  });
+  return {total:total,rows:rows};
+}
+/* 落点：先按「整块文本片段」在目标小节里找块，不靠序号（序号在合并/无标题分组时会错位） */
+function gsFindBlock(scope,kw,snip){
+  if(!scope) return null;
+  var bs=[].slice.call(scope.querySelectorAll('.bk-b'));
+  var n1=gsNorm(snip);
+  if(n1){ var x=bs.filter(function(b){ return gsNorm(b.textContent).indexOf(n1)>=0; })[0]; if(x) return x; }
+  var n2=gsNorm(kw);
+  return bs.filter(function(b){ return gsNorm(b.textContent).indexOf(n2)>=0; })[0]||null;
+}
+function gsFlash(tgt){
+  if(!tgt) return;
+  jjScrollTop(tgt); setTimeout(function(){jjScrollFix(tgt);},600); setTimeout(function(){jjScrollFix(tgt);},1100);
+  tgt.classList.add('hit-hl'); setTimeout(function(){tgt.classList.remove('hit-hl');},10200);
+  haptic();
+}
+function gsLandBook(e){
+  closeSheet();
+  S.mode='zhuan'; S.ztsrc='book'; save(); applyMode(); chipRow(); go('browse');
+  setTimeout(function(){
+    Q=''; var qi=document.getElementById('q'); if(qi) qi.value='';
+    VT=e.ch; renderList();
+    var sec=document.querySelectorAll('#list .vt-sec')[e.si]; if(!sec) return;
+    var body=sec.querySelector('.bk-secs-body'), h=sec.querySelector('.vt-sec-h');
+    if(body && body.style.display==='none' && h) h.click();
+    [].slice.call(sec.querySelectorAll('.bk-sub')).forEach(function(sb){
+      var b=sb.querySelector('.bk-sub-b'); if(b && b.style.display==='none'){ var sh=sb.querySelector('.bk-sub-h'); if(sh) sh.click(); }
+    });
+    gsFlash(gsFindBlock(sec,e.kw,e.snip));
+  },160);
+}
+function gsLandJj(e){
+  closeSheet();
+  S.mode='dai'; S.daisrc='jj'; JCH=e.ch; save(); applyMode(); chipRow(); go('browse');
+  setTimeout(function(){
+    Q=''; var qi=document.getElementById('q'); if(qi) qi.value='';
+    renderList();
+    var sec=document.getElementById('jjs'+e.si); if(!sec) return;
+    var body=sec.querySelector('.bk-secs-body'), h=sec.querySelector('.vt-sec-h');
+    if(body && body.style.display==='none' && h) h.click();
+    setTimeout(function(){
+      [].slice.call(sec.querySelectorAll('.bk-sub')).forEach(function(sb){
+        var b=sb.querySelector('.bk-sub-b'); if(b && b.style.display==='none'){ var sh=sb.querySelector('.bk-sub-h'); if(sh) sh.click(); }
+      });
+      setTimeout(function(){ gsFlash(gsFindBlock(sec,e.kw,e.snip)); },260);
+    },420);
+  },160);
+}
+function gsOpenPoint(n){
+  var p=PTS.filter(function(x){ return x.n===n; })[0];
+  if(!p){ mtoast('考点没找到'); return; }
+  closeSheet();
+  openSheet('考点 '+pad3(pnum(p.n))+' · '+String(p.title||''),'<div class="sheet-sec">'+bodyHTML(p)+'</div>');
+  haptic();
+}
+function gsOpenQ(id){
+  var q=(typeof REALQ!=='undefined'?REALQ:[]).filter(function(x){ return x.id===id; })[0];
+  if(!q){ mtoast('题目没找到'); return; }
+  var opts=(q.opts||[]).map(function(t,i){ return '<div class="wb-opt '+(String((q.ans||[]).join('')).indexOf('ABCD'[i])>=0?'right':'')+'"><i>'+'ABCD'[i]+'</i><span>'+esc(t)+'</span></div>'; }).join('');
+  var expArr=Array.isArray(q.exp)?q.exp:(q.exp?[q.exp]:[]);
+  var exp=expArr.map(function(x){ return '<p class="me-note">'+esc(x)+'</p>'; }).join('');
+  closeSheet();
+  openSheet('真题 · '+(q.type==='multi'?'多选':'单选')+' · 答案 '+esc(String((q.ans||[]).join(''))||'—'),
+    '<div class="sheet-sec"><h4>'+esc(q.stem||'')+'</h4>'+opts+
+    '<div class="me-note" style="margin-top:10px">'+esc(q.chap||q.ch||'')+(q.page?' · 书 P'+esc(q.page):'')+'</div>'+exp+'</div>');
+  haptic();
+}
+function gsOpenEra(i){ closeSheet(); TOPIC='tl'; go('topic'); setTopic('tl'); setEra(i); haptic(); }
+function gsGo(i){
+  var e=GSH[i]; if(!e) return;
+  if(e.kind==='pt') return gsOpenPoint(e.n);
+  if(e.kind==='book') return gsLandBook(e);
+  if(e.kind==='jj'){ closeSheet(); return jjGo(e.ci,e.si,e.gi,e.bi); }
+  if(e.kind==='q') return gsOpenQ(e.id);
+  if(e.kind==='era') return gsOpenEra(e.i);
+}
+function gsShowAll(kind){
+  var kw=(GSKW||'').trim(); if(!kw) return;
+  closeSheet();
+  if(kind==='book'){ S.mode='zhuan'; S.ztsrc='book'; save(); applyMode(); chipRow(); go('browse'); }
+  else { S.mode='dai'; S.daisrc='jj'; save(); applyMode(); chipRow(); go('browse'); }
+  var qi=document.getElementById('q'); if(qi) qi.value=kw;
+  Q=kw; renderList();
+}
+function gsSec(title,total,rows,allKind){
+  if(!total) return '';
+  var more=(allKind&&total>rows.length)?'<button class="me-link" style="padding:8px 0" onclick="gsShowAll(\''+allKind+'\')">这一组全部 '+total+' 处<span>›</span></button>':'';
+  return '<div class="sheet-sec"><h4>'+title+'<span class="bt-cnt">'+total+' 处</span></h4>'
+    +(rows.join('')||'<div class="vt-empty">命中在很长的表格里，用「全部」展开原文看</div>')+more+'</div>';
+}
+function gsRun(kw){
+  kw=String(kw||'').trim(); if(!kw) return;
+  GSKW=kw; GSH=[]; gsHistPush(kw);
+  var pt=gsGroupPoint(kw), bk=gsGroupBook(kw), jj=gsGroupJj(kw), rq=gsGroupQ(kw), er=gsGroupEra(kw);
+  var total=pt.total+bk.total+jj.total+rq.total+er.total;
+  var html='<div class="gs-sum">「<b>'+esc(kw)+'</b>」共命中 <b>'+total+'</b> 处 · 点任意一条直接跳过去</div>'
+    + gsSec('考点卡',pt.total,pt.rows)
+    + gsSec('背诵一本通',bk.total,bk.rows,'book')
+    + gsSec('精讲一本通',jj.total,jj.rows,'jj')
+    + gsSec('真题',rq.total,rq.rows)
+    + gsSec('朝代时间轴',er.total,er.rows);
+  if(!total) html+='<div class="vt-empty">五个模块都没有「'+esc(kw)+'」。书名号、朝代名、制度名都可以试。</div>';
+  openSheet('全站搜索',html);
+  haptic();
+}
+function gsPick(kw){ var qi=document.getElementById('q'); if(qi) qi.value=kw; closeSheet(); gsRun(kw); }
+function openGlobalSearch(){
+  var kw=((document.getElementById('q')||{}).value||'').trim();
+  if(kw){ gsRun(kw); return; }
+  var h=gsHistory();
+  var hot=['春秋决狱','十恶','唐律疏议','秋审','宗法','六礼','八议','翻异别勘','铸刑书','务限法'];
+  var html='<div class="sheet-sec"><h4>全站一次搜完</h4>'
+    +'<div class="me-note">不用先切模块：一条词同时搜考点卡、背诵一本通、精讲一本通、真题、朝代时间轴，点命中就直接落到原文那一块。</div></div>'
+    +(h.length?('<div class="sheet-sec"><h4>最近搜过</h4><div class="gs-chips">'+h.map(function(x){ return '<button class="chip" onclick="gsPick(\''+esc(String(x).replace(/'/g,'&#39;'))+'\')">'+esc(x)+'</button>'; }).join('')+'</div>'
+      +'<button class="me-link" onclick="gsClearHist()">清空历史<span>›</span></button></div>'):'')
+    +'<div class="sheet-sec"><h4>常考词，点一下就搜</h4><div class="gs-chips">'+hot.map(function(x){ return '<button class="chip" onclick="gsPick(\''+esc(x)+'\')">'+esc(x)+'</button>'; }).join('')+'</div></div>';
+  openSheet('全站搜索',html);
+}
+
 /* 跳转落点：让目标标题刚好露在吸顶栏（顶栏 + 工具条 + 分段条）下方 */
 function jjCover(){
   let cover=0;
@@ -8102,6 +8328,7 @@ window.addEventListener('resize', syncHdr, {passive:true});
 window.addEventListener('orientationchange', ()=>setTimeout(syncHdr,120));
 applyPrefs(); syncHdr();
 document.getElementById('q').addEventListener('input',e=>{ Q=e.target.value; renderList(); });
+document.getElementById('q').addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); openGlobalSearch(); } });
 document.addEventListener('keydown',e=>{
   if(!document.getElementById('v-recite').classList.contains('on')) return;
   if(e.code==='Space'){ e.preventDefault(); if(!RSHOW) reveal(); }
@@ -8170,8 +8397,15 @@ try{
 }
 
 const VER='3.16.0';
-const PATCH='14';   /* 同一版本内的补丁号；0 表示版本本体 */
+const PATCH='15';   /* 同一版本内的补丁号；0 表示版本本体 */
 const CHANGELOG = [
+{v:'3.16.0',ps:'15',d:'2026-11-20',kind:'patch',sum:'全站搜索上线：一条词同时搜考点卡、背诵一本通、精讲一本通、真题、朝代时间轴，点结果直接落到原文那一块；顺手修掉背诵搜索结果落点偏上一块的老问题',items:[
+['新增','搜索栏右侧加「全站」按钮（回车也直接触发）：把原来各模块各搜各的，合成一次跨五源的检索，结果按模块分组并给出命中数'],
+['新增','每条结果都能直达：考点卡→展开完整考点；背诵一本通→落到对应小节的具体段落并高亮；精讲一本通→落到对应小节精确段落；真题→题干、选项、答案、解析整页看；朝代→直接进时间轴该朝'],
+['新增','搜索历史（最近 8 个词）与常考词快捷入口：搜索框空着时点「全站」就能看到，一键重搜或清空'],
+['修复','背诵搜索结果落点偏移：背诵页会把连续正文合并成一个块，原来按原始块序号定位，会落到上一块；改为按实际渲染单元定位，命中段落直接高亮'],
+['优化','每个模块只列前 8 条，附「这一组全部 N 处」入口，点一下切到该模块的完整命中列表，不在弹层里堆一百条'],
+]},
 {v:'3.16.0',ps:'14',d:'2026-11-20',kind:'patch',sum:'杀启动前那一闪：重启后头 2 秒内不再弹任何错误/超时卡片，先让启动页画完再判定，超时阈值仍按原来的 6 秒',items:[
 ['修复','点「更新/重启」后、启动页出来之前会闪一秒钟的「加载超时」卡片：错误卡改为延迟判定——启动头 2 秒内只记录不显示，启动页画完后仍失败才弹出'],
 ['修复','外壳层同理：启动 1.5 秒内的脚本报错不再立刻盖错误页，避免刚切到更新画面就被错误页抢位'],
