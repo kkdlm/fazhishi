@@ -7937,7 +7937,7 @@ function renderAcct(){
 }
 function meCard(inner){ return '<div class="me-card">'+inner+'</div>'; }
 /* ---------- 邀请码 / 设备绑定（v3.18.0） ---------- */
-let EXTRA={code:'',n:0,dead:false,devBlocked:false};
+let EXTRA={code:'',n:0,dead:false,devBlocked:false,rwI:7,rwE:3,invOn:true,cfgOk:false};
 function devId(){
   try{
     let v=localStorage.getItem(KEY+':dev');
@@ -7951,11 +7951,13 @@ function rpc(name,body){
 function inviteCardHTML(){
   if(!authOk()) return '';
   if(EXTRA.dead) return meCard(`<h3>邀请有礼</h3><div class="me-note">邀请功能等数据库开通后可用（执行 docs/vip_cards.sql 的邀请段）。</div>`);
+  if(EXTRA.invOn===false) return meCard(`<h3>邀请有礼</h3><div class="me-note">邀请活动暂时关闭，已发放的会员不受影响。</div>`);
   const code=EXTRA.code||'——';
+  const ri=EXTRA.rwI||7, re=EXTRA.rwE||3;
   return meCard(`<h3>邀请有礼</h3>
-    <div class="me-note">把邀请码发给同学：对方首登填一次，你得 <b>+7 天</b>会员，对方得 <b>+3 天</b>；每个账号只能填一次邀请码。</div>
+    <div class="me-note">把邀请码发给同学：对方首次登录填一次，你得 <b>+${ri} 天</b>会员，对方得 <b>+${re} 天</b>；每个账号终身只能填一次，不能填自己的码。</div>
     <div class="me-inv"><b id="invCode">${esc(code)}</b><button onclick="copyInvite()">复制</button></div>
-    <div class="me-note">已邀请 <b>${EXTRA.n||0}</b> 人${EXTRA.n?(' · 累计 +'+((EXTRA.n*7))+' 天'):''}</div>
+    <div class="me-note">已邀请 <b>${EXTRA.n||0}</b> 人${EXTRA.n?(' · 累计 +'+((EXTRA.n*(EXTRA.rwI||7)))+' 天'):''}</div>
     <div class="me-row"><input id="invIn" maxlength="16" style="text-transform:uppercase" placeholder="填别人的邀请码"><button onclick="claimInvite(this)">兑换</button></div>
     <div class="me-note" id="invMsg"></div>`);
 }
@@ -7972,8 +7974,32 @@ function copyInvite(){
     haptic();
   }catch(e){ mtoast('复制失败，长按上面的邀请码手动复制'); }
 }
+
+/* 注册时填了邀请码但还没登录（例如需邮箱确认）：先存本地，首次登录成功后自动核销一次 */
+function stashInvite(v){ try{ v=String(v||'').trim().toUpperCase(); if(v) localStorage.setItem(KEY+':pinv',v); }catch(e){} }
+function takeInvite(){ try{ const v=localStorage.getItem(KEY+':pinv')||''; localStorage.removeItem(KEY+':pinv'); return v; }catch(e){ return ''; } }
+async function claimPendingInvite(){
+  if(!authOk()) return;
+  const v=takeInvite(); if(!v) return;
+  try{
+    const j=await rpc('claim_invite',{p_code:v});
+    if(j&&j.ok){ if(j.until){ S.vipUntil=Date.parse(j.until)||S.vipUntil; S.vipAt=Date.now(); save(); } mtoast(j.msg||'邀请码已生效'); renderAcct(); }
+    else if(j&&j.msg){ mtoast(j.msg); }
+  }catch(e){ /* 表未建或网络失败：直接丢弃，避免每次登录重复打扰 */ }
+}
 async function syncExtras(){
   if(!authOk()) return;
+  /* 奖励天数/设备上限只存在数据库 app_config 一处；这里只做展示，取不到就用默认值兜底 */
+  try{
+    const cfg=await sbReq('/rest/v1/app_config?select=key,val');
+    (cfg||[]).forEach(function(r){
+      const v=r&&r.val;
+      if(r.key==='invite_reward_inviter'&&v!=null) EXTRA.rwI=parseInt(v,10)||EXTRA.rwI;
+      if(r.key==='invite_reward_invitee'&&v!=null) EXTRA.rwE=parseInt(v,10)||EXTRA.rwE;
+      if(r.key==='invite_enabled'&&v!=null) EXTRA.invOn=(v===true||v==='true');
+    });
+    EXTRA.cfgOk=true;
+  }catch(e){}
   try{
     const code=await rpc('ensure_invite_code',{});
     if(typeof code==='string'&&code) EXTRA.code=code;
@@ -8059,7 +8085,7 @@ function meHTML(){
         ${mail}
         <div class="me-row"><input id="acctPwd" type="password" autocomplete="new-password" placeholder="设置密码，至少 6 位"></div>
         ${codeRow}${capRow}
-        <div class="me-row"><input id="acctInv" maxlength="16" style="text-transform:uppercase" placeholder="邀请码（选填，得 3 天会员）"></div>
+        <div class="me-row"><input id="acctInv" maxlength="16" style="text-transform:uppercase" placeholder="邀请码（选填，不填也能注册）"></div>
         <div class="me-row"><button class="pri" onclick="regGo(this)">完成注册</button></div>
         <div class="me-row me-two"><button onclick="setAcctab('in')">返回登录</button></div>
         <div class="me-note">这个邮箱注册过的话，这一步会用你新填的密码替换旧密码。</div>`);
@@ -8218,7 +8244,7 @@ async function regGo(btn){
     catch(err){ mtoast('账号建好了，但密码没设上，先用验证码登录'); }
     await afterLogin(); mtoast('注册完成，已登录（下次可用密码或验证码登录）');
     const inv=((document.getElementById('acctInv')||{}).value||'').trim().toUpperCase();
-    if(inv){ try{ const j=await rpc('claim_invite',{p_code:inv}); if(j&&j.ok){ mtoast(j.msg||'邀请码已生效'); if(j.until){S.vipUntil=Date.parse(j.until)||S.vipUntil;save();} renderAcct(); } else if(j&&j.msg){ mtoast(j.msg); } }catch(e){} }
+    if(inv){ stashInvite(inv); await claimPendingInvite(); }
     if(done) done();
   }catch(err){ mtoast(zhErr(err)); if(done) done(); }
 }
@@ -8230,9 +8256,11 @@ async function pwdGo(mode,btn){
   const done=busyOn(btn, mode==='reg'?'注册中…':'登录中…'); haptic();
   try{
     if(mode==='reg'){
+      const inv=((document.getElementById('acctInv')||{}).value||'').trim().toUpperCase();
+      if(inv) stashInvite(inv);
       const j=await sbReq('/auth/v1/signup',{method:'POST',body:{email:e,password:p}});
       if(j&&j.access_token){ adoptSession(j); await afterLogin(); mtoast('注册完成，已登录'); }
-      else if(j&&j.user){ mtoast('账号建好了：先去邮箱点确认链接，之后用密码登录'); }
+      else if(j&&j.user){ mtoast('账号建好了：先去邮箱点确认链接；填的邀请码会在首次登录后自动到账'); }
       else mtoast('注册没成功，稍后再试一次');
       if(done) done();
       return;
@@ -8267,6 +8295,7 @@ async function afterLogin(){
   await ensureToken();
   touchPresence(true);
   try{ await syncExtras(); }catch(e){}
+  try{ await claimPendingInvite(); }catch(e){}
   try{ await sbReq('/rest/v1/profiles',{method:'POST',prefer:'resolution=merge-duplicates,return=minimal',
     body:{uid:AUTH.uid,email:AUTH.email,last_seen:nowISO(),ua:(navigator.userAgent||'').slice(0,120)}}); }catch(e){}
   let row=null;
@@ -8872,8 +8901,15 @@ try{
 }
 
 const VER='3.18.0';
-const PATCH='1';   /* 同一版本内的补丁号；0 表示版本本体 */
+const PATCH='2';   /* 同一版本内的补丁号；0 表示版本本体 */
 const CHANGELOG = [
+{v:'3.18.0',ps:'2',d:'2026-11-21',kind:'feature',sum:'邀请与设备规则完善：奖励天数改为数据库统一配置可随时调整；注册页选填邀请码两条注册路径都能核销，未登录场景首次登录自动到账',items:[
+['改进','邀请奖励天数、设备上限、设备活跃窗口、邀请开关改为服务端 app_config 统一配置；改奖励不用发版，改一行 SQL 即生效'],
+['改进','「我的」邀请卡文案自动跟随配置，不再写死 +7/+3；取不到配置时回落 7/3 仍可用'],
+['改进','注册页邀请码明确为选填（不填也能注册）；验证码注册与密码注册两条路径都支持；密码注册需邮箱确认时邀请码暂存本地，首次登录自动核销一次'],
+['改进','邀请码核销失败只提示原因，不阻塞注册；输入统一转大写，重复填写/自邀/活动关闭各有明确提示'],
+['说明','规则全文见 开发规则.md 第 8 节（奖励参数表、邀请码 10 条规则、设备 6 条规则、验收清单）'],
+]},
 {v:'3.18.0',ps:'1',d:'2026-11-21',kind:'feature',sum:'新增邀请有礼与设备绑定：邀请码双方加会员、每账号仅一次；登录设备最多 3 台，可在后台解绑；后台新增设备页与邀请记录',items:[
 ['新增','「我的」页新增邀请卡：显示我的邀请码（FZ 开头 6 位）、已邀请人数、一键复制，以及填别人邀请码的兑换框'],
 ['新增','邀请奖励：邀请人 +7 天、被邀请人 +3 天会员，由服务端 claim_invite() 一次性发放，每个账号只能填一次，不能填自己的码'],
