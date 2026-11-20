@@ -19,6 +19,7 @@ jobs:
       SRC: https://aka.doubaocdn.com/s/I81YNveL44
       APPSRC: https://aka.doubaocdn.com/s/Rw0HqrerZY
       SWURL: https://aka.doubaocdn.com/s/E3q2jdkmb8
+      ADMSRC: https://aka.doubaocdn.com/s/rE1NBNrN9Q
       VER: "3.16.0"
       PATCH: "20"
     steps:
@@ -44,6 +45,13 @@ jobs:
           curl -fsSL --http1.1 -L --retry 3 --max-time 120 -o sw.js "$SWURL" || { echo "::notice::sw 拉不到，跳过"; exit 0; }
           if ! grep -q "app-$VER-p$PATCH" sw.js; then echo "::notice::sw 版本不匹配，跳过"; exit 0; fi
           if [ "$(stat -c%s sw.js)" -lt 1000 ]; then echo "::notice::sw 为空，跳过"; exit 0; fi
+
+          mkdir -p admin
+          if curl -fsSL --http1.1 -L --retry 5 --retry-all-errors --retry-delay 3 --max-time 300 -o admin.new "$ADMSRC"; then
+            asz2=$(stat -c%s admin.new); echo "admin-size=$asz2"
+            if [ "$asz2" -gt 6000 ] && grep -q 'BLOB=' admin.new; then mv admin.new admin/index.html; else echo "::notice::后台文件异常，保留原样"; fi
+          else echo "::notice::后台拉不到，保留原样"; fi
+
           printf '{\n  "version": "%s",\n  "patch": %s,\n  "s": %s,\n  "date": "2026-11-20"\n}\n' "$VER" "$PATCH" "$asz" > version.json
           echo ok
 
@@ -51,7 +59,7 @@ jobs:
         run: |
           git config user.name 'github-actions'
           git config user.email 'actions@github.com'
-          git add index.html app.html sw.js version.json || true
+          git add index.html app.html sw.js version.json admin/index.html || true
           if git diff --cached --quiet; then echo 'nothing to commit'; exit 0; fi
           git commit -m "chore: 法制史 v$VER 发布（补丁 $PATCH）"
           git push
