@@ -16,6 +16,9 @@
 <style>
 html,body{margin:0;padding:0;background:#EAEDE1}
 :root{--zhu:#A5342E;--bamboo:#3C6B52;--ink:#151C17;--ink-3:#7C857A}
+#upd{position:fixed;inset:0;z-index:10002;background-color:#EAEDE1;background-image:radial-gradient(rgba(96,124,102,.07) 1px,transparent 1px);display:none;align-items:center;justify-content:center;padding:24px}
+#upd .splash-inner{animation:none}
+#upd .splash-seal,#upd .splash-title,#upd .splash-sub,#upd .splash-strip,#upd .splash-slips i,#upd .sp-bar{animation:none!important;opacity:1!important}
 #splash{position:fixed;inset:0;z-index:9999;background-color:#EAEDE1;background-image:radial-gradient(rgba(96,124,102,.07) 1px,transparent 1px);
   background-size:16px 16px;display:flex;flex-direction:column;align-items:center;justify-content:center;margin:0;
   transition:opacity .42s ease;font-family:"PingFang SC","HarmonyOS Sans SC",system-ui,-apple-system,sans-serif}
@@ -84,7 +87,7 @@ html,body{margin:0;padding:0;background:#EAEDE1}
 </div></div>
 <script>
 (function(){
-  var VER='3.16.0-p6';
+  var VER='3.16.0-p7';
   var fill=document.getElementById('spFill'),pct=document.getElementById('spPct'),
       status=document.getElementById('spStatus'),splash=document.getElementById('splash'),
       boot=document.getElementById('boot');
@@ -242,10 +245,22 @@ html,body{margin:0;padding:0;background:#EAEDE1}
   window.addEventListener('message',function(e){
     try{
       if(e && e.data && (e.data.t==='fz-restart'||e.data.t==='fz-reload')){
-        boot.style.display='flex';
-        try{ document.getElementById('bootT').textContent='正在应用更新'; }catch(x){}
-        try{ document.getElementById('bootD').textContent='清理缓存后自动重开…'; }catch(x){}
-        setTimeout(hardReload,60);
+        /* 重开时只显示和启动页同一套画面，绝不闪“加载失败/超时”那种错误卡片 */
+        boot.style.display='none';
+        try{
+          var up=document.getElementById('upd');
+          if(!up){
+            up=document.createElement('div'); up.id='upd';
+            up.innerHTML='<div class="splash-inner"><div class="splash-slips"><i></i><i></i><i></i><i></i><i></i></div>'
+              +'<div class="splash-seal">史</div><h1 class="splash-title">法制史一点通</h1>'
+              +'<p class="splash-sub">正在应用更新</p>'
+              +'<div class="sp-bar"><div class="sp-fill" style="width:100%"></div></div>'
+              +'<p class="sp-status">清理缓存，重新翻开书…</p></div>';
+            document.body.appendChild(up);
+          }
+          up.style.display='flex';
+        }catch(x){}
+        setTimeout(hardReload,80);
       }
     }catch(err){}
   });
