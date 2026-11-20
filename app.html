@@ -7950,7 +7950,7 @@ function rpc(name,body){
 }
 function inviteCardHTML(){
   if(!authOk()) return '';
-  if(EXTRA.dead) return meCard(`<h3>邀请有礼</h3><div class="me-note">邀请功能等数据库开通后可用（执行 docs/vip_cards.sql 的邀请段）。</div>`);
+  if(EXTRA.dead) return meCard(`<h3>邀请有礼</h3><div class="me-note">邀请功能暂未开通，稍后再来（不影响刷题与同步）。</div>`);
   if(EXTRA.invOn===false) return meCard(`<h3>邀请有礼</h3><div class="me-note">邀请活动暂时关闭，已发放的会员不受影响。</div>`);
   const code=EXTRA.code||'——';
   const ri=EXTRA.rwI||7, re=EXTRA.rwE||3;
@@ -8901,8 +8901,11 @@ try{
 }
 
 const VER='3.18.0';
-const PATCH='2';   /* 同一版本内的补丁号；0 表示版本本体 */
+const PATCH='3';   /* 同一版本内的补丁号；0 表示版本本体 */
 const CHANGELOG = [
+{v:'3.18.0',ps:'3',d:'2026-11-21',kind:'fix',sum:'邀请功能未开通时的提示改为面向用户的话术，不再显示内部文件名',items:[
+['修正','表未建时邀请卡提示“邀请功能暂未开通，稍后再来（不影响刷题与同步）”'],
+]},
 {v:'3.18.0',ps:'2',d:'2026-11-21',kind:'feature',sum:'邀请与设备规则完善：奖励天数改为数据库统一配置可随时调整；注册页选填邀请码两条注册路径都能核销，未登录场景首次登录自动到账',items:[
 ['改进','邀请奖励天数、设备上限、设备活跃窗口、邀请开关改为服务端 app_config 统一配置；改奖励不用发版，改一行 SQL 即生效'],
 ['改进','「我的」邀请卡文案自动跟随配置，不再写死 +7/+3；取不到配置时回落 7/3 仍可用'],
