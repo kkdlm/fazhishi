@@ -34,6 +34,8 @@ html{background:#EAEDE1 !important}
 /* ==== 精讲一本通 ==== */
 .bm-g{margin:10px 0 14px}
 .bm-gt{font-size:12px;color:#7a5326;background:#f6f0e0;border-left:3px solid #c9b489;padding:5px 8px;border-radius:4px;margin-bottom:6px;line-height:1.5}
+.btjj-strip{flex:1 1 100%;display:flex;gap:4px;overflow-x:auto;overflow-y:hidden;max-width:100%;min-width:0;padding:2px 0 3px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.btjj-strip::-webkit-scrollbar{display:none}
 .btjj-chip{flex:0 0 auto;border:1px solid #c9b489;background:#f6f0e0;color:#7a5326;border-radius:999px;font-size:11px;line-height:1;padding:4px 8px;margin-left:2px}
 .btjj-chip:active{transform:scale(.96)}
 .btpg{font-size:13px;padding:2px 6px}
@@ -1360,8 +1362,9 @@ html[data-theme="night"] .vt-era2{background:color-mix(in srgb,var(--ink) 40%,#0
 .bk-secnav{background:transparent;padding:2px 0 6px}
 .bk-subnav .bk-nav:active{background:color-mix(in srgb,var(--ink) 6%,#fff)}
 .bk-sub{border-top:1px dashed color-mix(in srgb,var(--ink) 10%,transparent);padding-top:6px;margin-top:8px}
-.bk-sub-h{display:flex;align-items:baseline;gap:8px;cursor:pointer;padding:6px 2px}
+.bk-sub-h{display:flex;flex-wrap:wrap;align-items:baseline;gap:8px;cursor:pointer;padding:6px 2px;min-width:0}
 .bk-sub-h .bk-sub-t{flex:1 1 auto;min-width:0;font-family:var(--serif,serif);font-size:calc(13.5px*var(--fs));font-weight:700;color:var(--ink);line-height:1.45;border-left:3px solid color-mix(in srgb,var(--red) 60%,transparent);padding-left:8px}
+.bk-sub-h .bk-sub-n{margin-left:auto}
 .bk-sub-h>span{flex:0 0 auto;font-size:calc(11px*var(--fs));color:var(--ink-3,#999)}
 .bk-sub-h .bk-fold{flex:0 0 auto}
 .bk-sub-h.off .bk-sub-t{opacity:.6}
@@ -5959,8 +5962,8 @@ function tlJjEra(el,sk,g,a,era){
   if(hit){ if((S.jjview||'page')!=='text'){ S.jjview='text'; save(); } jjGo(hit.ci,best.si,hit.gi,hit.bi); }
   else { jjJumpMap(best.ch,best.si,best.a||''); }
 }
-function tlItemHTML(m,era){
-  return '<div class="tl-it" data-jt="'+(m.jjt?m.jjt.join(','):'')+'"><button class="tl-nm" onclick="tlJumpBook(\''+esc(String(m.ch))+'\','+m.si+',\''+esc(String(m.g||'').replace(/'/g,'&#39;'))+'\',\''+esc(String(m.a||'').replace(/'/g,'&#39;'))+'\',\''+esc(String(era||m.oe||''))+'\')">'+esc(tlClean(m.n))+'</button>'
+function tlItemHTML(m,era,tp){
+  return '<div class="tl-it" data-jt="'+(m.jjt?m.jjt.join(','):'')+'"><button class="tl-nm" onclick="tlJumpBook(\''+esc(String(m.ch))+'\','+m.si+',\''+esc(String(m.g||'').replace(/'/g,'&#39;'))+'\',\''+esc(String(m.a||'').replace(/'/g,'&#39;'))+'\',\''+esc(String(era||m.oe||''))+'\',\''+esc(String(tp||''))+'\',\''+esc(String(m.n||'').replace(/'/g,'&#39;'))+'\')">'+esc(tlClean(m.n))+'</button>'
     +(m.note?'<span class="tl-nt">'+esc(m.note)+'</span>':'')
     +'</div>';
 }
@@ -6018,31 +6021,116 @@ function tlBlockIdx(k,si,g,a,era){
   }catch(e){}
   return -1;
 }
-function tlJumpBook(k,si,g,a,era){
-  S.mode='zhuan'; S.ztsrc='book'; save(); applyMode(); go('browse');
+var BOOK_TP={立法:['L1','M1'],刑事:['L2','M3'],行政:['L3'],民事:['L4','M4'],经济:['L5'],司法:['L6','M5']};
+var MODERN_ERA={'清末':1,'南京临时政府':1,'北洋政府':1,'南京国民政府':1,'革命根据地':1,'南京国民政府（1927—1949）':1};
+function tlIsModern(era){ return !!MODERN_ERA[String(era||'')]; }
+function tlBookChapters(tp,era){
+  var list=BOOK_TP[tp]||null;
+  if(list && typeof BTOPIC!=='undefined'){
+    var want=tlIsModern(era)?1:0;
+    var pick=list.filter(function(k){
+      var c=(BTOPIC.chs||[]).filter(function(x){return x.k===k;})[0]; if(!c) return false;
+      var m=/^M/.test(k)?1:0; return m===want;
+    });
+    if(pick.length) return pick;
+  }
+  return null;
+}
+/* 主题 + 朝代 → 章；章内按条目文字、组名、朝代三重打分找块 */
+function tlFindBook(k,si,g,a,era,tp,nm){
+  var gN=gsNorm(tlClean(g||'')).replace(/[（(].*?[）)]/g,''), aN=gsNorm(tlClean(a||'')), eN=gsNorm(era||'').slice(0,2);
+  var chs=tlBookChapters(tp,era);
+  var best=null,bs=-99;
+  function consider(ch,section,blocks,bi){
+    blocks.forEach(function(b,idx){
+      var t=gsNorm(b.x||''); if(!t) return;
+      var sc=0, kh=0;
+      if(aN && aN.length>=4 && t.indexOf(aN)>=0) sc+=14;
+      else if(aN && aN.length>=4){
+        var head=aN.slice(0,Math.min(10,aN.length)); if(t.indexOf(head)>=0) sc+=7;
+      }
+      if(gN && gN.length>=3 && t.indexOf(gN)>=0) sc+=9;
+      if(eN && eN.length>=2 && t.indexOf(eN)>=0) sc+=5;
+      /* 条目名里的实词：禹刑／圜土／秋审 这类命中才算落准 */
+      (String(nm||'').split(/[：:，,、（）()\u201c\u201d《》／\/·—\s]+/)).forEach(function(w){
+        var wN=gsNorm(w); if(wN.length>=2 && t.indexOf(wN)>=0){ sc+=6; kh=1; }
+      });
+      if(sc>0 && sc>bs){ bs=sc; best={ch:ch,si:section,bi:idx,snip:String(b.x||''),exact:kh>0}; }
+    });
+  }
+  (chs||[]).forEach(function(ck){
+    var c=(BTOPIC.chs||[]).filter(function(x){return x.k===ck;})[0]; if(!c) return;
+    (c.secs||[]).forEach(function(sec,sidx){ consider(ck,sidx,sec.blocks||[]); });
+  });
+  if(best && bs>=9){
+    return best;
+  }
+  /* 主题没命中（或没 tp）：退回 精讲→背诵 对照表，按组名再挑一次 */
+  var rev=(typeof BMAP!=='undefined'&&BMAP.rev)||{};
+  var cands=rev[k+':'+si]||[];
+  if(!cands.length && chs) {}
+  if(cands.length){
+    var pick=null,ps=-99;
+    cands.forEach(function(t){
+      var tt=gsNorm(t.g||'');
+      var sc=0;
+      if(gN && tt && (tt.indexOf(gN)>=0 || gN.indexOf(tt)>=0)) sc+=8;
+      if(eN && tt.indexOf(eN)>=0) sc+=4;
+      if(sc>ps){ ps=sc; pick=t; }
+    });
+    if(pick) return {ch:pick.ch,si:pick.si,bi:-1,snip:'',exact:false};
+  }
+  if(best) best.exact=false;
+  return best;
+}
+function tlJumpBook(k,si,g,a,era,tp,nm){
+  var t=tlFindBook(k,si,g,a,era,tp,nm);
+  if(!t){ mtoast('这条在背诵一本通里还没对上原文，我先记下来补'); return; }
+  S.mode='zhuan'; S.ztsrc='book'; VT=t.ch; save(); applyMode(); chipRow(); go('browse');
   setTimeout(function(){
     Q=''; var qi=document.getElementById('q'); if(qi) qi.value='';
-    VT=k; renderList(); chipRow();
-    var sec=document.querySelectorAll('#list .vt-sec')[si]; if(!sec) return;
+    renderList();
+    var sec=document.querySelectorAll('#list .vt-sec')[t.si]; if(!sec){ mtoast('没找到对应小节'); return; }
     var body=sec.querySelector('.bk-secs-body'), h=sec.querySelector('.vt-sec-h');
     if(body && body.style.display==='none' && h) h.click();
     setTimeout(function(){
-      var tgt=null;
-      var subs=[].slice.call(sec.querySelectorAll('.bk-sub'));
-      var key=gsNorm(g);
-      subs.forEach(function(sb){
-        if(tgt) return;
-        var t=sb.querySelector('.bk-sub-t');
-        if(t && (gsNorm(t.textContent)===key || gsNorm(t.textContent).indexOf(key.slice(0,12))>=0)){
-          var b=sb.querySelector('.bk-sub-b'); if(b && b.style.display==='none'){ var sh=sb.querySelector('.bk-sub-h'); if(sh) sh.click(); }
-          tgt=tlScoreFind(sb,a,'',era)||sb;
-        }
+      /* 把这一节的小节全部展开，保证落点段可见 */
+      [].slice.call(sec.querySelectorAll('.bk-sub')).forEach(function(sb){
+        var b=sb.querySelector('.bk-sub-b'); if(b && b.style.display==='none'){ var sh=sb.querySelector('.bk-sub-h'); if(sh) sh.click(); }
       });
-      if(!tgt) tgt=tlScoreFind(sec,a,key,era);
-      if(tgt && !tgt.classList.contains('bk-b')) tgt=tgt.querySelector&&tgt.querySelector('.bk-b')||tgt;
+      var tgt=null;
+      if(t.exact && t.snip) tgt=gsFindBlock(sec,'',t.snip);
+      if(!tgt && t.exact) tgt=tlScoreFind(sec,a,'',era);
+      if(!t.exact){
+        /* 背诵按朝代汇总：没有原句时，落到这一朝的那一小节标题，并说明 */
+        var e2=gsNorm(era||'').slice(0,2);
+        var subs=[].slice.call(sec.querySelectorAll('.bk-sub'));
+        var pick=null;
+        subs.forEach(function(sb){
+          if(pick) return;
+          var tt=gsNorm((sb.querySelector('.bk-sub-t')||{textContent:''}).textContent);
+          if(e2 && tt.indexOf(e2)>=0) pick=sb.querySelector('.bk-sub-t');
+        });
+        if(!pick){
+          /* 没有朝代小节标题时，按条目关键词挑最近的这一小节标题 */
+          var toks=String(nm||'').split(/[：:，,、（）()\u201c\u201d《》／\/·—\s]+/).map(gsNorm).filter(function(w){return w&&w.length>=2;});
+          var sc1=-1;
+          subs.forEach(function(sb){
+            var tt=gsNorm((sb.querySelector('.bk-sub-t')||{textContent:''}).textContent);
+            if(!tt) return;
+            var sc=0; toks.forEach(function(w){ if(tt.indexOf(w)>=0) sc+=3; });
+            if(e2 && tt.indexOf(e2)>=0) sc+=2;
+            if(sc>sc1){ sc1=sc; pick=sb.querySelector('.bk-sub-t')||sb; }
+          });
+        }
+        tgt=pick;
+        var nmTxt=String((tgt&&tgt.textContent)||'').replace(/\s+/g,' ').trim().slice(0,18);
+        setTimeout(function(){ try{ mtoast('背诵按朝代汇总，已定位到 · '+(nmTxt||String(era||'该朝代'))); }catch(e){} },600);
+      }
+      if(!tgt) tgt=sec;
       gsFlash(tgt);
-    },380);
-  },140);
+    },420);
+  },160);
 }
 function tlDimHTML(dim){
   const eras=(TLX&&TLX.eras)||[];
@@ -6054,7 +6142,7 @@ function tlDimHTML(dim){
     total+=n; nEra++;
     rows+='<div class="tl-g"><div class="tl-gh"><b>'+esc(e.era)+'</b><span>'+esc(e.sub||'')+' · '+n+' 条</span>'
       +'<button class="tl-dim g" onclick="setEra('+i+')">本朝 ›</button></div><div class="tl-gl">'
-      +gs.map(function(x){ return x.items.map(function(m){ return tlItemHTML(m,e.era); }).join(''); }).join('')
+      +gs.map(function(x){ return x.items.map(function(m){ return tlItemHTML(m,e.era,x.tp); }).join(''); }).join('')
       +'</div></div>';
   });
   return '<div class="eraCard2"><div class="big">'+dim+' · 纵向</div>'
@@ -6102,7 +6190,7 @@ function renderTopic(){
         const CAP=6;
         gr.items.forEach(function(m,mi){
           if(mi===CAP){ h+='<div class="tl-more" style="display:none">'; }
-          h+=tlItemHTML(m,gr.era||g.era);
+          h+=tlItemHTML(m,gr.era||g.era,gr.tp);
         });
         if(gr.items.length>CAP){
           h+='</div><button class="tl-more-b" onclick="tlMore(this,'+(gr.items.length-CAP)+')">＋'+(gr.items.length-CAP)+' 条</button>';
@@ -7413,9 +7501,10 @@ function btJjChips(secKey,g){
   const tg=bmTargets(secKey,g);
   if(!tg.length) return '';
   const seen={};
-  return tg.filter(function(t){const d=esc(t.dy||'精讲')+'|'+t.ch+':'+t.si;if(seen[d])return false;seen[d]=1;return true;}).map(function(t){
+  const html=tg.filter(function(t){const d=esc(t.dy||'精讲')+'|'+t.ch+':'+t.si;if(seen[d])return false;seen[d]=1;return true;}).map(function(t){
     return '<button class="btjj-chip" onclick="event.stopPropagation();jjJumpMap(\''+t.ch+'\','+t.si+',\''+esc(String(t.a||'').replace(/'/g,'&#39;'))+'\')" title="'+esc(t.label||'')+'">'+esc(t.dy||'精讲')+'</button>';
   }).join('');
+  return '<div class="btjj-strip" aria-label="精讲对照">'+html+'</div>';
 }
 /* 精讲每朝下面的每个专题，反向跳回背诵对应专题的对应朝代 */
 function bjmList(chk,si,gi,t){
@@ -8666,9 +8755,22 @@ try{
   if(window.__bootFail) window.__bootFail('页面没加载出来','启动时有一处数据读不出来，重开一次通常就好。',!navigator.onLine);
 }
 
-const VER='3.16.0';
-const PATCH='20';   /* 同一版本内的补丁号；0 表示版本本体 */
+const VER='3.17.0';
+const PATCH='1';   /* 同一版本内的补丁号；0 表示版本本体 */
 const CHANGELOG = [
+{v:'3.17.0',ps:'1',d:'2026-11-20',kind:'patch',sum:'时间轴跳转修正：点知识点按「专题 → 朝代」落到背诵对应章节的对应段并高亮，不再拿精讲章节号去查背诵、退到绪论',items:[
+['修正','时间轴条目过去带的是精讲章节号（J1、K2 这种），跳转却拿它去「背诵一本通」查章节，查不到就退回上一次停留的章——点「夏朝的建立」会落到绪论第一段，就是这个问题；现在按专题定位章节（刑事→背诵第二章／下编第三章，立法→第一章／下编第一章，行政→第三章，民事→第四章／下编第四章，经济→第五章，司法→第六章／下编第五章），近代朝代自动走「下编」'],
+['修正','章定位到以后再在章内按条目标题、组名、朝代三重打分找段：先认条目文字（如「监狱：圜（huán）土，美里」），再认组名，再认朝代，命中最高分的段落才高亮；不再按序号硬点'],
+['修正','落点前把目标小节整节展开（含所有折叠的小节），避免高亮段落还藏在折叠里看不见'],
+['改进','背诵一本通里确实没有对应内容的条目，会明确提示「还没对上原文」并留档补录，不再随便飘到别的章节'],
+['版本','会员体系／卡密／后台 operable 这一批功能从 3.16 补丁 20 升格为 3.17.0 正式版本；版本号规则恢复为「功能级改动升次版本号，小修小补才用补丁号」'],
+]},
+{v:'3.17.0',ps:'0',d:'2026-11-20',kind:'feature',sum:'3.17 正式版：会员体系、卡密、管理后台可操作用户（原 3.16 补丁 20 内容升格为版本主体）',items:[
+['新增','会员体系：普通用户与 VIP 分开，VIP 到期时间写进账号进度（云同步），换设备登录自动恢复'],
+['新增','卡密：形如 FZ-90-XXXXXX-XXXXXXXX，由天数、随机码和签名组成，App 本地校验，兑换即叠加天数'],
+['新增','会员权益：全站搜索、真题解析／错项分析／避坑提示；普通用户仍可看题干、答案高亮和背诵全文'],
+['新增','管理后台：卡密页（批量生成／台账／作废／导出导入）、会员页（VIP 人数、7 天内到期名单）、用户行可直接开通／取消 VIP、封禁、备注'],
+]},
 {v:'3.16.0',ps:'20',d:'2026-11-20',kind:'patch',sum:'会员与卡密上线：卡密本地校验开通 VIP，全站搜索与真题解析转为会员功能；管理后台新增卡密生成、会员总览，用户行可直接开通/取消 VIP、封禁、备注',items:[
 ['新增','会员体系：普通用户与 VIP 分开，VIP 到期时间写进账号进度（云同步），换设备登录自动恢复；「我的」页与设置里都有会员卡和兑换入口'],
 ['新增','卡密：形如 FZ-90-XXXXXX-XXXXXXXX，由天数、随机码和签名组成，App 本地校验，不依赖网络；同一天数可批量生成，兑换即叠加天数'],
