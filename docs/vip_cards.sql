@@ -1,8 +1,8 @@
--- 法制史一点通 · 会员／卡密服务端结构（v3.17.0 补丁 2 版，幂等可重复执行）
--- 自动执行：push 本文件后 .github/workflows/db.yml 会跑（需仓库 secret SUPABASE_DB_URL）
--- 手动执行：Supabase Dashboard → SQL Editor → New query → 整段粘贴 → Run
+-- 法制史一点通 · 会员／卡密／邀请／设备 服务端结构（v3.18.0 版，幂等可重复执行）
+-- 用法：Supabase Dashboard → SQL Editor → New query → 整段粘贴 → Run（只需一次）
+-- 自动：push 本文件后 .github/workflows/db.yml 会尝试执行（需 secret SUPABASE_DB_URL）
 -- 说明：profiles 表里 pro_until（会员到期）、banned（封禁）、role（权限）都是已有字段，
---      本文件不新建重复列，只补一个备注列 + 卡密表 + 兑换函数 + 管理员更新放行。
+--      本文件不新建重复列，只补备注列 + 卡密/邀请/设备/审计表 + 相关函数。
 
 -- 1) 后台「备注」用的一列（其余会员字段沿用库内已有 pro_until / banned / role）
 alter table public.profiles add column if not exists note text;
@@ -72,3 +72,157 @@ end $$;
 
 revoke all on function public.redeem_card(text) from public;
 grant execute on function public.redeem_card(text) to authenticated;
+
+-- ============ 5) 邀请码（v3.18.0 追加，幂等） ============
+alter table public.profiles add column if not exists invite_code text;
+create unique index if not exists profiles_invite_code_uidx
+  on public.profiles (upper(invite_code)) where invite_code is not null;
+
+create table if not exists public.referrals (
+  id             bigserial primary key,
+  code           text not null,
+  inviter        uuid not null references auth.users(id) on delete cascade,
+  invitee        uuid not null unique references auth.users(id) on delete cascade,
+  reward_inviter int not null default 7,
+  reward_invitee int not null default 3,
+  created_at     timestamptz default now()
+);
+alter table public.referrals enable row level security;
+
+drop policy if exists referrals_self_select on public.referrals;
+create policy referrals_self_select on public.referrals
+  for select using (
+    auth.uid() in (inviter, invitee)
+    or exists (select 1 from public.profiles p where p.uid = auth.uid() and p.role = 'admin'));
+
+-- 生成/取回自己的邀请码（首次调用自动生成）
+create or replace function public.ensure_invite_code()
+returns text language plpgsql security definer set search_path = public as $$
+declare v text; i int;
+begin
+  if auth.uid() is null then raise exception '请先登录'; end if;
+  select invite_code into v from public.profiles where uid = auth.uid();
+  if v is not null and v <> '' then return v; end if;
+  for i in 1..8 loop
+    v := 'FZ' || upper(substr(replace(gen_random_uuid()::text, '-', ''), 1, 6));
+    begin
+      update public.profiles set invite_code = v where uid = auth.uid() and coalesce(invite_code,'') = '';
+      if found then return v; end if;
+      select invite_code into v from public.profiles where uid = auth.uid();
+      if v is not null and v <> '' then return v; end if;
+      v := null;
+    exception when unique_violation then
+      v := null;
+    end;
+  end loop;
+  raise exception '邀请码生成失败，稍后再试';
+end $$;
+grant execute on function public.ensure_invite_code() to authenticated;
+
+-- 填邀请码：一次性，双方加会员天数
+create or replace function public.claim_invite(p_code text)
+returns jsonb language plpgsql security definer set search_path = public as $$
+declare v_inviter uuid; v_me uuid := auth.uid(); v_until timestamptz;
+begin
+  if v_me is null then raise exception '请先登录'; end if;
+  if exists (select 1 from public.referrals where invitee = v_me) then
+    return jsonb_build_object('ok', false, 'msg', '这个账号已经用过邀请码了');
+  end if;
+  select uid into v_inviter from public.profiles
+   where upper(coalesce(invite_code,'')) = upper(trim(p_code)) limit 1;
+  if v_inviter is null then return jsonb_build_object('ok', false, 'msg', '邀请码不存在'); end if;
+  if v_inviter = v_me then return jsonb_build_object('ok', false, 'msg', '不能填自己的邀请码'); end if;
+
+  insert into public.referrals(code, inviter, invitee) values (upper(trim(p_code)), v_inviter, v_me);
+
+  insert into public.profiles (uid) values (v_inviter) on conflict (uid) do nothing;
+  update public.profiles
+     set pro_until = greatest(coalesce(pro_until, now()), now()) + interval '7 days'
+   where uid = v_inviter;
+  update public.profiles
+     set pro_until = greatest(coalesce(pro_until, now()), now()) + interval '3 days'
+   where uid = v_me
+   returning pro_until into v_until;
+
+  return jsonb_build_object('ok', true, 'msg', '邀请成功：你 +3 天，邀请人 +7 天', 'until', v_until);
+end $$;
+grant execute on function public.claim_invite(text) to authenticated;
+
+-- ============ 6) 设备绑定（v3.18.0 追加，幂等） ============
+create table if not exists public.devices (
+  uid        uuid not null references auth.users(id) on delete cascade,
+  device_id  text not null,
+  ua         text,
+  first_seen timestamptz default now(),
+  last_seen  timestamptz default now(),
+  revoked    boolean default false,
+  primary key (uid, device_id)
+);
+alter table public.devices enable row level security;
+
+drop policy if exists devices_self on public.devices;
+create policy devices_self on public.devices
+  for all using (
+    auth.uid() = uid
+    or exists (select 1 from public.profiles p where p.uid = auth.uid() and p.role = 'admin'))
+  with check (
+    auth.uid() = uid
+    or exists (select 1 from public.profiles p where p.uid = auth.uid() and p.role = 'admin'));
+
+-- 登录后登记设备；超限（默认 3 台，45 天内有活动）时返回 ok=false + 设备清单
+create or replace function public.register_device(p_device text, p_ua text default null, p_limit int default 3)
+returns jsonb language plpgsql security definer set search_path = public as $$
+declare v_me uuid := auth.uid(); v_known boolean; v_n int; v_list jsonb;
+begin
+  if v_me is null then raise exception '请先登录'; end if;
+  if coalesce(trim(p_device),'') = '' then raise exception '设备标识为空'; end if;
+
+  select exists(select 1 from public.devices where uid = v_me and device_id = p_device) into v_known;
+
+  select count(*) into v_n from public.devices
+   where uid = v_me and not coalesce(revoked,false) and device_id <> p_device
+     and last_seen > now() - interval '45 days';
+
+  if not v_known and v_n >= p_limit then
+    select coalesce(jsonb_agg(jsonb_build_object('device_id', device_id, 'ua', ua, 'last_seen', last_seen)
+             order by last_seen), '[]'::jsonb) into v_list
+      from public.devices
+     where uid = v_me and not coalesce(revoked,false) and last_seen > now() - interval '45 days';
+    return jsonb_build_object('ok', false, 'msg', '登录设备已达上限（' || p_limit || ' 台）', 'devices', v_list);
+  end if;
+
+  insert into public.devices (uid, device_id, ua, last_seen, revoked)
+  values (v_me, p_device, p_ua, now(), false)
+  on conflict (uid, device_id) do update set last_seen = now(), ua = excluded.ua, revoked = false;
+
+  return jsonb_build_object('ok', true, 'count', v_n + 1);
+end $$;
+grant execute on function public.register_device(text, text, int) to authenticated;
+
+-- 解绑：只能解自己名下的设备
+create or replace function public.unbind_device(p_device text)
+returns jsonb language plpgsql security definer set search_path = public as $$
+declare v_me uuid := auth.uid();
+begin
+  if v_me is null then raise exception '请先登录'; end if;
+  update public.devices set revoked = true, last_seen = now()
+   where uid = v_me and device_id = p_device;
+  return jsonb_build_object('ok', found);
+end $$;
+grant execute on function public.unbind_device(text) to authenticated;
+
+-- ============ 7) 后台操作审计（v3.18.0 追加，幂等） ============
+create table if not exists public.audit_log (
+  id         bigserial primary key,
+  actor      uuid,
+  action     text not null,
+  target     text,
+  detail     jsonb,
+  created_at timestamptz default now()
+);
+alter table public.audit_log enable row level security;
+
+drop policy if exists audit_admin_only on public.audit_log;
+create policy audit_admin_only on public.audit_log
+  for all using (
+    exists (select 1 from public.profiles p where p.uid = auth.uid() and p.role = 'admin'));
