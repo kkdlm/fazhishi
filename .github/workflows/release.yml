@@ -16,15 +16,15 @@ jobs:
   release:
     runs-on: ubuntu-latest
     env:
-      # 壳（index.html）自己的版本：可以只升壳不换正文
+      # 壳自己的版本：可以只升壳不换正文
       VER: "4.2.0"
-      PATCH: "1"
-      # 正文（app.html）版本：壳里 const VERB / const PATCH 必须是这两个
+      PATCH: "2"
+      # 正文版本：必须是正文里 const VER / const PATCH 的值
       APPVER: "4.2.0"
       APPPATCH: "0"
-      SRC: https://aka.doubaocdn.com/s/3trXOhJjSH
+      SRC: https://aka.doubaocdn.com/s/yol0wuRltA
       APPSRC: https://aka.doubaocdn.com/s/EAMZQqlUct
-      SWURL: https://aka.doubaocdn.com/s/defF3N6yub
+      SWURL: https://aka.doubaocdn.com/s/J6BO8qWYCy
       ADMSRC: https://aka.doubaocdn.com/s/fAQAETauI7
     steps:
       - name: Check
@@ -46,6 +46,11 @@ jobs:
           sz=$(stat -c%s index.new); echo "shell-size=$sz"
           if [ "$sz" -lt 4000 ] || [ "$sz" -gt 400000 ]; then echo "::notice::壳文件大小异常，跳过"; exit 0; fi
           if ! grep -q "$VER-p$PATCH" index.new; then echo "::notice::壳版本不匹配，跳过"; exit 0; fi
+          # 把壳里的 sha 占位符换成本次发布的 commit：jsDelivr 的 SHA 锚定线路因此一开始就在队列里
+          if grep -q "__SHA__" index.new; then
+            sed -i "s/__SHA__/$GITHUB_SHA/g" index.new
+            echo "shell-sha=$GITHUB_SHA"
+          fi
           mv index.new index.html
 
           if ! curl -fsSL --http1.1 -L --retry 5 --retry-all-errors --retry-delay 3 --max-time 600 -o app.new "$APPSRC"; then echo "::notice::正文暂时拉不到，本次跳过"; exit 0; fi
@@ -68,7 +73,6 @@ jobs:
           else echo "::notice::后台拉不到，保留原样"; fi
 
           gz=$(stat -c%s app.html.gz 2>/dev/null || echo 0)
-          # sha 给壳用：壳拿它拼 jsDelivr 的 SHA 锚定线路，绕开 @main 的 24 小时缓存滞后
           printf '{\n  "version": "%s",\n  "patch": %s,\n  "s": %s,\n  "gz": %s,\n  "sha": "%s",\n  "date": "2026-11-21"\n}\n' "$APPVER" "$APPPATCH" "$asz" "$gz" "$GITHUB_SHA" > version.json
           echo ok
 
