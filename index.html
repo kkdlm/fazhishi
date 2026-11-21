@@ -98,7 +98,7 @@ html,body{margin:0;padding:0;background:#EAEDE1}
 </div></div>
 <script>
 (function(){
-  var VER='4.0.5-p5';
+  var VER='4.0.5-p6';
   var fill=document.getElementById('spFill'),pct=document.getElementById('spPct'),
       status=document.getElementById('spStatus'),splash=document.getElementById('splash'),
       boot=document.getElementById('boot');
@@ -189,23 +189,78 @@ html,body{margin:0;padding:0;background:#EAEDE1}
     }catch(e){ return ''; }
   })();
 
+  /* 正文挂载：优先 blob: iframe（快、隔离好）；微信 / QQ 内置浏览器（X5 内核）会拦 blob: iframe，
+     表现是「进度走完、一片空白」，所以这里读 iframe 里有没有内容，2.6 秒还是空的就改成直接写文档。 */
+  function patchHTML(html){
+    try{
+      var base='<base href="'+location.origin+location.pathname+'">';
+      html=html.replace(/<head([^>]*)>/i,'<head$1>'+base);
+      /* 邀请链接：?inv=FZxxxxxx，把码直接送进正文（正文跑在 iframe 里，读不到地址栏 query） */
+      html=html.replace(/<body([^>]*)>/i,'<body$1><script>window.__shellMounted=1;window.__FZ_INV="'+INV+'";<\/script>');
+    }catch(e){}
+    return html;
+  }
+  function frameHas(fr){
+    try{
+      var d=fr&&fr.contentDocument;
+      if(!d||!d.body) return false;
+      return d.body.children.length>0 || (d.body.textContent||'').replace(/\s/g,'').length>0;
+    }catch(e){ return false; }
+  }
+  function newFrame(){
+    var fr=document.createElement('iframe');
+    fr.id='appframe';
+    document.body.appendChild(fr);
+    return fr;
+  }
+  function writeDoc(fr,html){
+    try{ var d=fr&&fr.contentDocument; if(!d) return false; d.open(); d.write(html); d.close(); return true; }catch(e){ return false; }
+  }
+  function mountFail(){
+    mounted=true; done=true;
+    try{ if(splash&&splash.parentNode) splash.classList.add('hide'); }catch(e){}
+    try{
+      var b=document.getElementById('boot'); if(!b) return;
+      b.style.display='flex';
+      var t=document.getElementById('bootT'), dd=document.getElementById('bootD');
+      if(t) t.textContent='内容没能显示出来';
+      if(dd) dd.textContent='这个浏览器拦住了页面装载（微信 / QQ 内置浏览器常见）。点「重新加载」再试一次，或点右上角 ··· 选「在浏览器中打开」。';
+      var btn=b.querySelector('button'); if(btn) btn.textContent='重新加载';
+    }catch(e){}
+  }
+  function loadInto(html, cb){
+    var fr=newFrame(), settled=false, t0=Date.now(), iv=null, iv2=null;
+    function pass(){ if(settled) return; settled=true; if(iv) clearInterval(iv); if(iv2) clearInterval(iv2); cb(true); }
+    function fail(){ if(settled) return; settled=true; if(iv) clearInterval(iv); if(iv2) clearInterval(iv2); cb(false); }
+    try{ fr.src=URL.createObjectURL(new Blob([html],{type:'text/html;charset=utf-8'})); }catch(e){}
+    try{ fr.addEventListener('load',function(){ if(frameHas(fr)) pass(); }); }catch(e){}
+    function rewrite(){
+      /* blob 被拦：换成直接写这个 iframe 的文档（同源 about:blank，X5 也认） */
+      var ok=writeDoc(fr,html);
+      if(!ok){
+        try{ fr.remove(); }catch(e){}
+        fr=newFrame(); ok=writeDoc(fr,html);
+      }
+      var t1=Date.now();
+      if(frameHas(fr)){ pass(); return; }
+      iv2=setInterval(function(){
+        if(frameHas(fr)){ pass(); return; }
+        if(Date.now()-t1>2600){ fail(); }
+      },120);
+    }
+    iv=setInterval(function(){
+      if(frameHas(fr)){ pass(); return; }
+      if(Date.now()-t0>2600){ clearInterval(iv); rewrite(); }
+    },120);
+  }
   function mount(html){
     finishing=true; gate=Date.now()+420; real=1;
     try{ status.textContent='内容到手，正在拆封…'; }catch(e){}
     boot.style.display='none';   /* 下载断流时弹的提示，真正挂载成功后收起 */
-    try{
-      var base='<base href="'+location.origin+location.pathname+'">';
-      html=html.replace(/<head([^>]*)>/i,'<head$1>'+base);
-      /* 邀请链接：?inv=FZxxxxxx，把码直接送进正文（正文跑在 blob 里，读不到地址栏 query） */
-      html=html.replace(/<body([^>]*)>/i,'<body$1><script>window.__shellMounted=1;window.__FZ_INV="'+INV+'";<\/script>');
-    }catch(e){}
-    var url=URL.createObjectURL(new Blob([html],{type:'text/html;charset=utf-8'}));
-    var fr=document.createElement('iframe');
-    fr.id='appframe'; fr.src=url;
-    document.body.appendChild(fr);
-    var t0=Date.now();
-    fr.addEventListener('load',function(){ if(!mounted){ mounted=true; gate=Math.max(gate,Date.now()+150); } });
-    setTimeout(function(){ if(!mounted && Date.now()-t0>8000){ mounted=true; gate=Math.max(gate,Date.now()+150); } },8000);
+    loadInto(patchHTML(html), function(ok){
+      if(ok){ mounted=true; gate=Math.max(gate,Date.now()+150); }
+      else mountFail();
+    });
   }
 
   /* 正文只下一次：拉到的正文存进本机缓存，之后打开、重启、断电重来都直接读本机，
