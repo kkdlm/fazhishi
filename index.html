@@ -98,7 +98,7 @@ html,body{margin:0;padding:0;background:#EAEDE1}
 </div></div>
 <script>
 (function(){
-  var VER='4.0.5-p8';
+  var VER='4.0.5-p8', VERB='4.0.5', PATCH='8';
   var fill=document.getElementById('spFill'),pct=document.getElementById('spPct'),
       status=document.getElementById('spStatus'),splash=document.getElementById('splash'),
       boot=document.getElementById('boot');
@@ -324,11 +324,14 @@ html,body{margin:0;padding:0;background:#EAEDE1}
 
   /* 备用线路：主站拉不动（0 字节、超时、被墙）时换镜像。
      两个镜像都返回 Access-Control-Allow-Origin: *，可以直接 fetch 读取正文。 */
+  /* 实测（国内出口）：GitHub Pages 首字节 15.7 秒、1.4KB/s，基本没法用；
+     gcore.jsdelivr 1.8 秒起、1.8MB/s，raw.githubusercontent 0.9 秒起、4.6MB/s。
+     所以镜像在前、本站放最后兜底；真正选哪条由下面的竞速决定。 */
   var MIRRORS=[
-    'https://fastly.jsdelivr.net/gh/kkdlm/fazhishi@main/app.html',
     'https://gcore.jsdelivr.net/gh/kkdlm/fazhishi@main/app.html',
+    'https://raw.githubusercontent.com/kkdlm/fazhishi/main/app.html',
     'https://cdn.jsdelivr.net/gh/kkdlm/fazhishi@main/app.html',
-    'https://raw.githubusercontent.com/kkdlm/fazhishi/main/app.html'
+    'https://fastly.jsdelivr.net/gh/kkdlm/fazhishi@main/app.html'
   ];
 
   /* 线路竞速：同时向几条线路各要 2 个字节，谁先回就用谁。
@@ -343,7 +346,7 @@ html,body{margin:0;padding:0;background:#EAEDE1}
         try{ ctl=new AbortController(); }catch(e){}
         tid=setTimeout(function(){ end({u:u,i:idx,ok:false,t:9999}); }, ms);
         try{
-          fetch(u,{method:'HEAD', signal:ctl?ctl.signal:undefined, cache:'no-store'})
+          fetch(u,{signal:ctl?ctl.signal:undefined, cache:'no-store'})
             .then(function(r){ end({u:u,i:idx,ok:!!(r&&r.status<400),t:Date.now()-t0}); })
             .catch(function(){ end({u:u,i:idx,ok:false,t:9999}); });
         }catch(e){ end({u:u,i:idx,ok:false,t:9999}); }
@@ -417,11 +420,11 @@ html,body{margin:0;padding:0;background:#EAEDE1}
         .then(function(v){ if(v&&v.s) total=Number(v.s)||0; }).catch(function(){});
       /* ① 本站：地址只随版本号变化（不带时间戳），所以浏览器缓存能命中——第二次打开不再重拉 6.5MB；
          ② 首字节 8 秒没来就换镜像，不死等；③ 三条都失败再整体重试一轮 */
-      list=['app.html?v='+VER].concat(MIRRORS);
+      list=MIRRORS.concat(['app.html?v='+VER]);
       /* 先花最多 3.5 秒挑一条能出字节的线路，再整包下；挑不出来就按原顺序硬试 */
       try{
         status.textContent='正在挑最快的线路…';
-        var pick=await pickFast(list, 1800);
+        var pick=await pickFast(list, 2200);
         if(pick.list.length){
           list=pick.list.concat(list.filter(function(u){return pick.list.indexOf(u)<0;}));
         }
@@ -433,6 +436,9 @@ html,body{margin:0;padding:0;background:#EAEDE1}
           try{
             boot.style.display='none';
             var html=await pullOne(list[i], round?9000:4500, 10000, 0.15);
+            /* 镜像可能缓存着上一版（jsDelivr 的 @main 有缓存）：版本/补丁对不上一律当这条线路失败，换下一条 */
+            if(html.indexOf("const VER='"+VERB+"'")<0 || html.indexOf("const PATCH='"+PATCH+"'")<0)
+              throw new Error('这条线路给的是旧版本');
             /* 先落盘再挂载：以前是挂上去再异步存，用户一进来就切走会把 6.5MB 写入打断，
                下次打开又得从头下——表现就是「每次都很慢、进度停在 0」。 */
             try{ await pkgSave(VER, html); }catch(e){}
