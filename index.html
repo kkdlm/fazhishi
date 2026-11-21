@@ -87,11 +87,11 @@ html,body{margin:0;padding:0;background:#EAEDE1}
 </div></div>
 <script>
 (function(){
-  var VER='3.20.0-p5';
+  var VER='3.20.0-p6';
   var fill=document.getElementById('spFill'),pct=document.getElementById('spPct'),
       status=document.getElementById('spStatus'),splash=document.getElementById('splash'),
       boot=document.getElementById('boot');
-  var got=0,total=0,mounted=false,gate=0,done=false,finishing=false,slow=false,lastAt=Date.now();
+  var got=0,total=0,mounted=false,gate=0,done=false,finishing=false,slow=false,lastAt=Date.now(),retrying=false;
   var startAt=Date.now(), VIRT_MS=1500, P2_MS=1300, MIN_MS=3300;   /* 前 50% 走虚拟曲线，最少看 3.2 秒 */
   var shown=0, real=0, stallFrom=0;
   /* 总字节三级回退：本次响应头 / version.json / 上次成功下载的字节数 / 默认估值
@@ -186,25 +186,35 @@ html,body{margin:0;padding:0;background:#EAEDE1}
     setTimeout(function(){ if(!mounted && Date.now()-t0>8000){ mounted=true; gate=Math.max(gate,Date.now()+150); } },8000);
   }
 
-  async function run(){
+  /* 备用线路：主站拉不动（0 字节、超时、被墙）时换镜像。
+     两个镜像都返回 Access-Control-Allow-Origin: *，可以直接 fetch 读取正文。 */
+  var MIRRORS=[
+    'https://cdn.jsdelivr.net/gh/kkdlm/fazhishi@main/app.html',
+    'https://raw.githubusercontent.com/kkdlm/fazhishi/main/app.html'
+  ];
+
+  /* 拉一条件：首字节 firstByteMs 内没来就 abort，交给下一条；已经开始出字节就不再打断 */
+  async function pullOne(url, firstByteMs){
+    var ctl=null, tid=null, first=false, chunks=[], dec=new TextDecoder('utf-8'), buf='', res, rd, step, cl;
+    try{ if(window.AbortController) ctl=new AbortController(); }catch(e){}
+    if(ctl && firstByteMs){ tid=setTimeout(function(){ try{ ctl.abort(); }catch(e){} }, firstByteMs); }
     try{
-      try{
-        var v=await fetch('version.json?ts='+Date.now(),{cache:'no-store'}).then(function(r){return r.json();});
-        if(v && v.s) total=Number(v.s)||0;
-      }catch(e){}
-      var res=await fetch('app.html?v='+VER+(navigator.onLine?('&n='+Date.now()):''));
+      res=await fetch(url, ctl?{signal:ctl.signal,cache:'default'}:{cache:'default'});
       if(!res.ok) throw new Error('HTTP '+res.status);
-      var cl=Number(res.headers.get('content-length')||0);
+      cl=Number(res.headers.get('content-length')||0);
       /* 压缩传输时 CDN 报的是压缩后长度（约一半），不能直接当总量；
          与 version.json 的字节数差得离谱就忽略它，宁可不用这个分母 */
       if(cl>0 && (!total || Math.abs(cl-total)<total*0.35)) total=cl;
       if(!res.body || !res.body.getReader){
-        var txt=await res.text(); got=txt.length; real=1; mount(txt); return;
+        buf=await res.text(); got=buf.length; real=1;
+        if(got<1000) throw new Error('内容为空');
+        return buf;
       }
-      var rd=res.body.getReader(), chunks=[], dec=new TextDecoder('utf-8'), buf='';
+      rd=res.body.getReader();
       while(true){
-        var step=await rd.read();
+        step=await rd.read();
         if(step.done) break;
+        if(!first){ first=true; if(tid){ clearTimeout(tid); tid=null; } }
         chunks.push(step.value); got+=step.value.length;
         lastAt=Date.now(); slow=false;
         var r=got/denom();
@@ -215,23 +225,55 @@ html,body{margin:0;padding:0;background:#EAEDE1}
       for(var i=0;i<chunks.length;i++) buf+=dec.decode(chunks[i],{stream:true});
       buf+=dec.decode();
       real=1;
-      try{ if(got>0) localStorage.setItem('fz_pkg', String(got)); }catch(e){}
-      mount(buf);
+      if(got<1000) throw new Error('内容为空');
+      try{ localStorage.setItem('fz_pkg', String(got)); }catch(e){}
+      return buf;
+    } finally { if(tid){ clearTimeout(tid); tid=null; } }
+  }
+
+  async function run(){
+    var lastErr=null, round, i, list;
+    try{
+      try{
+        var v=await fetch('version.json?ts='+Date.now(),{cache:'no-store'}).then(function(r){return r.json();});
+        if(v && v.s) total=Number(v.s)||0;
+      }catch(e){}
+      /* ① 本站：地址只随版本号变化（不带时间戳），所以浏览器缓存能命中——第二次打开不再重拉 6.5MB；
+         ② 首字节 8 秒没来就换镜像，不死等；③ 三条都失败再整体重试一轮 */
+      list=['app.html?v='+VER].concat(MIRRORS);
+      for(round=0; round<2; round++){
+        for(i=0;i<list.length;i++){
+          if(done) return;
+          got=0; real=0; lastAt=Date.now();
+          try{
+            boot.style.display='none';
+            mount(await pullOne(list[i], round?12000:8000));
+            return;
+          }catch(e){ lastErr=e; }
+          if(!navigator.onLine) throw (lastErr||new Error('现在没有网络'));
+        }
+        if(!navigator.onLine) break;
+        retrying=true;
+        await new Promise(function(s){ setTimeout(s, round?2400:1200); });
+        retrying=false;
+      }
+      throw lastErr||new Error('所有线路都没拿到内容');
     }catch(err){
       var off=!navigator.onLine;
       boot.style.display='flex';
       document.getElementById('bootT').textContent=off?'现在没有网络':'页面没加载出来';
-      document.getElementById('bootD').textContent=off?'连上网后点「重新加载」；也可以清缓存重启。':'启动资源没拿到（'+(err&&err.message?err.message.slice(0,40):'unknown')+'），点「重新加载」再试一次。';
-    }
+      document.getElementById('bootD').textContent=off?'连上网后点「重新加载」；也可以清缓存重启。'
+        :'本站和两个镜像都没拿到内容（'+(err&&err.message?err.message.slice(0,40):'unknown')+'），点「重新加载」再试一次。';
+    }finally{ retrying=false; }
   }
 
   setInterval(function(){
     if(done||finishing) return;
     if(!slow && Date.now()-lastAt>4000){ slow=true; }
-    if(Date.now()-lastAt>15000 && !mounted && !window.__booted){
+    if(Date.now()-lastAt>25000 && !mounted && !window.__booted){
       boot.style.display='flex';
-      document.getElementById('bootT').textContent='下载停住了';
-      document.getElementById('bootD').textContent='已经拿到 '+(got>0?mb(got)+' MB':'0 MB')+'，网络断流或后台被系统挂起。点「重新加载」再试一次，通常第二次就走缓存了。';
+      document.getElementById('bootT').textContent='还连不上，正在换线路重试';
+      document.getElementById('bootD').textContent='已经拿到 '+(got>0?mb(got)+' MB':'0 MB')+'。会自动换镜像再试；等太久可以点「清缓存重启」。';
     }
   },500);
 
