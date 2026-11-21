@@ -98,7 +98,10 @@ html,body{margin:0;padding:0;background:#EAEDE1}
 </div></div>
 <script>
 (function(){
-  var VER='4.2.0-p1', VERB='4.2.0', PATCH='0';
+  var VER='4.2.0-p2', VERB='4.2.0', PATCH='0';
+  /* release 会把下面这个占位符替换成本次发布的 commit sha：
+     有了它，jsDelivr 的 SHA 锚定线路在第一次尝试时就在队列里，不用等 version.json 回来。 */
+  var RAW_SHA='71bff8f6772b461ed2d6a9e05c58f5cb521bca86';
   /* 缓存键只跟「正文版本」，不跟壳版本：
      这样以后只改壳（换线路、改文案）时，已在手机里的 6.5MB 正文照样命中，
      不会因为壳升级就逼所有人重下一遍。 */
@@ -428,10 +431,11 @@ html,body{margin:0;padding:0;background:#EAEDE1}
   /* 拿到 version.json 里的 commit sha 后，才把 jsDelivr 的「sha 锚定」线路插到第 2 位：
      用 sha 而不是 @main，就不会像 @main 那样给你上一版正文。谁先回来顺序都可能变，所以做成幂等。 */
   var RTLIST=null;
+  function jdURL(sha){ return 'https://cdn.jsdelivr.net/gh/kkdlm/fazhishi@'+sha+'/app.html'; }
   function tryJd(){
     try{
       if(!window.__fzSha) return;
-      var jd='https://cdn.jsdelivr.net/gh/kkdlm/fazhishi@'+window.__fzSha+'/app.html';
+      var jd=jdURL(window.__fzSha);
       if(RTLIST && RTLIST.indexOf(jd)<0) RTLIST.splice(1,0,jd);
       else window.__fzJd=jd;
     }catch(e){}
@@ -463,7 +467,8 @@ html,body{margin:0;padding:0;background:#EAEDE1}
            gh-proxy  → Cloudflare 反代 raw，内容永远是最新 main，带 CORS
            jsDelivr  → 用 commit SHA 锚定（不吃 @main 的 24 小时缓存滞后），带 CORS
          两条都给的是同一份正文，版本号/补丁号校验过不了照样被拒，不会进旧版。 */
-      RTLIST.splice(1,0,'https://gh-proxy.com/https://raw.githubusercontent.com/kkdlm/fazhishi/main/app.html');
+      RTLIST.splice(2,0,'https://gh-proxy.com/https://raw.githubusercontent.com/kkdlm/fazhishi/main/app.html');
+      if(RAW_SHA && RAW_SHA.indexOf('__')<0) RTLIST.splice(1,0,jdURL(RAW_SHA));
       if(window.__fzSha) tryJd();
       /* 按实测速度排好的顺序试；首字节 4.5 秒不来、或 12 秒还不到 15%，立刻换下一条。
          不再做「竞速」：首字节快不等于下得快，会挑到吞吐只有 100KB/s 的线路，反而更慢。 */
@@ -474,7 +479,7 @@ html,body{margin:0;padding:0;background:#EAEDE1}
           got=0; real=0; lastAt=Date.now();
           try{
             boot.style.display='none';
-            var html=await pullOne(RTLIST[i], round?9000:4500, 10000, 0.15);
+            var html=await pullOne(RTLIST[i], round?6000:2500, 10000, 0.15);
             /* 镜像可能缓存着上一版（jsDelivr 的 @main 有缓存）：版本/补丁对不上一律当这条线路失败，换下一条 */
             if(html.indexOf("const VER='"+VERB+"'")<0 || html.indexOf("const PATCH='"+PATCH+"'")<0)
               throw new Error('这条线路给的是旧版本');
