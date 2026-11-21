@@ -8016,6 +8016,11 @@ async function sbReq(path,opt){
   const txt=await r.text(); let j=null;
   try{ j=txt?JSON.parse(txt):null; }catch(e){ j=txt; }
   if(!r.ok){
+    if(r.status===401 && !opt.__retry && !/\/auth\/v1\/(token|verify|recover|resend|signup)/.test(path)){
+      try{
+        if(await ensureToken(true)) return sbReq(path,Object.assign({},opt,{__retry:true}));
+      }catch(e){}
+    }
     const msg=(j&&(j.msg||j.message||j.error_description))||('HTTP '+r.status);
     const err=new Error(msg); err.status=r.status; err.data=j; throw err;
   }
@@ -8027,14 +8032,24 @@ function adoptSession(j){
     email:(j.user.email||''), expires_at:Date.now()+((j.expires_in||3600)*1000)};
   saveAuth(); return AUTH;
 }
-async function ensureToken(){
+let SESSION_LOST_AT=0;
+/* 会话真的失效（刷新令牌也不行）才走这里：清本地会话、回登录墙、说清楚） */
+function onSessionLost(){
+  if(Date.now()-(SESSION_LOST_AT||0)<4000) return;
+  SESSION_LOST_AT=Date.now();
+  AUTH=null; saveAuth();
+  GATEPASS=false;
+  try{ renderAcct(); syncGate(); }catch(e){}
+  mtoast('登录已过期：重新登录一次，进度都在云端');
+}
+async function ensureToken(force){
   if(!authOk()) return false;
-  if(Date.now()<(AUTH.expires_at||0)-60000) return true;
-  if(!AUTH.refresh_token) return false;
+  if(!force && Date.now()<(AUTH.expires_at||0)-60000) return true;
+  if(!AUTH.refresh_token){ onSessionLost(); return false; }
   try{
     const j=await sbReq('/auth/v1/token?grant_type=refresh_token',{method:'POST',body:{refresh_token:AUTH.refresh_token}});
     adoptSession(j); return true;
-  }catch(e){ AUTH=null; saveAuth(); return false; }
+  }catch(e){ onSessionLost(); return false; }
 }
 
 /* ---------- 文字验证码（防恶意注册，纯前端+本机冷却） ---------- */
@@ -8063,7 +8078,7 @@ function renderAcct(){
 }
 function meCard(inner){ return '<div class="me-card">'+inner+'</div>'; }
 /* ---------- 邀请码 / 设备绑定（v3.18.0） ---------- */
-let EXTRA={code:'',n:0,dead:false,devBlocked:false,rwI:3,rwE:3,invOn:true,cfgOk:false,banned:false,role:'',srvVip:null};
+let EXTRA={code:'',n:0,dead:false,devBlocked:false,rwI:3,rwE:3,invOn:true,cfgOk:false,banned:false,role:'',srvVip:null,devLimit:0,devWin:45,pendingMail:'',deleted:false};
 function devId(){
   try{
     let v=localStorage.getItem(KEY+':dev');
@@ -8097,6 +8112,110 @@ function inviteCardHTML(){
     <div class="me-note">已邀请 <b>${EXTRA.n||0}</b> 人${EXTRA.n?(' · 累计 +'+((EXTRA.n*(EXTRA.rwI||3)))+' 天'):''}</div>
     <div class="me-row"><input id="invIn" maxlength="16" style="text-transform:uppercase" placeholder="填别人的邀请码"><button onclick="claimInvite(this)">兑换</button></div>
     <div class="me-note" id="invMsg"></div>`);
+}
+/* ---------- 用户系统完善（v3.21.0）：额度卡 / 设备自助 / 邮箱确认闭环 ---------- */
+async function loadFreeState(){
+  if(!authOk()) return;
+  try{
+    const fs=await rpc('free_bk_state',{});
+    if(fs&&fs.limit){ EXTRA.freeSrv={used:fs.used||0,limit:fs.limit}; renderAcct(); }
+  }catch(e){}
+}
+function freeCardHTML(){
+  if(!authOk()||isVip()) return '';
+  const f=EXTRA.freeSrv;
+  if(!f) return meCard(`<h3>今日免费背诵</h3><div class="me-note">正在和服务端核对今天的用量…</div>`);
+  const used=f.used||0, lim=f.limit||5, left=Math.max(0,lim-used);
+  return meCard(`<h3>今日免费背诵</h3>
+    <div class="me-kpi"><div><b>${used}</b><span>已用</span></div><div><b>${lim}</b><span>上限</span></div><div><b>${left}</b><span>还剩</span></div></div>
+    <div class="me-note">${left>0?('还剩 '+left+' 张，明天 0 点恢复'):'今天的免费额度用完了，明天 0 点恢复'}。按账号在服务端计数，清缓存不会恢复。</div>
+    ${left>0?'':'<div class="me-row"><button class="pri" onclick="openVip()">开通会员 · 不限量</button></div>'}`);
+}
+function deviceCardHTML(){
+  if(!authOk()) return '';
+  const lim=EXTRA.devLimit||0;
+  return meCard(`<h3>登录设备</h3>
+    <button class="me-link" onclick="openDevices()">本账号的登录设备<span>›</span></button>
+    <div class="me-note">${lim?('同一账号最多 '+lim+' 台活跃（'+(EXTRA.devWin||45)+' 天内来过才算）；旧手机卖人或换机，在这里解绑就行，进度不受影响。'):'换手机或旧设备不用了，可以在这里解绑。'}</div>`);
+}
+async function openDevices(){
+  if(!authOk()){ mtoast('先登录'); return; }
+  openSheet('登录设备',`<div class="sheet-sec"><div class="fine" id="devLoading">正在向服务器读取本账号的设备…</div><div id="devList"></div></div>`);
+  await renderDevices();
+}
+async function renderDevices(){
+  const box=document.getElementById('devList');
+  try{
+    const j=await rpc('my_devices',{p_device:devId()});
+    if(!j||!j.ok) throw new Error((j&&j.msg)||'读取失败');
+    EXTRA.devLimit=j.limit||EXTRA.devLimit||3; EXTRA.devWin=j.window_days||45;
+    const list=(j.devices||[]).slice().reverse();
+    const rows=list.map(function(d){
+      const nm=d.ua?String(d.ua).replace(/.*\)\s*/,'').slice(0,42):'未知设备';
+      const t=d.last_seen?String(d.last_seen).replace('T',' ').slice(0,16):'';
+      const isCur=!!d.current;
+      return `<div class="me-row"><div style="flex:1;min-width:0"><b style="font-size:12.5px">${esc(nm)}${isCur?' <span style="color:var(--bamboo);font-weight:600">· 本机</span>':''}</b>
+        <div class="me-note" style="margin:2px 0 0">${esc(t)||'刚刚'}${isCur?' · 每次打开都会更新':' · 最近一次打开'}</div></div>
+        ${isCur?'':'<button onclick="unbindDevice(\''+esc(d.device_id)+'\')">解绑</button>'}</div>`;
+    }).join('');
+    if(box){
+      box.innerHTML=(rows||'<div class="me-note">还没有记录到设备：重新打开一次 App 就会登记。</div>')
+        + `<div class="me-note" style="margin-top:10px">当前 ${list.length} / ${EXTRA.devLimit} 台。解绑只是让那台旧设备下次要重新登录，云端进度不受影响。</div>`;
+    }
+    const ld=document.getElementById('devLoading'); if(ld) ld.textContent='';
+    try{ renderAcct(); }catch(e){}
+  }catch(e){
+    const ld=document.getElementById('devLoading'); if(ld) ld.textContent='读取失败：'+zhErr(e);
+  }
+}
+async function unbindDevice(id){
+  try{
+    const j=await rpc('unbind_device',{p_device:id});
+    if(j&&j.ok){ mtoast('已解绑：那台设备下次要重新登录'); await renderDevices(); }
+    else mtoast('这台已经不在活跃列表里了');
+  }catch(e){ mtoast('解绑失败：'+zhErr(e)); }
+}
+function deleteAccountAsk(){
+  if(!authOk()){ mtoast('先登录'); return; }
+  const mail=AUTH.email||'';
+  openSheet('注销账号？',`<div class="sheet-sec">
+    <div class="fine">注销会立刻清空这个账号的学习数据（掌握、收藏、笔记、复习排期）、登录设备与邀请关系，之后这台设备回到登录页。会员剩余天数与未兑换卡密不退款，数据不能恢复。</div>
+    <div class="keyrow"><input id="delMail" inputmode="email" autocomplete="off" placeholder="输入注册邮箱确认"></div>
+    <div class="fine">要一模一样地输入 ${esc(mail)}，防止手滑。</div>
+    <div class="keyrow"><button style="flex:1" onclick="closeSheet()">再想想</button><button style="flex:1" onclick="deleteAccountGo(this)">确认注销</button></div>
+  </div>`);
+}
+async function deleteAccountGo(btn){
+  if(!authOk()){ mtoast('先登录'); return; }
+  const v=((document.getElementById('delMail')||{}).value||'').trim().toLowerCase();
+  if(v!==String(AUTH.email||'').toLowerCase()){ mtoast('邮箱不对：要和注册邮箱一个字不差'); return; }
+  const done=busyOn(btn,'注销中…'); haptic();
+  try{
+    const j=await rpc('request_account_delete',{});
+    if(!j||!j.ok) throw new Error((j&&j.msg)||'注销失败');
+    try{ await sbReq('/auth/v1/logout',{method:'POST'}); }catch(e){}
+    AUTH=null; saveAuth(); S.nick=''; S.status={}; S.fav=[]; S.notes={};
+    closeSheet(); GATEPASS=false; renderAcct(); syncGate();
+    mtoast('已注销：学习数据已清空，这个账号已停用');
+  }catch(e){ mtoast('注销没成功：'+zhErr(e)); }
+  if(done) done();
+}
+function pendingCardHTML(){
+  const m=EXTRA.pendingMail||'';
+  if(!m) return '';
+  return meCard(`<h3>还差一步：确认邮箱</h3>
+    <div class="me-note">${esc(m)} 已经注册成功，但还等你在邮箱里点一次确认链接。点完就能用密码登录。</div>
+    <div class="me-row"><button class="pri" onclick="resendConfirm(this)">重发确认邮件</button><button onclick="setAcctab('in')">我已确认，去登录</button></div>`);
+}
+async function resendConfirm(btn){
+  const m=EXTRA.pendingMail||'';
+  if(!m){ mtoast('没有待确认的邮箱'); return; }
+  const done=busyOn(btn,'发送中…'); haptic();
+  try{
+    await sbReq('/auth/v1/resend',{method:'POST',body:{type:'signup',email:m}});
+    mtoast('确认邮件又发了一次：收件箱和垃圾箱都看一眼');
+  }catch(e){ mtoast('没发出去：'+zhErr(e)); }
+  if(done) done();
 }
 function copyInvite(){
   const v=EXTRA.code||'';
@@ -8171,10 +8290,10 @@ async function syncExtras(){
   }catch(e){}
   /* 会员到期时间以服务端 profiles.pro_until 为准（本地值只是离线缓存，被改也没用） */
   try{
-    const pr=await sbReq('/rest/v1/profiles?uid=eq.'+AUTH.uid+'&select=pro_until,banned,role');
+    const pr=await sbReq('/rest/v1/profiles?uid=eq.'+AUTH.uid+'&select=pro_until,banned,role,delete_requested_at');
     const me=(pr&&pr[0])||null;
     if(me){
-      EXTRA.banned=!!me.banned; EXTRA.role=me.role||'';
+      EXTRA.banned=!!me.banned; EXTRA.role=me.role||''; EXTRA.deleted=!!me.delete_requested_at;
       EXTRA.srvVip=me.pro_until||null;
       const ms=me.pro_until?(Date.parse(me.pro_until)||0):0;
       if((Number(S.vipUntil||0))!==ms){ S.vipUntil=ms; if(ms) S.vipAt=S.vipAt||Date.now(); save(); }
@@ -8189,6 +8308,8 @@ async function syncExtras(){
       if(r.key==='invite_reward_inviter'&&v!=null) EXTRA.rwI=parseInt(v,10)||EXTRA.rwI;
       if(r.key==='invite_reward_invitee'&&v!=null) EXTRA.rwE=parseInt(v,10)||EXTRA.rwE;
       if(r.key==='invite_enabled'&&v!=null) EXTRA.invOn=(v===true||v==='true');
+      if(r.key==='device_limit'&&v!=null) EXTRA.devLimit=parseInt(v,10)||EXTRA.devLimit;
+      if(r.key==='device_window_days'&&v!=null) EXTRA.devWin=parseInt(v,10)||EXTRA.devWin;
     });
     EXTRA.cfgOk=true;
   }catch(e){}
@@ -8265,22 +8386,23 @@ function meHTML(){
   if(!sbOn()) return meCard('<h3>账号</h3><div class="me-note">服务端还没配置，暂时只能访客使用。</div>');
   const cnt=(o)=>Object.keys(o||{}).length;
   if(authOk() && EXTRA.banned){
-    return meCard(`<h3>账号已被封禁</h3>
-      <div class="me-note">这个账号被管理员封禁：VIP 权益暂停，云端进度仍保留。如属误判，请联系管理员申诉。</div>
+    const gone=!!EXTRA.deleted;
+    return meCard(`<h3>${gone?'这个账号已注销':'账号已被封禁'}</h3>
+      <div class="me-note">${gone?'学习数据已清空、账号已停用。想继续用可换一个邮箱重新注册，或联系管理员恢复。':'这个账号被管理员封禁：VIP 权益暂停，云端进度仍保留。如属误判，请联系管理员申诉。'}</div>
       <div class="me-row"><button onclick="signOutAsk()">退出登录</button></div>`);
   }
   if(!authOk()){
     const left=Math.max(OTPLEFT,coolDown());
-    const mail=`<div class="me-row"><input id="acctMail" inputmode="email" autocomplete="email" placeholder="邮箱"></div>`;
-    const codeRow=`<div class="me-row"><input id="acctCode" inputmode="numeric" maxlength="6" placeholder="邮件里的验证码">
+    const mail=`<div class="me-row"><input id="acctMail" inputmode="email" autocomplete="email" placeholder="邮箱" enterkeyhint="next"></div>`;
+    const codeRow=`<div class="me-row"><input id="acctCode" inputmode="numeric" maxlength="6" placeholder="邮件里的验证码" enterkeyhint="go" onkeydown="if(event.key==='Enter'){(ACCTAB==='reg'?regGo:verifyOtp)(null)}">
         <button id="otpBtn" onclick="sendOtp(this)">${left>0?('重发 '+left+'s'):'发送验证码'}</button></div>`;
     const capRow=`<div class="me-row"><input id="capIn" maxlength="4" style="text-transform:uppercase" placeholder="照抄右边 4 个字">
         <b id="capShow" class="me-cap">${esc(CAPTCHA)}</b></div>`;
     if(ACCTAB==='reg'){
-      return meCard(`<h3>注册新账号</h3>
+  return pendingCardHTML()+meCard(`<h3>注册新账号</h3>
         <div class="me-note">注册要两样一起给：自己设的密码 + 邮箱验证码。注册完之后，以后登录用密码或验证码都行。</div>
         ${mail}
-        <div class="me-row"><input id="acctPwd" type="password" autocomplete="new-password" placeholder="设置密码，至少 6 位"></div>
+        <div class="me-row"><input id="acctPwd" type="password" autocomplete="new-password" placeholder="设置密码，至少 6 位" enterkeyhint="next"></div>
         ${codeRow}${capRow}
         <div class="me-row"><input id="acctInv" maxlength="16" style="text-transform:uppercase" placeholder="邀请码（选填，不填也能注册）"></div>
         <div class="me-row"><button class="pri" onclick="regGo(this)">完成注册</button></div>
@@ -8288,16 +8410,16 @@ function meHTML(){
         <div class="me-note">这个邮箱注册过的话，这一步会用你新填的密码替换旧密码。</div>`);
     }
     if(ACCTAB==='otp'){
-      return meCard(`<h3>验证码登录</h3>
+  return pendingCardHTML()+meCard(`<h3>验证码登录</h3>
         <div class="me-note">已注册的邮箱，填验证码就能进；没注册过的邮箱会提示先去注册。</div>
         ${mail}${codeRow}${capRow}
         <div class="me-row"><button class="pri" onclick="verifyOtp(this)">登录</button></div>
         <div class="me-row me-two"><button onclick="setAcctab('in')">返回登录</button></div>`);
     }
-    return meCard(`<h3>登录</h3>
+  return pendingCardHTML()+meCard(`<h3>登录</h3>
       <div class="me-note">还没登录：登录后才能使用。注册免费，每天 5 张背诵，进度自动同步到云端。</div>
       ${mail}
-      <div class="me-row"><input id="acctPwd" type="password" autocomplete="current-password" placeholder="密码，至少 6 位"></div>
+      <div class="me-row"><input id="acctPwd" type="password" autocomplete="current-password" placeholder="密码，至少 6 位" enterkeyhint="go" onkeydown="if(event.key==='Enter'){pwdGo('in',null)}"></div>
       <div class="me-row"><button class="pri" onclick="pwdGo('in',this)">登录</button></div>
       <div class="me-row me-two"><button onclick="setAcctab('reg')">注册新账号</button><button onclick="setAcctab('otp')">验证码登录</button></div>
       <div class="me-row me-two"><button onclick="sendReset(this)">忘记密码</button><button onclick="openInstall()">装到主屏</button></div>`);
@@ -8315,7 +8437,9 @@ function meHTML(){
     <div class="me-note">${esc(SYNCERR?('上次没同步上：'+SYNCERR):'改一点就会自动同步；切回前台也会补推')}</div>
     <div class="me-row"><button class="pri" onclick="syncNow()">立即同步</button><button onclick="pullCloud(true)">从云端拉取</button></div>`)
    + vipCardHTML()
+   + freeCardHTML()
    + inviteCardHTML()
+   + deviceCardHTML()
    + meCard(`<h3>修改密码</h3>
       <div class="me-note">至少 6 位。改完这台设备仍然保持登录，别的设备下次要重新登录。</div>
       <div class="me-row"><input id="newPwd" type="password" autocomplete="new-password" placeholder="新密码，至少 6 位"></div>
@@ -8328,7 +8452,8 @@ function meHTML(){
       <button class="me-link" onclick="openChangelog()">版本记录<span>v${VER} · 补丁 ${patchNo()}</span></button>
       <button class="me-link" onclick="checkNow()">检查新版本<span>查</span></button>`)
    + meCard(`<button class="me-danger" onclick="signOutAsk()">退出登录</button>
-      <div class="me-note">退出后需要重新登录才能继续使用，云端进度保留，再登录即恢复。</div>`);
+      <button class="me-danger" onclick="deleteAccountAsk()">注销账号</button>
+      <div class="me-note">退出只是这台设备下线，进度留在云端；注销是清空数据并停用账号，会员与卡密不退款。</div>`);
 }
 async function changePwd(){
   if(!authOk()){ mtoast('先登录'); return; }
@@ -8457,7 +8582,7 @@ async function pwdGo(mode,btn){
       if(inv) stashInvite(inv);
       const j=await sbReq('/auth/v1/signup',{method:'POST',body:{email:e,password:p}});
       if(j&&j.access_token){ adoptSession(j); await afterLogin(); mtoast('注册完成，已登录'); }
-      else if(j&&j.user){ mtoast('账号建好了：先去邮箱点确认链接；填的邀请码会在首次登录后自动到账'); }
+      else if(j&&j.user){ EXTRA.pendingMail=e; renderAcct(); mtoast('账号建好了：先去邮箱点确认链接；填的邀请码会在首次登录后自动到账'); }
       else mtoast('注册没成功，稍后再试一次');
       if(done) done();
       return;
@@ -9007,7 +9132,7 @@ function go(v){
   if(v==='browse'){ applyFreeLocks(); applyMode(); chipRow(); renderList(); }
   if(v==='topic'){ applyFreeLocks(); setTopic(TOPIC); }
   if(v==='quiz'){ if(!QZ) renderQuizSetup(); else renderQuiz(); }
-  if(v==='me'){ renderAcct(); if(authOk()&&!EXTRA.code){ fetchInviteCode(true).then(function(){ renderAcct(); }); } }
+  if(v==='me'){ renderAcct(); if(authOk()&&!EXTRA.code){ fetchInviteCode(true).then(function(){ renderAcct(); }); } if(authOk()) loadFreeState(); }
   // 渲染完成后恢复该视图上次的滚动位置
   requestAnimationFrame(()=>{window.scrollTo({top:SCROLLMEM[v]||0,behavior:'auto'});topLayer();});
 }
@@ -9123,8 +9248,16 @@ try{
 }
 
 const VER='3.21.0';
-const PATCH='1';   /* 同一版本内的补丁号；0 表示版本本体 */
+const PATCH='2';   /* 同一版本内的补丁号；0 表示版本本体 */
 const CHANGELOG = [
+{v:'3.21.0',ps:'2',d:'2026-11-21',kind:'feature',sum:'用户系统补齐：我的页显示今日免费额度、自助查看并解绑登录设备、注册未确认邮箱可重发确认信、会话过期自动续期、自助注销账号',items:[
+ ['新增','「我的」新增「今日免费背诵」卡片：已用 / 上限 / 还剩，数值直接读服务端，非会员才有'],
+ ['新增','「登录设备」可自助查看：列出本账号所有活跃设备（本机带标记），旧手机当场解绑，不用再找管理员'],
+ ['新增','注册后没收到确认邮件的，登录页顶部会出现「还差一步：确认邮箱」，可一键重发确认信，或直接走验证码登录'],
+ ['修复','登录令牌过期时不再让各页面静默失败：自动用刷新令牌续期并重试一次，续不上才提示「登录已过期」并回到登录墙'],
+ ['新增','账号底部新增「注销账号」：输入注册邮箱二次确认后，清空掌握/收藏/笔记/排期、设备与邀请关系并停用账号（会员与卡密不退款）'],
+ ['调整','登录/验证码输入框支持回车直接提交，少点一次屏']
+]},
 {v:'3.21.0',ps:'1',d:'2026-11-21',kind:'feature',sum:'改为登录后使用：没登录不再能浏览任何板块，打开就是登录墙；免费额度全部按账号在服务端计数',items:[
  ['调整','未登录时打开 App 直接看到登录墙（只有一个「登录 / 注册」入口），总览、速览、背诵、专题、刷题全部关闭，不再保留访客可看的板块'],
  ['调整','底栏五个按钮在未登录时统一变灰并锁定，点任一板块只提示「先登录才能用」，不会再跳回总览'],
