@@ -1,16 +1,16 @@
 -- ============================================================
 --  v4.0.3 操作日志：用户能看自己的操作记录，管理员能看全部
---  在 Supabase SQL Editor 里整段执行即可（幂等，可重复跑）
+--  幂等，可重复跑（push docs/*.sql 后由 .github/workflows/db.yml 自动执行）
 -- ============================================================
 
 -- 1) 日志表（不直接开放读写，一律走下面的函数）
 create table if not exists public.activity_log (
   id         bigserial primary key,
-  uid        uuid,                                  -- 操作者；未登录不写
+  uid        uuid,
   action     text not null,
-  target     text,                                  -- 对象：卡密后 4 位、设备尾号、邀请码
-  detail     jsonb not null default '{}'::jsonb,     -- 只留白名单字段，敏感内容进不来
-  vis        text not null default 'self',           -- self=用户自己也能看；admin=仅后台
+  target     text,
+  detail     jsonb not null default '{}'::jsonb,
+  vis        text not null default 'self',
   created_at timestamptz not null default now()
 );
 create index if not exists act_uid_idx  on public.activity_log(uid, created_at desc);
@@ -18,7 +18,6 @@ create index if not exists act_time_idx on public.activity_log(created_at desc);
 alter table public.activity_log enable row level security;
 
 -- 2) 动作字典：中文名 + 可见性 + 允许保留的 detail 字段
---    不在这个表里的动作名一律丢弃，「乱写日志」也写不进来
 create or replace function public.log_meta(p_act text)
 returns table(label text, vis text, keys text[])
 language sql immutable as $$
@@ -58,16 +57,15 @@ declare
   u uuid := auth.uid();
   n int;
 begin
-  if u is null then return; end if;                       -- 未登录不记
+  if u is null then return; end if;
   select * into m from public.log_meta(p_action);
-  if m.label is null then return; end if;                 -- 未登记的动作直接丢
-  -- 同一个动作 60 秒内最多 12 条，防止刷屏
+  if m.label is null then return; end if;
   select count(*) into n from public.activity_log
    where uid = u and action = p_action and created_at > now() - interval '60 seconds';
   if n >= 12 then return; end if;
   if jsonb_typeof(p_detail) = 'object' then
     select coalesce(jsonb_object_agg(k, v), '{}'::jsonb) into d
-      from jsonb_each(p_detail)
+      from jsonb_each(p_detail) as e(k, v)
      where k = any(m.keys)
        and jsonb_typeof(v) in ('string','number','boolean');
   end if;
@@ -97,7 +95,7 @@ begin
 end $$;
 grant execute on function public.my_logs(int, int, text) to authenticated;
 
--- 5) 管理员看全部：用户操作（activity_log）+ 后台动作（audit_log）都能看
+-- 5) 管理员看全部：用户操作（activity_log）+ 后台动作（audit_log）
 create or replace function public.admin_logs(
   p_limit int default 50, p_offset int default 0,
   p_source text default 'user', p_uid uuid default null, p_act text default null
@@ -134,7 +132,7 @@ begin
 end $$;
 grant execute on function public.admin_logs(int, int, text, uuid, text) to authenticated;
 
--- 6) 后台 KPI 用：按动作统计最近 7 天
+-- 6) 后台统计用：按动作统计最近 N 天
 create or replace function public.admin_log_stat(p_days int default 7)
 returns table(act text, label text, total bigint)
 language plpgsql security definer set search_path = public as $$
@@ -151,7 +149,7 @@ begin
 end $$;
 grant execute on function public.admin_log_stat(int) to authenticated;
 
--- 7) 老日志清理（可选，跑一次即可；保留 180 天）
+-- 7) 老日志清理（可选，保留 180 天）
 -- delete from public.activity_log where created_at < now() - interval '180 days';
 
 insert into public.migration_probe (id, at) values (7, now())
