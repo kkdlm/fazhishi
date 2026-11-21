@@ -338,23 +338,25 @@ html,body{margin:0;padding:0;background:#EAEDE1}
      以前是一条条串行试，本站 8 秒 + 三条镜像各 8 秒，四条都慢就要干等半分钟，
      表现就是「进度停在 0.00 MB、卡很久」。现在最迟 3.5 秒必出结果。 */
   async function pickFast(urls, ms){
-    var t0=Date.now();
-    var arr=urls.map(function(u,idx){
-      return new Promise(function(res){
-        var ctl=null, tid=null, fin=false;
-        function end(o){ if(fin) return; fin=true; clearTimeout(tid); try{ if(ctl) ctl.abort(); }catch(e){} res(o); }
-        try{ ctl=new AbortController(); }catch(e){}
-        tid=setTimeout(function(){ end({u:u,i:idx,ok:false,t:9999}); }, ms);
+    var t0=Date.now(), ctls=[];
+    return await new Promise(function(resolve){
+      var done=false, fin=setTimeout(function(){
+        if(done) return; done=true;
+        try{ ctls.forEach(function(c){ try{ c.abort(); }catch(e){} }); }catch(e){}
+        resolve({list:urls.slice(), fastest:0});
+      }, ms);
+      function kill(){ try{ ctls.forEach(function(c){ try{ c.abort(); }catch(e){} }); }catch(e){} }
+      urls.forEach(function(u){
+        var ctl=null; try{ ctl=new AbortController(); ctls.push(ctl); }catch(e){}
         try{
-          fetch(u,{signal:ctl?ctl.signal:undefined, cache:'no-store'})
-            .then(function(r){ end({u:u,i:idx,ok:!!(r&&r.status<400),t:Date.now()-t0}); })
-            .catch(function(){ end({u:u,i:idx,ok:false,t:9999}); });
-        }catch(e){ end({u:u,i:idx,ok:false,t:9999}); }
+          fetch(u,{signal:ctl?ctl.signal:undefined, cache:'no-store'}).then(function(r){
+            if(done || !r || r.status>=400) return;
+            done=true; clearTimeout(fin); kill();
+            resolve({list:[u].concat(urls.filter(function(x){return x!==u;})), fastest:Date.now()-t0});
+          }).catch(function(){});
+        }catch(e){}
       });
     });
-    var res=await Promise.all(arr);
-    var ok=res.filter(function(x){return x.ok;}).sort(function(a,b){return a.t-b.t;});
-    return {list:ok.map(function(x){return x.u;}), fastest:ok.length?ok[0].t:0};
   }
 
   /* 拉一条件：首字节 firstByteMs 内没来就 abort；已经有字节但 12 秒还不到 15%，也 abort（换更快的线路） */
