@@ -7836,7 +7836,7 @@ const CARDKEY_ON=true; /* 卡密已启用 */
 /* ============ VIP / 卡密（本地校验 + 随进度云同步） ============ */
 const CARD_SECRET='FZ2027-vip-1a7c9e';
 function vipUntilMs(){ return Number(S.vipUntil||0); }
-function isVip(){ return vipUntilMs()>Date.now(); }
+function isVip(){ if(EXTRA&&EXTRA.banned) return false; return vipUntilMs()>Date.now(); }
 /* ---------- 非会员免费额度（v3.19.0）----------
    规则：速览只能用「专题史 · 整合版」；专题只能用「一图流原页」；
         背诵闪卡每天 5 张（按卡片去重计数，跨设备不同步、按本机自然日重置）；
@@ -7889,19 +7889,40 @@ async function cardDays(code){
   return want===sig.toLowerCase()?days:0;
 }
 function vipPack(){ return {vipUntil:vipUntilMs(),vipAt:S.vipAt||0}; }
+/* 兑换：服务端优先（redeem_card 原子核销，一张卡只能兑一次、天数写进账号 pro_until）；
+   服务端函数还没建时回退到旧的本地签名校验，保证老卡密仍能兑。 */
 async function redeemCard(){
   if(!CARDKEY_ON){ mtoast('卡密暂未开放'); return; }
   const el=document.getElementById('cardIn');
   const code=((el&&el.value)||'').trim().toUpperCase();
   if(!code){ mtoast('先填卡密'); return; }
+  if(!sbOn() || !authOk()){ mtoast('先登录账号再兑换：卡密要绑到账号上，换设备才能接着用'); return; }
+  try{
+    const until=await rpc('redeem_card',{p_code:code});
+    const ms=until?Date.parse(until):0;
+    if(!ms){ mtoast('兑换没成功，稍后重试'); return; }
+    S.vipUntil=ms; S.vipAt=Date.now(); save();
+    try{ await pushCloud(true); }catch(e){}
+    if(el) el.value='';
+    mtoast('兑换成功：会员到 '+vipDayStr());
+    renderAcct(); if(typeof renderAll==='function') renderAll();
+    setTimeout(closeSheet,400);
+    return;
+  }catch(e){
+    const m=String((e&&e.message)||e||'');
+    if(!/Could not find|PGRST202|does not exist|no function|404/i.test(m)){
+      mtoast(m||'兑换失败，稍后重试');
+      return;
+    }
+  }
   const days=await cardDays(code);
   if(!days){ mtoast('卡密无效：核对一下大小写和中间的横杠'); return; }
   const base=Math.max(Date.now(),vipUntilMs());
   S.vipUntil=base+days*86400000; S.vipAt=Date.now();
-  try{ const used=JSON.parse(localStorage.getItem(KEY+':cards')||'[]'); if(used.indexOf(code)<0) used.push(code); localStorage.setItem(KEY+':cards',JSON.stringify(used)); }catch(e){}
+  try{ const used=JSON.parse(localStorage.getItem(KEY+':cards')||'[]'); if(used.indexOf(code)<0) used.push(code); localStorage.setItem(KEY+':cards',JSON.stringify(used)); }catch(err){}
   save(); if(authOk()) pushCloud(true);
   if(el) el.value='';
-  mtoast('兑换成功：会员到 '+vipDayStr());
+  mtoast('兑换成功（本地旧卡密）：会员到 '+vipDayStr());
   renderAcct(); if(typeof renderAll==='function') renderAll();
   setTimeout(closeSheet,400);
 }
@@ -7996,7 +8017,7 @@ function renderAcct(){
 }
 function meCard(inner){ return '<div class="me-card">'+inner+'</div>'; }
 /* ---------- 邀请码 / 设备绑定（v3.18.0） ---------- */
-let EXTRA={code:'',n:0,dead:false,devBlocked:false,rwI:3,rwE:3,invOn:true,cfgOk:false};
+let EXTRA={code:'',n:0,dead:false,devBlocked:false,rwI:3,rwE:3,invOn:true,cfgOk:false,banned:false,role:'',srvVip:null};
 function devId(){
   try{
     let v=localStorage.getItem(KEY+':dev');
@@ -8048,6 +8069,18 @@ async function claimPendingInvite(){
 }
 async function syncExtras(){
   if(!authOk()) return;
+  /* 会员到期时间以服务端 profiles.pro_until 为准（本地值只是离线缓存，被改也没用） */
+  try{
+    const pr=await sbReq('/rest/v1/profiles?uid=eq.'+AUTH.uid+'&select=pro_until,banned,role');
+    const me=(pr&&pr[0])||null;
+    if(me){
+      EXTRA.banned=!!me.banned; EXTRA.role=me.role||'';
+      EXTRA.srvVip=me.pro_until||null;
+      const ms=me.pro_until?(Date.parse(me.pro_until)||0):0;
+      if((Number(S.vipUntil||0))!==ms){ S.vipUntil=ms; if(ms) S.vipAt=S.vipAt||Date.now(); save(); }
+      if(EXTRA.banned) showBanGate();
+    }
+  }catch(e){}
   /* 奖励天数/设备上限只存在数据库 app_config 一处；这里只做展示，取不到就用默认值兜底 */
   try{
     const cfg=await sbReq('/rest/v1/app_config?select=key,val');
@@ -8100,6 +8133,13 @@ async function claimInvite(btn){
   }
   if(done) done();
 }
+let BANGATED=false;
+function showBanGate(){
+  if(BANGATED) return; BANGATED=true;
+  openSheet('账号已被封禁',`<div class="sheet-sec">
+    <div class="fine">这个账号已被管理员封禁：VIP 权益暂停，云端进度仍保留。如属误判，请联系管理员申诉。</div>
+    <div class="keyrow"><button style="flex:1" onclick="closeSheet()">知道了</button></div></div>`);
+}
 function showDeviceGate(list,msg){
   const rows=(list||[]).map(function(d){
     const nm=d.ua?String(d.ua).replace(/.*\)\s*/,'').slice(0,40):'未知设备';
@@ -8131,6 +8171,11 @@ function meHTML(){
 
   if(!sbOn()) return meCard('<h3>账号</h3><div class="me-note">服务端还没配置，暂时只能访客使用。</div>');
   const cnt=(o)=>Object.keys(o||{}).length;
+  if(authOk() && EXTRA.banned){
+    return meCard(`<h3>账号已被封禁</h3>
+      <div class="me-note">这个账号被管理员封禁：VIP 权益暂停，云端进度仍保留。如属误判，请联系管理员申诉。</div>
+      <div class="me-row"><button onclick="signOutAsk()">退出登录</button></div>`);
+  }
   if(!authOk()){
     const left=Math.max(OTPLEFT,coolDown());
     const mail=`<div class="me-row"><input id="acctMail" inputmode="email" autocomplete="email" placeholder="邮箱"></div>`;
@@ -8355,8 +8400,16 @@ async function afterLogin(){
   touchPresence(true);
   try{ await syncExtras(); }catch(e){}
   try{ await claimPendingInvite(); }catch(e){}
-  try{ await sbReq('/rest/v1/profiles',{method:'POST',prefer:'resolution=merge-duplicates,return=minimal',
-    body:{uid:AUTH.uid,email:AUTH.email,last_seen:nowISO(),ua:(navigator.userAgent||'').slice(0,120)}}); }catch(e){}
+  /* 建档走服务端函数（普通用户已经没有 profiles 的写权限）；函数不存在时退回旧写法 */
+  try{
+    await rpc('ensure_profile',{});
+  }catch(e){
+    const m=String((e&&e.message)||e||'');
+    if(/Could not find|PGRST202|does not exist|no function/i.test(m)){
+      try{ await sbReq('/rest/v1/profiles',{method:'POST',prefer:'resolution=merge-duplicates,return=minimal',
+        body:{uid:AUTH.uid,email:AUTH.email,last_seen:nowISO()}}); }catch(err){}
+    }
+  }
   let row=null;
   try{ const rows=await sbReq('/rest/v1/progress?uid=eq.'+AUTH.uid+'&select=*'); row=(rows&&rows[0])||null; }catch(e){}
   const localHas=Object.keys(S.status||{}).length+Object.keys(S.srs||{}).length+(S.fav||[]).length+
@@ -8962,9 +9015,17 @@ try{
   if(window.__bootFail) window.__bootFail('页面没加载出来','启动时有一处数据读不出来，重开一次通常就好。',!navigator.onLine);
 }
 
-const VER='3.19.0';
-const PATCH='1';   /* 同一版本内的补丁号；0 表示版本本体 */
+const VER='3.20.0';
+const PATCH='0';   /* 同一版本内的补丁号；0 表示版本本体 */
 const CHANGELOG = [
+{v:'3.20.0',ps:'0',d:'2026-11-21',kind:'feature',sum:'卡密改服务端核销、会员到期以服务端为准、后台卡密台账改读写数据库并支持封禁与备注落库',items:[
+['改进','卡密兑换改走服务端 redeem_card：一张卡只能核销一次，天数直接写进账号 pro_until，换设备登录自动恢复；服务端不可用时回退本地旧卡密校验'],
+['安全','会员到期时间以服务端 profiles.pro_until 为准，每次登录/切回前台都重新拉取；本地改 vipUntil 不再能白嫖会员'],
+['安全','profiles 写权限收紧：本人只能改 last_seen 与 nickname，会员、封禁、备注改由管理员函数写入（普通用户再也不能自己 PATCH 到期时间）'],
+['新增','后台「卡密」页改为直接读写 cards 表：生成即入库、作废/删除/导出/导入全部落库，多设备看到的是同一份台账'],
+['新增','后台「+30天/+90天/+1年/取消VIP/封禁/备注」改走服务端函数，写入同时记入 audit_log 审计'],
+['新增','被封禁账号打开 App 会提示封禁状态并暂停 VIP 权益，进度保留不丢'],
+]},
 {v:'3.19.0',ps:'1',d:'2026-11-21',kind:'feature',sum:'非会员免费额度定稿：速览仅专题史整合版、专题仅一图流原页、背诵每天 5 张、刷题与挖空关闭；后台新增「配置」页可直接改邀请奖励与设备参数',items:[
 ['新增','非会员速览锁定「专题史 · 整合版」：断代史、精讲一本通、背诵一本通一律弹会员（进入即自动收敛到整合版）'],
 ['新增','非会员专题锁定「一图流原页」：时间轴、老龚点睛、复盘一览、知识表弹会员'],
