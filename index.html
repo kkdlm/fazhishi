@@ -87,7 +87,7 @@ html,body{margin:0;padding:0;background:#EAEDE1}
 </div></div>
 <script>
 (function(){
-  var VER='3.21.0-p4';
+  var VER='3.22.0-p0';
   var fill=document.getElementById('spFill'),pct=document.getElementById('spPct'),
       status=document.getElementById('spStatus'),splash=document.getElementById('splash'),
       boot=document.getElementById('boot');
@@ -169,6 +169,15 @@ html,body{margin:0;padding:0;background:#EAEDE1}
     setTimeout(function(){ if(splash.parentNode) splash.remove(); },480);
   }
 
+  /* 邀请码：只认 FZ + 6 位 */
+  var INV=(function(){
+    try{
+      var v=(new URLSearchParams(location.search||'')).get('inv')||'';
+      v=v.trim().toUpperCase().replace(/[^A-Z0-9]/g,'');
+      return /^FZ[A-Z0-9]{6}$/.test(v)?v:'';
+    }catch(e){ return ''; }
+  })();
+
   function mount(html){
     finishing=true; gate=Date.now()+420; real=1;
     try{ status.textContent='内容到手，正在拆封…'; }catch(e){}
@@ -176,7 +185,8 @@ html,body{margin:0;padding:0;background:#EAEDE1}
     try{
       var base='<base href="'+location.origin+location.pathname+'">';
       html=html.replace(/<head([^>]*)>/i,'<head$1>'+base);
-      html=html.replace(/<body([^>]*)>/i,'<body$1><script>window.__shellMounted=1<\/script>');
+      /* 邀请链接：?inv=FZxxxxxx，把码直接送进正文（正文跑在 blob 里，读不到地址栏 query） */
+      html=html.replace(/<body([^>]*)>/i,'<body$1><script>window.__shellMounted=1;window.__FZ_INV="'+INV+'";<\/script>');
     }catch(e){}
     var url=URL.createObjectURL(new Blob([html],{type:'text/html;charset=utf-8'}));
     var fr=document.createElement('iframe');

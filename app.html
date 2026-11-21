@@ -185,6 +185,8 @@ svg{display:block}
 .gate-in .splash-seal{width:66px;height:66px;font-size:34px}
 .gate-t{margin:18px 0 8px;font-family:var(--serif);font-size:23px;letter-spacing:.14em;color:var(--ink);font-weight:600}
 .gate-s{margin:0;font-size:13px;line-height:1.85;color:var(--ink-2);letter-spacing:.01em}
+.gate-inv{width:100%;margin:12px 0 0;padding:10px 12px;border:1px solid #C9A96A;border-radius:12px;background:#FBF3DF;color:#6B4E16;font-size:12.5px;line-height:1.6;text-align:left}
+.gate-inv b{color:#8A5D12}
 .gate-box{width:100%;margin-top:22px;background:var(--card);border:1px solid var(--line);border-radius:var(--r);
   padding:16px 14px;text-align:left;box-shadow:var(--shadow)}
 .gate-li{display:flex;align-items:flex-start;gap:9px;font-size:12.5px;line-height:1.7;color:var(--ink-2);margin:0 0 7px}
@@ -2466,6 +2468,7 @@ window.__bootOk=function(){ window.__booted=true; var d=document.getElementById(
     <div class="splash-seal">史</div>
     <h1 class="gate-t">法制史一点通</h1>
     <p class="gate-s">登录后才能使用。注册免费，每天可背 5 张闪卡，进度自动同步到云端。</p>
+    <div class="gate-inv" id="gateInv" hidden></div>
     <div class="gate-box">
       <div class="gate-li"><i>1</i><span>免费账号：每天 5 张背诵 + 专题史整合版 + 一图流原页</span></div>
       <div class="gate-li"><i>2</i><span>会员：全站背诵、刷题、精讲全文、换设备不丢进度</span></div>
@@ -8128,14 +8131,15 @@ function inviteCardHTML(){
   const code=EXTRA.code||'';
   const ri=EXTRA.rwI||3, re=EXTRA.rwE||3;
   const codeRow = code
-    ? `<div class="me-inv"><b id="invCode">${esc(code)}</b><button onclick="copyInvite()">复制</button></div>`
+    ? `<div class="me-inv"><b id="invCode">${esc(code)}</b><button onclick="copyInvite()">复制码</button></div>
+       <div class="me-row"><button class="pri" onclick="copyInviteLink()">复制邀请链接</button></div>`
     : `<div class="me-inv dead"><b id="invCode">还没生成</b><button onclick="retryInvite(this)">重试</button></div>
        <div class="me-note">${esc(EXTRA.codeErr||'正在向服务器申请邀请码…')}</div>`;
   return meCard(`<h3>邀请有礼</h3>
-    <div class="me-note">把邀请码发给同学：对方首次登录填一次，你得 <b>+${ri} 天</b>会员，对方得 <b>+${re} 天</b>；每个账号终身只能填一次，不能填自己的码。</div>
+    <div class="me-note">把链接发给同学：对方点开 → 注册 → 登录，<b>自动</b>算你邀请，不用他再填码。你得 <b>+${ri} 天</b>会员，对方得 <b>+${re} 天</b>；每个账号终身只能被邀请一次，不能邀请自己。</div>
     ${codeRow}
     <div class="me-note">已邀请 <b>${EXTRA.n||0}</b> 人${EXTRA.n?(' · 累计 +'+((EXTRA.n*(EXTRA.rwI||3)))+' 天'):''}</div>
-    <div class="me-row"><input id="invIn" maxlength="16" style="text-transform:uppercase" placeholder="填别人的邀请码"><button onclick="claimInvite(this)">兑换</button></div>
+    <div class="me-row"><input id="invIn" maxlength="16" style="text-transform:uppercase" placeholder="也可手填别人的邀请码"><button onclick="claimInvite(this)">兑换</button></div>
     <div class="me-note" id="invMsg"></div>`);
 }
 /* ---------- 用户系统完善（v3.21.0）：额度卡 / 设备自助 / 邮箱确认闭环 ---------- */
@@ -8241,6 +8245,58 @@ async function resendConfirm(btn){
     mtoast('确认邮件又发了一次：收件箱和垃圾箱都看一眼');
   }catch(e){ mtoast('没发出去：'+zhErr(e)); }
   if(done) done();
+}
+const INV_BASE='https://kkdlm.github.io/fazhishi/';
+let INV_CODE='';
+/* 邀请码可能来自三处：壳注入的 window.__FZ_INV（首选）、正文自己的 ?inv=、父页面地址栏 */
+function invParam(){
+  let c='';
+  try{ if(window.__FZ_INV) c=String(window.__FZ_INV); }catch(e){}
+  if(!c){ try{ c=(new URLSearchParams(location.search||'')).get('inv')||''; }catch(e){} }
+  if(!c){
+    try{
+      if(window.parent && window.parent!==window && window.parent.location){
+        c=(new URLSearchParams(window.parent.location.search||'')).get('inv')||'';
+      }
+    }catch(e){}
+  }
+  c=String(c||'').trim().toUpperCase().replace(/[^A-Z0-9]/g,'');
+  return /^FZ[A-Z0-9]{6}$/.test(c)?c:'';
+}
+function inviteLink(code){
+  code=String(code||'').trim().toUpperCase();
+  return INV_BASE+(code?('?inv='+code):'');
+}
+/* 打开就记住：未登录先存着，登录成功后 afterLogin 会自动认领 */
+function captureInvite(){
+  const c=invParam();
+  if(c){
+    INV_CODE=c;
+    try{ localStorage.setItem(KEY+':pinv',c); }catch(e){}
+    return c;
+  }
+  try{ INV_CODE=localStorage.getItem(KEY+':pinv')||''; }catch(e){ INV_CODE=''; }
+  return INV_CODE;
+}
+function paintGateInv(){
+  const el=document.getElementById('gateInv'); if(!el) return;
+  if(!INV_CODE || authOk()){ el.hidden=true; el.innerHTML=''; return; }
+  el.hidden=false;
+  el.innerHTML='你点开的是<b>邀请链接</b>：注册并登录后自动 +'+(EXTRA.rwE||3)+' 天会员，不用再填邀请码';
+}
+function copyInviteLink(){
+  const v=EXTRA.code||'';
+  if(!v){ mtoast('邀请码还没生成，刷新一下'); return; }
+  const link=inviteLink(v);
+  try{
+    if(navigator.clipboard&&navigator.clipboard.writeText) navigator.clipboard.writeText(link);
+    else{
+      const t=document.createElement('textarea'); t.value=link; document.body.appendChild(t);
+      t.select(); document.execCommand('copy'); document.body.removeChild(t);
+    }
+    mtoast('邀请链接已复制：发给同学，点开注册就自动算你邀请');
+    haptic();
+  }catch(e){ mtoast('复制失败，长按上面的邀请码，让对方在注册页填码'); }
 }
 function copyInvite(){
   const v=EXTRA.code||'';
@@ -8429,7 +8485,7 @@ function meHTML(){
         ${mail}
         <div class="me-row"><input id="acctPwd" type="password" autocomplete="new-password" placeholder="设置密码，至少 6 位" enterkeyhint="next"></div>
         ${codeRow}${capRow}
-        <div class="me-row"><input id="acctInv" maxlength="16" style="text-transform:uppercase" placeholder="邀请码（选填，不填也能注册）"></div>
+        <div class="me-row"><input id="acctInv" maxlength="16" style="text-transform:uppercase" value="${esc(INV_CODE||'')}" placeholder="邀请码（选填，不填也能注册）"></div>
         <div class="me-row"><button class="pri" onclick="regGo(this)">完成注册</button></div>
         <div class="me-row me-two"><button onclick="setAcctab('in')">返回登录</button></div>
         <div class="me-note">这个邮箱注册过的话，这一步会用你新填的密码替换旧密码。</div>`);
@@ -9090,6 +9146,7 @@ function blocked(){ return sbOn() && !authOk(); }
 function showGate(){
   const g=document.getElementById('gate');
   if(g && g.hidden){ g.hidden=false; }
+  try{ paintGateInv(); }catch(e){}
   markLocked();
 }
 function hideGate(){ const g=document.getElementById('gate'); if(g && !g.hidden) g.hidden=true; markLocked(); }
@@ -9272,9 +9329,16 @@ try{
   if(window.__bootFail) window.__bootFail('页面没加载出来','启动时有一处数据读不出来，重开一次通常就好。',!navigator.onLine);
 }
 
-const VER='3.21.0';
-const PATCH='4';   /* 同一版本内的补丁号；0 表示版本本体 */
+const VER='3.22.0';
+const PATCH='0';   /* 同一版本内的补丁号；0 表示版本本体 */
 const CHANGELOG = [
+{v:'3.22.0',ps:'0',d:'2026-11-21',kind:'feature',sum:'邀请改成链接：把链接发给同学，对方点开、注册、登录，自动算你邀请，不用再手填邀请码',items:[
+ ['新增','「邀请有礼」多一个「复制邀请链接」，形如 …/?inv=FZxxxxxx；对方点开就记住这张邀请，注册并登录后自动生效，双方各加天数'],
+ ['新增','点链接进来还没登录时，登录墙上直接写「你点开的是邀请链接：注册登录后自动 +N 天」，不用再去找邀请码填'],
+ ['调整','注册页的邀请码输入框会自动带上链接里的码，不填也能注册；手动填码的老办法保留，给没点链接的人用'],
+ ['说明','每个账号终身只能被邀请一次；已经用过邀请码的账号再点别人的链接，会提示一次后不再重复打扰'],
+ ['说明','邀请码仍是 FZ 开头 6 位；链接只带这个码，不带任何个人信息']
+]},
 {v:'3.21.0',ps:'4',d:'2026-11-21',kind:'fix',sum:'卡密兑换不再「点了没反应」：网络慢时有明确提示与按钮核销态，连点只认一次，失败文案能分清卡密无效/网络断开/服务端未就绪',items:[
  ['修复','兑换按钮点了没动静：以前请求卡在弱网里会一直挂着，界面什么都不显示；现在请求 20 秒没回就提示「网络太慢，别急着重兑」，按钮期间显示「核销中…」并禁用'],
  ['修复','连点「兑换」会同时发好几个核销请求，后到的那个反而报「已被使用」；现在一次只放一个请求，重复点击有提示'],
@@ -10140,9 +10204,12 @@ function bootVer(){
 setTimeout(bootVer,600);
 /* 账号：恢复会话，登录态下拉一次云端 */
 loadAuth();
+captureInvite();
 renderAcct();
 syncGate();
 setTimeout(function(){ refreshExtras(0); },300);
+/* 点邀请链接进来且已登录：立刻认领（未登录的留到登录成功后的 afterLogin） */
+if(authOk() && INV_CODE) setTimeout(function(){ try{ claimPendingInvite(); }catch(e){} },700);
 if(authOk()) setTimeout(()=>{ pullCloud(false); },1800);
 else if(sbOn()) setTimeout(()=>{ markLocked(); },0);
 </script>
