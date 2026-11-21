@@ -3546,6 +3546,8 @@ function saveBug(goSubmit){
   S.bugLog.unshift({at:Date.now(),where:c.where,loc:c.loc,n:c.n,text:el?el.value:'',sent:false});
   save(); closeSheet();
   if(authOk()){
+    const _t=(el?el.value:'')||'';
+    logAct('bug_report', (c.loc||'').slice(0,60), {where:c.where||'', kind:_t?'有文字':'仅标记位置'});
     sbReq('/rest/v1/bug_reports',{method:'POST',prefer:'return=minimal',body:{
       uid:AUTH.uid,point_no:c.n||null,point_title:c.loc||'',note:(el?el.value:''),
       ua:(navigator.userAgent||'').slice(0,120)}}).catch(()=>{});
@@ -9454,9 +9456,16 @@ try{
   if(window.__bootFail) window.__bootFail('页面没加载出来','启动时有一处数据读不出来，重开一次通常就好。',!navigator.onLine);
 }
 
-const VER='4.0.4';
-const PATCH='4';   /* 同一版本内的补丁号；0 表示版本本体 */
+const VER='4.0.5';
+const PATCH='5';   /* 同一版本内的补丁号；0 表示版本本体 */
+/* v4.0.5：每天首次打开记一条「打开应用」（仅后台可见），用来知道每天有没有人真的进来 */
+setTimeout(function(){ try{ if(authOk()) logOnce('app_open','day',{ver:VER}); }catch(e){} },1500);
 const CHANGELOG = [
+{v:'4.0.5',ps:'5',d:'2026-11-21',kind:'feature',sum:'日志补上两处漏记，后台一进去就能看到最近 7 天有多少人在用',items:[
+ ['新增','「记录问题」提交时也记一条日志（只有后台能看到，只留位置和「有文字/仅标记」），以后能查出哪一节被报得最多'],
+ ['新增','每天第一次打开应用记一条（只有后台能看到），后台据此知道自己这版有没有人真在用'],
+ ['新增','后台「日志」页顶部多一条统计：最近 7 天共多少条操作、多少个人动过；读不到就不显示，不影响列表']
+]},
 {v:'4.0.4',ps:'4',d:'2026-11-21',kind:'fix',sum:'两处小整理：操作记录入口的箭头、类别筛选的排布',items:[
  ['修复','「我的」里那张「操作记录」卡右侧原来只写「时间线」两个字、没有箭头，看着像标签不像入口；现在和其它几行统一成「›」，点整行都能进'],
  ['调整','操作记录的类别筛选原来挤在一起自然换行，最后一项「账号」被挤到第二行只剩一个、右边大片空白；现在固定四列，第一行四个、第二行三个，对齐不再零散']
