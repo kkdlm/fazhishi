@@ -98,7 +98,7 @@ html,body{margin:0;padding:0;background:#EAEDE1}
 </div></div>
 <script>
 (function(){
-  var VER='4.0.5-p8', VERB='4.0.5', PATCH='8';
+  var VER='4.0.5-p9', VERB='4.0.5', PATCH='9';
   var fill=document.getElementById('spFill'),pct=document.getElementById('spPct'),
       status=document.getElementById('spStatus'),splash=document.getElementById('splash'),
       boot=document.getElementById('boot');
@@ -148,6 +148,7 @@ html,body{margin:0;padding:0;background:#EAEDE1}
   }
 
   function tick(){
+    if(done) return;
     var now=Date.now();
     var vt=virtualPct(now-startAt);
     var rt=50+49*Math.min(1,real);          /* 真实字节映射到 50→99 */
@@ -293,15 +294,26 @@ html,body{margin:0;padding:0;background:#EAEDE1}
       return {ver:m?decodeURIComponent(m[1]):'', html:html};
     }catch(e){ return null; }
   }
-  /* 秒开：不播进度条，直接把正文挂上去 */
+  /* 本机已有正文：启动画面照放，但只放 1.1 秒——够看清「史」印和简牍展开，
+     又不会像以前那样一进来就把启动页掐掉（看着像没有启动画面）。 */
   function quick(html){
-    finishing=true; mounted=true; done=true; real=1; shown=100;
-    try{
-      fill.style.width='100%'; pct.textContent=''; status.textContent='';
-      splash.classList.add('hide'); setTimeout(function(){ if(splash.parentNode) splash.remove(); },220);
-    }catch(e){}
+    finishing=true; real=1; shown=0; done=true;   /* done 先占位，tick 不再插手指进度 */
+    var t0=Date.now(), MINQ=1100, ivq=null;
+    try{ fill.style.width='0%'; pct.textContent=''; status.textContent='书已在手边，正在翻开…'; }catch(e){}
     boot.style.display='none';
     mount(html);
+    ivq=setInterval(function(){
+      var el=Date.now()-t0;
+      var p=Math.min(99.6, el/MINQ*99.6);
+      try{ fill.style.width=p.toFixed(1)+'%'; pct.textContent=Math.floor(p)+'%'; }catch(e){}
+      /* 正文真的挂上了、动画也放完了，才淡出启动页，避免中间露白 */
+      if(el>=MINQ && mounted || el>2600){   /* 装载失败也别把启动页吊死在那儿 */
+        clearInterval(ivq);
+        shown=100;
+        try{ fill.style.width='100%'; pct.textContent='100%'; status.textContent=''; }catch(e){}
+        try{ splash.classList.add('hide'); setTimeout(function(){ if(splash.parentNode) splash.remove(); },460); }catch(e){}
+      }
+    },50);
   }
   function showUpd(){ try{ document.getElementById('upbar').classList.add('on'); }catch(e){} }
   window.dismissUpd=function(){ try{ document.getElementById('upbar').classList.remove('on'); }catch(e){} };
