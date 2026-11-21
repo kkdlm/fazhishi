@@ -76,7 +76,7 @@ html{background:#EAEDE1 !important}
   --red:#2E5344; --red-soft:#DDE8DF;
   --ok:#2C7A4B; --ok-soft:#E4F2E8; --bad:#C0392B; --bad-soft:#FBE6E3;
   --track:#E2E7D8; --cov:#E0E5D4; --cov-line:#CFD8C5; --cov-cue:#9AA48F;
-  --nav:rgba(240,243,233,.92); --topfade:rgba(234,237,225,.96);
+  --nav:rgba(243,246,236,.985); --topfade:rgba(234,237,225,.96);
   --shadow:0 1px 2px rgba(40,60,45,.05),0 10px 26px -18px rgba(40,60,45,.32);
   --r:14px; --fs:1;
   --mapbg:#DCE5DF; --land:#F8F1DD; --land2:#EFE6CC; --landline:#C6BCA2; --sealab:#87A39C; --riv2:#7EA6B2;
@@ -94,7 +94,7 @@ html[data-theme="night"]{
   --red:#8FC0A0; --red-soft:#1E2C25;
   --ok:#7FD3A0; --ok-soft:#152A1E; --bad:#FF8A80; --bad-soft:#33191A;
   --track:#212A23; --cov:#232C25; --cov-line:#313C33; --cov-cue:#788171;
-  --nav:rgba(16,21,18,.93); --topfade:rgba(14,20,17,.96);
+  --nav:rgba(18,24,20,.985); --topfade:rgba(14,20,17,.96);
   --shadow:0 1px 2px rgba(0,0,0,.3),0 12px 28px -20px rgba(0,0,0,.9);
   --mapbg:#10181A; --land:#1E2523; --land2:#242C28; --landline:#31403A; --sealab:#617972; --riv2:#3E5F68;
   --pv1:#342D20; --pv2:#2E2C21; --pv3:#262F25; --pv4:#212D26; --pv-line:#3A453E;
@@ -116,7 +116,7 @@ body{
   font-family:var(--sans);
   font-size:15px;line-height:1.72;
   -webkit-font-smoothing:antialiased;
-  padding-bottom:calc(72px + env(safe-area-inset-bottom));
+  padding-bottom:calc(114px + env(safe-area-inset-bottom));
   touch-action:manipulation;
   -webkit-text-size-adjust:100%;text-size-adjust:100%;
   transition:background-color .3s,color .3s;
@@ -1041,6 +1041,11 @@ html[data-theme="night"] mark.hl{background:#8a6d2f;color:#fff}
 
 .fadein{animation:fade .25s ease}
 .tip{font-size:11px;color:var(--ink-3);line-height:1.7;margin:10px 2px 0}
+.tipfold .tipmore{display:none}
+.tipfold.on .tipmore{display:inline}
+.tiptog{display:inline;margin-left:6px;padding:0 6px;height:19px;border:1px solid var(--line);border-radius:5px;
+  background:#fff;color:var(--ink-2);font-size:10.5px;line-height:17px;vertical-align:1px}
+.tipfold.on .tiptog{color:var(--ink-3)}
 
 /* ============ 底部弹层 ============ */
 .mask{position:fixed;inset:0;z-index:60;background:rgba(20,14,8,.36);opacity:0;pointer-events:none;
@@ -1668,7 +1673,7 @@ html[data-theme="night"] .card{background-image:linear-gradient(180deg,rgba(255,
 
 /* 顶栏：毛玻璃 + 滚动后加深 */
 .topbar{
-  background:color-mix(in srgb,var(--paper) 76%,transparent);
+  background:color-mix(in srgb,var(--paper) 96%,transparent);
   backdrop-filter:blur(18px) saturate(1.18);-webkit-backdrop-filter:blur(18px) saturate(1.18);
   box-shadow:0 1px 0 var(--line-2);
   transition:box-shadow .34s var(--ease),background-color .34s var(--ease);
@@ -1677,7 +1682,7 @@ html[data-theme="night"] .card{background-image:linear-gradient(180deg,rgba(255,
 
 /* 底栏：更细的玻璃层 + 选中光晕 */
 .nav{
-  background:color-mix(in srgb,var(--paper) 80%,transparent);
+  background:color-mix(in srgb,var(--paper) 96%,transparent);
   backdrop-filter:blur(20px) saturate(1.22);-webkit-backdrop-filter:blur(20px) saturate(1.22);
   border-top:0;box-shadow:0 -1px 0 var(--line-2),0 -10px 28px -26px rgba(24,44,32,.5);
 }
@@ -1854,11 +1859,11 @@ html[data-theme="night"] .card{
 }
 /* 夜间顶栏：和背景同一族，只用模糊分层 */
 html[data-theme="night"] .topbar{
-  background:color-mix(in srgb,#0E1411 80%,transparent);
+  background:color-mix(in srgb,#0E1411 94%,transparent);
   box-shadow:0 1px 0 rgba(255,255,255,.045);
 }
 html[data-theme="night"] .nav{
-  background:color-mix(in srgb,#0E1411 84%,transparent);
+  background:color-mix(in srgb,#0E1411 94%,transparent);
   box-shadow:0 -1px 0 rgba(255,255,255,.045),0 -10px 28px -26px rgba(0,0,0,.9);
 }
 </style>
@@ -2383,7 +2388,7 @@ window.__bootOk=function(){ window.__booted=true; var d=document.getElementById(
       <button onclick="startRandom()">随机一轮</button>
       <button onclick="jumpBookFromCard(document.querySelector('.r-jump'))">背诵一本通里看</button>
     </div>
-    <div class="tip" id="rTip">提示：卡面只放「问题」，要背的原文全部在背面——先在心里把整题答完整，卡住 10 秒再揭晓；揭晓后按书上的小标题分段对照，红字是要点，最后才是这一条对应的真题怎么考。</div>
+    <div class="tip tipfold" id="rTip">提示：卡面只放「问题」，要背的原文全部在背面。<span class="tipmore">先在心里把整题答完整，卡住 10 秒再揭晓；揭晓后按书上的小标题分段对照，红字是要点，最后才是这一条对应的真题怎么考。</span><button class="tiptog" onclick="toggleRTip(this)">怎么用</button></div>
   </div>
 </section>
 
@@ -9329,9 +9334,15 @@ try{
   if(window.__bootFail) window.__bootFail('页面没加载出来','启动时有一处数据读不出来，重开一次通常就好。',!navigator.onLine);
 }
 
-const VER='4.0.0';
-const PATCH='0';   /* 同一版本内的补丁号；0 表示版本本体 */
+const VER='4.0.1';
+const PATCH='1';   /* 同一版本内的补丁号；0 表示版本本体 */
 const CHANGELOG = [
+{v:'4.0.1',ps:'1',d:'2026-11-21',kind:'fix',sum:'修三处看着别扭的地方：底栏压字、版本记录补丁号错位、背诵页那段说明太长',items:[
+ ['修复','版本记录里的补丁号算错了：3.21.0 明明是补丁 4，列表里显示成「补丁 1」；现在单值补丁号照原样显示，只有写成区间（如 5–7）的才按版本内重新计数'],
+ ['修复','底栏和顶部标题栏都是半透明磨砂，正文滚过去时文字会透出来，看着像叠字；两处底色都改成基本不透明，保留磨砂感但不再透字（日间、夜间都改了）'],
+ ['调整','背诵页顶上那段用法说明原来占四行，挡住卡面；现在只留一句「卡面只放问题，要背的原文在背面」，剩下的点「怎么用」再看'],
+ ['说明','版本号规则不变：主.次.补丁各一位，补丁 9 之后进次版本']
+]},
 {v:'4.0.0',ps:'0',d:'2026-11-21',kind:'feature',sum:'邀请改成链接：把链接发给同学，对方点开、注册、登录，自动算你邀请，不用再手填邀请码',items:[
  ['新增','「邀请有礼」多一个「复制邀请链接」，形如 …/?inv=FZxxxxxx；对方点开就记住这张邀请，注册并登录后自动生效，双方各加天数'],
  ['新增','点链接进来还没登录时，登录墙上直接写「你点开的是邀请链接：注册登录后自动 +N 天」，不用再去找邀请码填'],
@@ -10056,7 +10067,12 @@ const CHANGELOG = [
 ['内容','法典之最：同一朝代≥2 顶帽子才进专栏；朝代时间轴 16 段；朝代口诀 13 句']
 ]},
 ];
-function psStart(c){const m=String((c&&c.ps)||'').match(/(\d+)/);return m?+m[1]:0;}
+function psStart(c){const s=String((c&&c.ps)||'');if(!/[\u2013\-~]/.test(s))return 0;const m=s.match(/(\d+)/);return m?+m[1]:0;}
+function toggleRTip(btn){
+  const el=document.getElementById('rTip'); if(!el) return;
+  el.classList.toggle('on');
+  if(btn) btn.textContent=el.classList.contains('on')?'收起':'怎么用';
+}
 function psNum(v,st){if(!st)return String(v);const a=String(v).split(/[\u2013\-~]/).map(function(x){return x.trim();}).filter(Boolean);
   if(a.length>=2){const x=+a[0],y=+a[a.length-1];return String(x-st+1)+'\u2013'+String(y-st+1);}
   const n=+a[0];return isNaN(n)?String(v):String(n-st+1);}
