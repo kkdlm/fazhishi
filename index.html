@@ -327,11 +327,13 @@ html,body{margin:0;padding:0;background:#EAEDE1}
   /* 实测（国内出口）：GitHub Pages 首字节 15.7 秒、1.4KB/s，基本没法用；
      gcore.jsdelivr 1.8 秒起、1.8MB/s，raw.githubusercontent 0.9 秒起、4.6MB/s。
      所以镜像在前、本站放最后兜底；真正选哪条由下面的竞速决定。 */
+  /* 实测（同一出口、同一时刻）：
+       raw.githubusercontent  首字节 0.9s、4.6MB/s、6.5MB 约 1.4 秒下完
+       GitHub Pages          首字节 2–16s、20–500KB/s、25 秒都下不完
+       jsDelivr(@main)       速度尚可但缓存的是上一版正文，校验会被拒，白跑一趟
+     所以：raw 优先，Pages 兜底；jsDelivr 不再使用。 */
   var MIRRORS=[
-    'https://gcore.jsdelivr.net/gh/kkdlm/fazhishi@main/app.html',
-    'https://raw.githubusercontent.com/kkdlm/fazhishi/main/app.html',
-    'https://cdn.jsdelivr.net/gh/kkdlm/fazhishi@main/app.html',
-    'https://fastly.jsdelivr.net/gh/kkdlm/fazhishi@main/app.html'
+    'https://raw.githubusercontent.com/kkdlm/fazhishi/main/app.html'
   ];
 
   /* 线路竞速：同时向几条线路各要 2 个字节，谁先回就用谁。
@@ -423,14 +425,9 @@ html,body{margin:0;padding:0;background:#EAEDE1}
       /* ① 本站：地址只随版本号变化（不带时间戳），所以浏览器缓存能命中——第二次打开不再重拉 6.5MB；
          ② 首字节 8 秒没来就换镜像，不死等；③ 三条都失败再整体重试一轮 */
       list=MIRRORS.concat(['app.html?v='+VER]);
-      /* 先花最多 3.5 秒挑一条能出字节的线路，再整包下；挑不出来就按原顺序硬试 */
-      try{
-        status.textContent='正在挑最快的线路…';
-        var pick=await pickFast(list, 2200);
-        if(pick.list.length){
-          list=pick.list.concat(list.filter(function(u){return pick.list.indexOf(u)<0;}));
-        }
-      }catch(e){}
+      /* 按实测速度排好的顺序试；首字节 4.5 秒不来、或 12 秒还不到 15%，立刻换下一条。
+         不再做「竞速」：首字节快不等于下得快，会挑到吞吐只有 100KB/s 的线路，反而更慢。 */
+      status.textContent='正在获取正文…';
       for(round=0; round<2; round++){
         for(i=0;i<list.length;i++){
           if(done) return;
