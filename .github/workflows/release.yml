@@ -16,12 +16,12 @@ jobs:
   release:
     runs-on: ubuntu-latest
     env:
-      SRC: https://aka.doubaocdn.com/s/R5mld1UrRa
-      APPSRC: https://aka.doubaocdn.com/s/Z0VN2qTMGe
-      SWURL: https://aka.doubaocdn.com/s/YFxb69yD7T
+      SRC: https://aka.doubaocdn.com/s/9G2rfWiTUx
+      APPSRC: https://aka.doubaocdn.com/s/T4SzE7EDbM
+      SWURL: https://aka.doubaocdn.com/s/N3fgCq1X5B
       ADMSRC: https://aka.doubaocdn.com/s/fHc0Hnf9dg
       VER: "4.0.5"
-      PATCH: "5"
+      PATCH: "6"
     steps:
       - name: Check
         run: |
