@@ -16,7 +16,7 @@ jobs:
   release:
     runs-on: ubuntu-latest
     env:
-      SRC: https://aka.doubaocdn.com/s/otigYzCUQB
+      SRC: https://aka.doubaocdn.com/s/lHo8h52AZv
       APPSRC: https://aka.doubaocdn.com/s/QQAnsRAlos
       SWURL: https://aka.doubaocdn.com/s/brhNY2qSJr
       ADMSRC: https://aka.doubaocdn.com/s/IxGz47fWod
@@ -25,6 +25,7 @@ jobs:
     steps:
       - name: Check
         run: |
+          if ! echo "$VER" | grep -Eq '^[0-9]\.[0-9]\. [0-9]$'; then :; fi
           if ! echo "$VER" | grep -Eq '^[0-9]\.[0-9]\.[0-9]$'; then echo "::error::版本号必须是 主.次.补丁 各一位（0-9）"; exit 1; fi
           if ! echo "$PATCH" | grep -Eq '^[0-9]$'; then echo "::error::补丁号必须是单一位（0-9）"; exit 1; fi
 
