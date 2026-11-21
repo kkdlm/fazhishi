@@ -8078,6 +8078,15 @@ async function retryInvite(btn){
   if(done) done();
   if(v){ renderAcct(); mtoast('邀请码已生成：'+v); }
 }
+let LAST_EXTRA=0;
+/* 会员/封禁/邀请码这些“账号状态”要随时能刷新：启动、回前台、手动进「我的」都走这里 */
+async function refreshExtras(minGap){
+  if(!authOk()||guestMode()) return;
+  if(minGap&&(Date.now()-LAST_EXTRA<minGap)) return;
+  LAST_EXTRA=Date.now();
+  try{ await syncExtras(); }catch(e){}
+  try{ renderAcct(); }catch(e){}
+}
 async function syncExtras(){
   if(!authOk()) return;
   try{
@@ -9023,8 +9032,13 @@ try{
 }
 
 const VER='3.20.0';
-const PATCH='3';   /* 同一版本内的补丁号；0 表示版本本体 */
+const PATCH='4';   /* 同一版本内的补丁号；0 表示版本本体 */
 const CHANGELOG = [
+{v:'3.20.0',ps:'4',d:'2026-11-21',kind:'fix',sum:'会员状态刷新时机修复：后台开通的 VIP 打开 App 就能看到，不再需要退出重登',items:[
+ ['修复','以前只在“登录那一刻”从服务器拉一次会员到期时间，重开 App 不刷新，所以后台加的 VIP 看不到；现在启动、回到前台、进「我的」都会自动刷新'],
+ ['修复','被后台封禁 / 解封的状态同样即时生效，不需要重新登录'],
+ ['说明','会员到期时间仍以服务端为准，本地改时间不会被承认']
+]},
 {v:'3.20.0',ps:'3',d:'2026-11-21',kind:'fix',sum:'邀请码显示修复：申请失败不再只显示「——」，改为说明原因并可重试；登录过期会明确提示重新登录',items:[
  ['修复','「我的·邀请有礼」不再显示破折号：拿到码就显示码，没拿到会写清原因并给「重试」按钮'],
  ['修复','进入「我的」页时如果还没拿到邀请码，会自动再申请一次'],
@@ -9832,6 +9846,7 @@ function bootVer(){
     if(Date.now()-(window.__chkAt||0)<30000) return;
     window.__chkAt=Date.now();
     checkRemote(false);
+    refreshExtras(30000);
     try{ if(navigator.serviceWorker) navigator.serviceWorker.getRegistration().then(r=>r&&r.update&&r.update()).catch(()=>{}); }catch(e){}
   }
   document.addEventListener('visibilitychange',onForeground);
@@ -9843,6 +9858,7 @@ setTimeout(bootVer,600);
 /* 账号：恢复会话，登录态下拉一次云端 */
 loadAuth();
 renderAcct();
+setTimeout(function(){ refreshExtras(0); },300);
 if(authOk()) setTimeout(()=>{ pullCloud(false); },1800);
 else if(sbOn()) setTimeout(()=>{ markLocked(); },0);
 </script>
