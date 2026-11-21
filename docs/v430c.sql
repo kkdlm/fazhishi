@@ -33,7 +33,9 @@ begin
   if p_limit is null or p_limit < 1 or p_limit > 120 then p_limit := 30; end if;
   if p_offset is null or p_offset < 0 then p_offset := 0; end if;
   return query
-    select l.id, l.action, coalesce(public.log_meta(l.action), l.action), l.target, l.detail, l.created_at
+    select l.id, l.action,
+           coalesce((select m1.label from public.log_meta(l.action) as m1 limit 1), l.action),
+           l.target, l.detail, l.created_at
       from public.activity_log l
      where l.uid = auth.uid() and l.vis = 'self'
        and (p_act is null or l.action = p_act)

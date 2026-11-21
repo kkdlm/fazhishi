@@ -13,7 +13,8 @@ begin
   if p_source = 'admin' then
     return query
       select 'admin'::text, a.id, a.actor, p.email, a.action,
-             coalesce(public.log_meta(a.action), a.action), a.target, a.detail, a.created_at
+             coalesce((select m1.label from public.log_meta(a.action) as m1 limit 1), a.action),
+             a.target, a.detail, a.created_at
         from public.audit_log a
         left join public.profiles p on p.uid = a.actor
        where (p_act is null or a.action = p_act)
@@ -22,7 +23,8 @@ begin
   else
     return query
       select 'user'::text, l.id, l.uid, p.email, l.action,
-             coalesce(public.log_meta(l.action), l.action), l.target, l.detail, l.created_at
+             coalesce((select m1.label from public.log_meta(l.action) as m1 limit 1), l.action),
+             l.target, l.detail, l.created_at
         from public.activity_log l
         left join public.profiles p on p.uid = l.uid
        where (p_uid is null or l.uid = p_uid) and (p_act is null or l.action = p_act)
