@@ -3869,14 +3869,14 @@ function startRandom(){
 }
 function renderFreeLimit(){
   const card=document.getElementById('rCard');
-  const idx=document.getElementById('rIdx'); if(idx) idx.textContent='非会员 · 今日 5 张已用完';
+  const idx=document.getElementById('rIdx'); if(idx) idx.textContent='非会员 · 今日 '+freeLimitNow()+' 张已用完';
   const bar=document.getElementById('rBar'); if(bar) bar.style.width='100%';
   if(!card) return;
   card.style.setProperty('--c', cOf(CH[0].k));
   card.innerHTML=`<div class="sum">
     <div class="sk">今 日 免 费 额 度 用 完</div>
-    <div class="sc">5 / 5</div>
-    <div class="sd">非会员每天可背 5 张卡，明天 0 点自动恢复；已看过的卡当天仍可复习，不重复占用额度。</div>
+    <div class="sc">${freeLimitNow()} / ${freeLimitNow()}</div>
+    <div class="sd">非会员每天可背 ${freeLimitNow()} 张卡，明天 0 点自动恢复；已看过的卡当天仍可复习，不重复占用额度。额度由服务器按账号计数。</div>
     <div class="sum-acts">
       <button class="primary" onclick="openVip()">开通会员 · 不限量</button>
       <button onclick="go('home')">回总览</button>
@@ -7851,15 +7851,40 @@ function freeBookUsed(){
   if(!f||f.d!==freeDay()) return {d:freeDay(),ids:[]};
   return {d:f.d,ids:Array.isArray(f.ids)?f.ids.slice():[]};
 }
+function freeLimitNow(){
+  return (EXTRA&&EXTRA.freeSrv&&EXTRA.freeSrv.limit)||FREE_BK;
+}
 function freeBookAllow(e){
   if(isVip()) return true;
   if(!e) return true;
   const u=freeBookUsed();
   const k=ekey(e);
   if(u.ids.indexOf(k)>=0){ S.freeBk=u; return true; }
-  if(u.ids.length>=FREE_BK){ S.freeBk=u; save(); return false; }
+  const lim=freeLimitNow();
+  /* 服务端当天额度已用完：本机名单里没有这张卡也不再放行（清缓存也绕不过去） */
+  if(EXTRA.freeSrv&&EXTRA.freeSrv.used>=lim){ S.freeBk=u; renderFreeLimit(); return false; }
+  if(u.ids.length>=lim){ S.freeBk=u; save(); return false; }
   u.ids.push(k); S.freeBk=u; save();
+  if(authOk()){
+    try{
+      rpc('free_bk_take',{p_key:String(k)}).then(function(r){
+        if(r&&r.limit) EXTRA.freeSrv={used:r.used||0,limit:r.limit};
+        if(r&&r.ok===false){
+          EXTRA.freeSrv={used:r.limit||lim,limit:r.limit||lim};
+          try{ if(typeof RQ!=='undefined'&&RQ&&RQ[RIDX]&&ekey(RQ[RIDX])===k){
+            S.freeBk={d:freeDay(),ids:u.ids.filter(function(x){return x!==k})}; save(); renderFreeLimit();
+          } }catch(e2){}
+        }
+        try{ renderFreeLimitBadge(); }catch(e2){}
+      }).catch(function(){});
+    }catch(e){}
+  }
   return true;
+}
+function renderFreeLimitBadge(){
+  const idx=document.getElementById('rIdx');
+  if(!idx) return;
+  if(!isVip()&&EXTRA.freeSrv){ idx.textContent='非会员 · 免费卡 '+EXTRA.freeSrv.used+' / '+EXTRA.freeSrv.limit; }
 }
 function askVip(msg){
   mtoast(msg||'这个功能需要会员');
@@ -8001,7 +8026,14 @@ let EXTRA={code:'',n:0,dead:false,devBlocked:false,rwI:3,rwE:3,invOn:true,cfgOk:
 function devId(){
   try{
     let v=localStorage.getItem(KEY+':dev');
-    if(!v){ v='d'+Date.now().toString(36)+Math.random().toString(36).slice(2,8); localStorage.setItem(KEY+':dev',v); }
+    if(v) return v;
+    /* 以后不再随机：用浏览器特征算一个稳定指纹，清缓存/重装后基本还是同一台 */
+    const raw=[navigator.userAgent||'',String(screen.width)+'x'+String(screen.height),
+      String(window.devicePixelRatio||1),(function(){try{return Intl.DateTimeFormat().resolvedOptions().timeZone||''}catch(e){return ''}})(),
+      navigator.language||'',String(navigator.hardwareConcurrency||''),String(navigator.maxTouchPoints||0)].join('|');
+    let h=0; for(let i=0;i<raw.length;i++){ h=(h*31+raw.charCodeAt(i))>>>0; }
+    v='d'+h.toString(36);
+    localStorage.setItem(KEY+':dev',v);
     return v;
   }catch(e){ return 'd-anon'; }
 }
@@ -8053,6 +8085,10 @@ async function claimPendingInvite(){
 }
 async function fetchInviteCode(quiet){
   if(!authOk()) return '';
+  try{
+    const fs=await rpc('free_bk_state',{});
+    if(fs&&fs.limit) EXTRA.freeSrv={used:fs.used||0,limit:fs.limit};
+  }catch(e){}
   try{
     const code=await rpc('ensure_invite_code',{});
     const v=(typeof code==='string')?code:((code&&code.code)||'');
@@ -9032,8 +9068,14 @@ try{
 }
 
 const VER='3.20.0';
-const PATCH='4';   /* 同一版本内的补丁号；0 表示版本本体 */
+const PATCH='5';   /* 同一版本内的补丁号；0 表示版本本体 */
 const CHANGELOG = [
+{v:'3.20.0',ps:'5',d:'2026-11-21',kind:'feature',sum:'免费额度与设备识别改为服务端口径：每天 5 张由服务器按账号计数，清缓存不再重置；设备标识改为稳定指纹',items:[
+ ['改进','非会员每天 5 张背诵额度改为服务端计数：清缓存 / 换浏览器不会重置，次日 0 点自动恢复'],
+ ['改进','已看过的卡当天仍可复习、不重复占用额度（服务端按卡片去重）'],
+ ['改进','设备标识由随机字符串改为浏览器特征推导的稳定指纹，配合服务端 3 台上限，清缓存不再等于换新设备'],
+ ['说明','未登录（访客）状态下额度仍记在本机；登录后以服务端为准']
+]},
 {v:'3.20.0',ps:'4',d:'2026-11-21',kind:'fix',sum:'会员状态刷新时机修复：后台开通的 VIP 打开 App 就能看到，不再需要退出重登',items:[
  ['修复','以前只在“登录那一刻”从服务器拉一次会员到期时间，重开 App 不刷新，所以后台加的 VIP 看不到；现在启动、回到前台、进「我的」都会自动刷新'],
  ['修复','被后台封禁 / 解封的状态同样即时生效，不需要重新登录'],
