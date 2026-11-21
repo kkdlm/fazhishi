@@ -19,7 +19,7 @@ jobs:
       SRC: https://aka.doubaocdn.com/s/g0fvnbBL3P
       APPSRC: https://aka.doubaocdn.com/s/XWjjOdiUVH
       SWURL: https://aka.doubaocdn.com/s/jZJUq5UPNg
-      ADMSRC: https://aka.doubaocdn.com/s/U6eU2fKxCa
+      ADMSRC: https://aka.doubaocdn.com/s/ajhlYjWbtc
       VER: "3.20.0"
       PATCH: "2"
     steps:
