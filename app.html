@@ -7949,27 +7949,42 @@ async function sha8(txt){
 function vipPack(){ return {vipUntil:vipUntilMs(),vipAt:S.vipAt||0}; }
 /* 兑换只走服务端 redeem_card：一张卡只能核销一次、天数写进账号 pro_until。
    前端不再保留任何本地签名校验逻辑（密钥不进客户端，离线也无法伪造）。 */
-async function redeemCard(){
+let REDEEM_BUSY=false;
+async function redeemCard(btn){
+  if(REDEEM_BUSY){ mtoast('上一个兑换还在核销，别连点'); return; }
   if(!CARDKEY_ON){ mtoast('卡密暂未开放'); return; }
   const el=document.getElementById('cardIn');
   const code=((el&&el.value)||'').trim().toUpperCase();
   if(!code){ mtoast('先填卡密'); return; }
   if(!sbOn() || !authOk()){ mtoast('先登录账号再兑换：卡密要绑到账号上，换设备才能接着用'); return; }
+  REDEEM_BUSY=true; haptic();
+  const free=busyOn(btn,'核销中…');
   try{
-    const until=await rpc('redeem_card',{p_code:code});
-    const ms=until?Date.parse(until):0;
-    if(!ms){ mtoast('兑换没成功，稍后重试'); return; }
+    const j=await rpc('redeem_card',{p_code:code});
+    /* 服务端返回 timestamptz 字符串；兼容 jsonb/数组两种形状 */
+    let ms=0;
+    if(typeof j==='string') ms=Date.parse(j);
+    else if(Array.isArray(j)&&j.length){ ms=Date.parse(String(j[0])); }
+    else if(j&&typeof j==='object'){ const v=(j.until||j.vip_until||j.v); if(v) ms=Date.parse(String(v)); }
+    if(!ms){ mtoast('兑换已提交但没读到到期时间：重开「我的」看会员是否已开通，别重复兑'); return; }
     S.vipUntil=ms; S.vipAt=Date.now(); save();
     try{ await pushCloud(true); }catch(e){}
     if(el) el.value='';
     mtoast('兑换成功：会员到 '+vipDayStr());
     renderAcct(); if(typeof renderAll==='function') renderAll();
-    setTimeout(closeSheet,400);
+    if(typeof loadFreeState==='function') loadFreeState();
+    setTimeout(closeSheet,500);
   }catch(e){
     const m=String((e&&e.message)||e||'');
-    if(/Could not find|PGRST202|does not exist|no function/i.test(m)){ mtoast('兑换服务暂时不可用，连上网络后再试'); return; }
-    if(/Failed to fetch|NetworkError|load failed/i.test(m)){ mtoast('联网后才能兑换卡密（卡密需要服务端核销）'); return; }
+    if(e&&e.code==='TIMEOUT'){ mtoast('网络太慢，核销结果还没回来：别急着重兑，重进「我的」看会员到没到'); return; }
+    if(/Could not find|PGRST202|does not exist|no function/i.test(m)){ mtoast('兑换服务暂时不可用（服务端还没建兑换函数），稍后再试'); return; }
+    if(/Failed to fetch|NetworkError|load failed|AbortError/i.test(m)){ mtoast('联网后才能兑换卡密（卡密需要服务端核销）'); return; }
+    if(/卡密无效|已被使用|不能重复/i.test(m)){ mtoast('这张卡密无效或已经被用过了：核对位数后找发卡的人'); return; }
+    if(/请先登录|JWT|token/i.test(m)){ mtoast('登录已过期：重新登录后再兑换，卡密不会被扣'); return; }
     mtoast(m||'兑换失败，稍后重试');
+  }finally{
+    REDEEM_BUSY=false;
+    if(free) free();
   }
 }
 function vipCardHTML(){
@@ -7991,8 +8006,8 @@ function openVip(){
     </div>
     <div class="sheet-sec">
       <h4>兑换卡密</h4>
-      <div class="keyrow"><input id="cardIn" placeholder="形如 FZ-90-XXXXXX-XXXXXXXX" autocapitalize="characters"></div>
-      <div class="keyrow"><button style="flex:1" onclick="redeemCard()">兑换</button></div>
+      <div class="keyrow"><input id="cardIn" placeholder="形如 FZ-90-XXXXXX-XXXXXXXX" autocapitalize="characters" onkeydown="if(event.key==='Enter')redeemCard(document.querySelector('#sheetBody .keyrow button'))"></div>
+      <div class="keyrow"><button style="flex:1" onclick="redeemCard(this)">兑换</button></div>
       <div class="fine">卡密是一次性开通码，兑换后到期时间写进账号进度，换设备登录即恢复。</div>
     </div>`);
 }
@@ -8012,7 +8027,17 @@ async function sbReq(path,opt){
   if(opt.token) h['Authorization']='Bearer '+opt.token;
   else if(authOk()) h['Authorization']='Bearer '+AUTH.access_token;
   if(opt.prefer) h['Prefer']=opt.prefer;
-  const r=await fetch(SB_URL.replace(/\/$/,'')+path,{method:opt.method||'GET',headers:h,body:opt.body?JSON.stringify(opt.body):undefined});
+  const ctl=(typeof AbortController!=='undefined')?new AbortController():null;
+  const TO=opt.timeout||20000;
+  let toId=null;
+  if(ctl) toId=setTimeout(()=>{ try{ ctl.abort(); }catch(e){} },TO);
+  let r=null;
+  try{
+    r=await fetch(SB_URL.replace(/\/$/,'')+path,{method:opt.method||'GET',headers:h,body:opt.body?JSON.stringify(opt.body):undefined,signal:ctl?ctl.signal:undefined});
+  }catch(e){
+    if(ctl && ctl.signal.aborted){ const er=new Error('请求超时'); er.code='TIMEOUT'; throw er; }
+    throw e;
+  }finally{ if(toId) clearTimeout(toId); }
   const txt=await r.text(); let j=null;
   try{ j=txt?JSON.parse(txt):null; }catch(e){ j=txt; }
   if(!r.ok){
@@ -8809,7 +8834,7 @@ function accountHTML(){
 function cardKeyHTML(){
   if(!CARDKEY_ON) return '';
   return `<div class="sheet-sec"><h4>卡密兑换</h4>
-    <div class="keyrow"><input id="cardIn" placeholder="输入卡密"><button style="flex:0 0 auto" onclick="redeemCard()">兑换</button></div>
+    <div class="keyrow"><input id="cardIn" placeholder="输入卡密" onkeydown="if(event.key==='Enter')redeemCard(this.nextElementSibling)"><button style="flex:0 0 auto" onclick="redeemCard(this)">兑换</button></div>
     <div class="fine">卡密用于开通长期权限；没买过忽略即可。</div></div>`;
 }
 
@@ -9248,8 +9273,15 @@ try{
 }
 
 const VER='3.21.0';
-const PATCH='3';   /* 同一版本内的补丁号；0 表示版本本体 */
+const PATCH='4';   /* 同一版本内的补丁号；0 表示版本本体 */
 const CHANGELOG = [
+{v:'3.21.0',ps:'4',d:'2026-11-21',kind:'fix',sum:'卡密兑换不再「点了没反应」：网络慢时有明确提示与按钮核销态，连点只认一次，失败文案能分清卡密无效/网络断开/服务端未就绪',items:[
+ ['修复','兑换按钮点了没动静：以前请求卡在弱网里会一直挂着，界面什么都不显示；现在请求 20 秒没回就提示「网络太慢，别急着重兑」，按钮期间显示「核销中…」并禁用'],
+ ['修复','连点「兑换」会同时发好几个核销请求，后到的那个反而报「已被使用」；现在一次只放一个请求，重复点击有提示'],
+ ['修复','兑换成功但没读到到期时间时，改成提示「重开我的页看会员是否已开通」，不再让人以为失败而重复兑换；也兼容服务端返回 jsonb 形状'],
+ ['调整','失败文案按原因分开说：卡密无效或已被使用、登录已过期（卡密不会被扣）、联网才能兑换、服务端还没建兑换函数'],
+ ['调整','卡密输入框按回车直接兑换，少点一次屏；兑换成功后自动刷新「今日免费背诵」与会员卡']
+]},
 {v:'3.21.0',ps:'3',d:'2026-11-21',kind:'patch',sum:'注销确认按钮改成危险色，避免和「再想想」长得一样误点',items:[
  ['调整','「注销账号」弹层里「确认注销」改为红色描边，和「再想想」明显区分']
 ]},
