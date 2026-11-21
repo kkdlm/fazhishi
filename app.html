@@ -1576,6 +1576,7 @@ html[data-theme="night"] .mode-btn{background:var(--card);color:var(--red);borde
 .me-row button:active{border-color:var(--red);color:var(--red)}
 .me-row button.pri:active{color:#fff}
 .me-cap{flex:0 0 auto;display:flex;align-items:center;padding:0 10px;letter-spacing:.18em;font-family:ui-monospace,monospace;font-size:13px;color:var(--ink)}
+.me-inv.dead{border-style:dashed;border-color:#C9A9A2}
 .me-inv{display:flex;align-items:center;gap:8px;justify-content:space-between;border:1px dashed color-mix(in srgb,var(--zhu) 50%,transparent);border-radius:10px;padding:9px 12px;margin:8px 0}
 .me-inv b{font-family:ui-monospace,Menlo,monospace;letter-spacing:.08em;font-size:15px;color:var(--zhu)}
 .me-inv button{border:1px solid var(--line);background:var(--card);border-radius:999px;padding:5px 12px;font-size:12px}
@@ -8011,11 +8012,15 @@ function inviteCardHTML(){
   if(!authOk()) return '';
   if(EXTRA.dead) return meCard(`<h3>邀请有礼</h3><div class="me-note">邀请功能暂未开通，稍后再来（不影响刷题与同步）。</div>`);
   if(EXTRA.invOn===false) return meCard(`<h3>邀请有礼</h3><div class="me-note">邀请活动暂时关闭，已发放的会员不受影响。</div>`);
-  const code=EXTRA.code||'——';
+  const code=EXTRA.code||'';
   const ri=EXTRA.rwI||3, re=EXTRA.rwE||3;
+  const codeRow = code
+    ? `<div class="me-inv"><b id="invCode">${esc(code)}</b><button onclick="copyInvite()">复制</button></div>`
+    : `<div class="me-inv dead"><b id="invCode">还没生成</b><button onclick="retryInvite(this)">重试</button></div>
+       <div class="me-note">${esc(EXTRA.codeErr||'正在向服务器申请邀请码…')}</div>`;
   return meCard(`<h3>邀请有礼</h3>
     <div class="me-note">把邀请码发给同学：对方首次登录填一次，你得 <b>+${ri} 天</b>会员，对方得 <b>+${re} 天</b>；每个账号终身只能填一次，不能填自己的码。</div>
-    <div class="me-inv"><b id="invCode">${esc(code)}</b><button onclick="copyInvite()">复制</button></div>
+    ${codeRow}
     <div class="me-note">已邀请 <b>${EXTRA.n||0}</b> 人${EXTRA.n?(' · 累计 +'+((EXTRA.n*(EXTRA.rwI||3)))+' 天'):''}</div>
     <div class="me-row"><input id="invIn" maxlength="16" style="text-transform:uppercase" placeholder="填别人的邀请码"><button onclick="claimInvite(this)">兑换</button></div>
     <div class="me-note" id="invMsg"></div>`);
@@ -8046,8 +8051,38 @@ async function claimPendingInvite(){
     else if(j&&j.msg){ mtoast(j.msg); }
   }catch(e){ /* 表未建或网络失败：直接丢弃，避免每次登录重复打扰 */ }
 }
+async function fetchInviteCode(quiet){
+  if(!authOk()) return '';
+  try{
+    const code=await rpc('ensure_invite_code',{});
+    const v=(typeof code==='string')?code:((code&&code.code)||'');
+    if(v){ EXTRA.code=v; EXTRA.codeErr=''; return v; }
+    EXTRA.codeErr='服务器没有返回邀请码，点「重试」再试一次';
+    return '';
+  }catch(e){
+    const m=String((e&&e.message)||e||'');
+    if(/does not exist|PGRST202|Could not find/i.test(m)){
+      EXTRA.dead=true; EXTRA.codeErr='邀请功能还没开通';
+    }else if(/JWT|expired|invalid claim|401|403/i.test(m)){
+      EXTRA.codeErr='登录已过期，请重新登录后再生成邀请码';
+    }else{
+      EXTRA.codeErr='生成失败：'+m.slice(0,90);
+    }
+    if(!quiet) mtoast(EXTRA.codeErr);
+    return '';
+  }
+}
+async function retryInvite(btn){
+  const done=busyOn(btn,'生成中…'); haptic();
+  const v=await fetchInviteCode(false);
+  if(done) done();
+  if(v){ renderAcct(); mtoast('邀请码已生成：'+v); }
+}
 async function syncExtras(){
   if(!authOk()) return;
+  try{
+    if(!(await ensureToken())){ EXTRA.tokenDead=true; EXTRA.codeErr='登录已过期，到「注册/登录」重新登录一次'; renderAcct(); return; }
+  }catch(e){}
   /* 会员到期时间以服务端 profiles.pro_until 为准（本地值只是离线缓存，被改也没用） */
   try{
     const pr=await sbReq('/rest/v1/profiles?uid=eq.'+AUTH.uid+'&select=pro_until,banned,role');
@@ -8071,14 +8106,7 @@ async function syncExtras(){
     });
     EXTRA.cfgOk=true;
   }catch(e){}
-  try{
-    const code=await rpc('ensure_invite_code',{});
-    if(typeof code==='string'&&code) EXTRA.code=code;
-    else if(code&&code.code) EXTRA.code=code.code;
-  }catch(e){
-    const m=String((e&&e.message)||e||'');
-    if(/does not exist|PGRST202|Could not find/i.test(m)) EXTRA.dead=true;
-  }
+  await fetchInviteCode(true);
   try{
     const rows=await sbReq('/rest/v1/referrals?inviter=eq.'+AUTH.uid+'&select=id');
     EXTRA.n=(rows||[]).length;
@@ -8879,7 +8907,7 @@ function go(v){
   if(v==='browse'){ applyFreeLocks(); applyMode(); chipRow(); renderList(); }
   if(v==='topic'){ applyFreeLocks(); setTopic(TOPIC); }
   if(v==='quiz'){ if(!QZ) renderQuizSetup(); else renderQuiz(); }
-  if(v==='me'){ renderAcct(); }
+  if(v==='me'){ renderAcct(); if(authOk()&&!EXTRA.code){ fetchInviteCode(true).then(function(){ renderAcct(); }); } }
   // 渲染完成后恢复该视图上次的滚动位置
   requestAnimationFrame(()=>{window.scrollTo({top:SCROLLMEM[v]||0,behavior:'auto'});topLayer();});
 }
@@ -8995,8 +9023,14 @@ try{
 }
 
 const VER='3.20.0';
-const PATCH='2';   /* 同一版本内的补丁号；0 表示版本本体 */
+const PATCH='3';   /* 同一版本内的补丁号；0 表示版本本体 */
 const CHANGELOG = [
+{v:'3.20.0',ps:'3',d:'2026-11-21',kind:'fix',sum:'邀请码显示修复：申请失败不再只显示「——」，改为说明原因并可重试；登录过期会明确提示重新登录',items:[
+ ['修复','「我的·邀请有礼」不再显示破折号：拿到码就显示码，没拿到会写清原因并给「重试」按钮'],
+ ['修复','进入「我的」页时如果还没拿到邀请码，会自动再申请一次'],
+ ['修复','登录态过期时先自动续期；续不上就提示重新登录，不再静默失败'],
+ ['后台','邀请码生成前会先确保账号档案存在，新注册用户也能直接拿到码']
+]},
 {v:'3.20.0',ps:'2',d:'2026-11-21',kind:'feature',sum:'管理后台重做：卡密天数自定义、生成可一键撤销本批；会员支持自定义加/减天数；设备与会员页不再空白无操作',items:[
  '后台生成卡密时可以填任意天数（1—3650），生成前有确认，生成后可「复制全部 / 删除本批」',
  '卡密列表改成逐条卡片：按可用 / 已兑换 / 已作废筛选，单条可作废、恢复、删除',
