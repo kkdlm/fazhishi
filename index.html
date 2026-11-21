@@ -87,7 +87,7 @@ html,body{margin:0;padding:0;background:#EAEDE1}
 </div></div>
 <script>
 (function(){
-  var VER='3.20.0-p6';
+  var VER='3.20.0-p7';
   var fill=document.getElementById('spFill'),pct=document.getElementById('spPct'),
       status=document.getElementById('spStatus'),splash=document.getElementById('splash'),
       boot=document.getElementById('boot');
@@ -171,6 +171,7 @@ html,body{margin:0;padding:0;background:#EAEDE1}
 
   function mount(html){
     finishing=true; gate=Date.now()+420; real=1;
+    try{ status.textContent='内容到手，正在拆封…'; }catch(e){}
     boot.style.display='none';   /* 下载断流时弹的提示，真正挂载成功后收起 */
     try{
       var base='<base href="'+location.origin+location.pathname+'">';
@@ -193,11 +194,19 @@ html,body{margin:0;padding:0;background:#EAEDE1}
     'https://raw.githubusercontent.com/kkdlm/fazhishi/main/app.html'
   ];
 
-  /* 拉一条件：首字节 firstByteMs 内没来就 abort，交给下一条；已经开始出字节就不再打断 */
-  async function pullOne(url, firstByteMs){
-    var ctl=null, tid=null, first=false, chunks=[], dec=new TextDecoder('utf-8'), buf='', res, rd, step, cl;
+  /* 拉一条件：首字节 firstByteMs 内没来就 abort；已经有字节但 12 秒还不到 15%，也 abort（换更快的线路） */
+  async function pullOne(url, firstByteMs, lowMs, lowRatio){
+    var ctl=null, tid=null, st=null, first=false, t0=Date.now(), chunks=[], dec=new TextDecoder('utf-8'), buf='', res, rd, step, cl;
     try{ if(window.AbortController) ctl=new AbortController(); }catch(e){}
     if(ctl && firstByteMs){ tid=setTimeout(function(){ try{ ctl.abort(); }catch(e){} }, firstByteMs); }
+    if(ctl && lowMs){
+      st=setInterval(function(){
+        try{
+          if(!first || done || finishing) return;
+          if(Date.now()-t0>=lowMs && got < denom()*lowRatio) ctl.abort();
+        }catch(e){}
+      },1200);
+    }
     try{
       res=await fetch(url, ctl?{signal:ctl.signal,cache:'default'}:{cache:'default'});
       if(!res.ok) throw new Error('HTTP '+res.status);
@@ -226,9 +235,11 @@ html,body{margin:0;padding:0;background:#EAEDE1}
       buf+=dec.decode();
       real=1;
       if(got<1000) throw new Error('内容为空');
+      /* 流被提前截断（服务端断开）时不能当成功挂载，否则进去就是白屏 */
+      if(total>0 && got < total*0.85) throw new Error('下载不完整 '+mb(got)+'/'+mb(total)+' MB');
       try{ localStorage.setItem('fz_pkg', String(got)); }catch(e){}
       return buf;
-    } finally { if(tid){ clearTimeout(tid); tid=null; } }
+    } finally { if(tid){ clearTimeout(tid); tid=null; } if(st){ clearInterval(st); st=null; } }
   }
 
   async function run(){
@@ -247,9 +258,12 @@ html,body{margin:0;padding:0;background:#EAEDE1}
           got=0; real=0; lastAt=Date.now();
           try{
             boot.style.display='none';
-            mount(await pullOne(list[i], round?12000:8000));
+            mount(await pullOne(list[i], round?12000:8000, 12000, 0.15));
             return;
-          }catch(e){ lastErr=e; }
+          }catch(e){
+            lastErr=e;
+            if(!done && !finishing && i<list.length-1) status.textContent='这条线路太慢，换一条再试…';
+          }
           if(!navigator.onLine) throw (lastErr||new Error('现在没有网络'));
         }
         if(!navigator.onLine) break;
