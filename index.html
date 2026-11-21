@@ -98,7 +98,7 @@ html,body{margin:0;padding:0;background:#EAEDE1}
 </div></div>
 <script>
 (function(){
-  var VER='4.0.5-p7';
+  var VER='4.0.5-p8';
   var fill=document.getElementById('spFill'),pct=document.getElementById('spPct'),
       status=document.getElementById('spStatus'),splash=document.getElementById('splash'),
       boot=document.getElementById('boot');
@@ -122,6 +122,7 @@ html,body{margin:0;padding:0;background:#EAEDE1}
       else if(total>0) size=' · '+mb(got)+'/'+mb(total)+' MB';
       else size=' · 已下载 '+mb(got)+' MB';     /* 总量未知：只报已下载，绝不显示 /0 */
     }
+    if(!got && !mounted && Date.now()-startAt>1600) size=' · 正在连接服务器…';
     pct.textContent = pi+'%'+size;
   }
 
@@ -134,6 +135,7 @@ html,body{margin:0;padding:0;background:#EAEDE1}
   ];
   var lineIdx=-1;
   function label(){
+    if(!got && !mounted){ status.textContent='还没收到数据，正在换线路…'; lineIdx=-1; return; }
     if(slow){ var t='网络较慢，还在下载'; if(total>0) t+='（'+mb(got)+'/'+mb(total)+' MB）'; t+='…'; status.textContent=t; lineIdx=-1; return; }
     var i=0;
     for(var k=0;k<LINES.length;k++){ if(shown>=LINES[k][0]) i=k; }
@@ -160,6 +162,8 @@ html,body{margin:0;padding:0;background:#EAEDE1}
       var creep=stallFrom+Math.min(38,(now-lastAt-1200)/1000*4);
       if(creep>want) want=Math.min(creep,90);
     }else if(now-lastAt<=1200){ stallFrom=0; }
+    /* 一个字节都没收到时，进度封在 46%，不再自己往上爬——那会让人以为快好了其实卡死 */
+    if(!got && !mounted) want=Math.min(want,46);
     if(!isFinite(want)) want=50;
     if(mounted){
       var left=startAt+MIN_MS-now;
@@ -272,6 +276,9 @@ html,body{margin:0;padding:0;background:#EAEDE1}
       if(!window.caches||!html||html.length<500000) return;
       var c=await caches.open(PKGC), ks=await c.keys(), keep=pkgURL(ver), i;
       await c.put(new Request(keep,{cache:'no-store'}), new Response(html,{headers:{'content-type':'text/html;charset=utf-8'}}));
+      var back=await c.match(new Request(keep,{cache:'no-store'}));
+      var blen=back?(await back.text()).length:0;
+      if(blen<html.length*0.98) throw new Error('缓存只写进 '+blen+'/'+html.length);
       for(i=0;i<ks.length;i++){ if(ks[i].url!==keep){ try{ await c.delete(ks[i]); }catch(e){} } }
     }catch(e){}
   }
@@ -323,6 +330,29 @@ html,body{margin:0;padding:0;background:#EAEDE1}
     'https://cdn.jsdelivr.net/gh/kkdlm/fazhishi@main/app.html',
     'https://raw.githubusercontent.com/kkdlm/fazhishi/main/app.html'
   ];
+
+  /* 线路竞速：同时向几条线路各要 2 个字节，谁先回就用谁。
+     以前是一条条串行试，本站 8 秒 + 三条镜像各 8 秒，四条都慢就要干等半分钟，
+     表现就是「进度停在 0.00 MB、卡很久」。现在最迟 3.5 秒必出结果。 */
+  async function pickFast(urls, ms){
+    var t0=Date.now();
+    var arr=urls.map(function(u,idx){
+      return new Promise(function(res){
+        var ctl=null, tid=null, fin=false;
+        function end(o){ if(fin) return; fin=true; clearTimeout(tid); try{ if(ctl) ctl.abort(); }catch(e){} res(o); }
+        try{ ctl=new AbortController(); }catch(e){}
+        tid=setTimeout(function(){ end({u:u,i:idx,ok:false,t:9999}); }, ms);
+        try{
+          fetch(u,{method:'HEAD', signal:ctl?ctl.signal:undefined, cache:'no-store'})
+            .then(function(r){ end({u:u,i:idx,ok:!!(r&&r.status<400),t:Date.now()-t0}); })
+            .catch(function(){ end({u:u,i:idx,ok:false,t:9999}); });
+        }catch(e){ end({u:u,i:idx,ok:false,t:9999}); }
+      });
+    });
+    var res=await Promise.all(arr);
+    var ok=res.filter(function(x){return x.ok;}).sort(function(a,b){return a.t-b.t;});
+    return {list:ok.map(function(x){return x.u;}), fastest:ok.length?ok[0].t:0};
+  }
 
   /* 拉一条件：首字节 firstByteMs 内没来就 abort；已经有字节但 12 秒还不到 15%，也 abort（换更快的线路） */
   async function pullOne(url, firstByteMs, lowMs, lowRatio){
@@ -382,22 +412,31 @@ html,body{margin:0;padding:0;background:#EAEDE1}
         if(pk.ver!==VER) bgPull();
         return;
       }
-      try{
-        var v=await fetch('version.json?ts='+Date.now(),{cache:'no-store'}).then(function(r){return r.json();});
-        if(v && v.s) total=Number(v.s)||0;
-      }catch(e){}
+      /* 版本信息只用来算进度分母，不必等它：和正文同时开跑，回来了再补上总量 */
+      fetch('version.json?ts='+Date.now(),{cache:'no-store'}).then(function(r){return r.json();})
+        .then(function(v){ if(v&&v.s) total=Number(v.s)||0; }).catch(function(){});
       /* ① 本站：地址只随版本号变化（不带时间戳），所以浏览器缓存能命中——第二次打开不再重拉 6.5MB；
          ② 首字节 8 秒没来就换镜像，不死等；③ 三条都失败再整体重试一轮 */
       list=['app.html?v='+VER].concat(MIRRORS);
+      /* 先花最多 3.5 秒挑一条能出字节的线路，再整包下；挑不出来就按原顺序硬试 */
+      try{
+        status.textContent='正在挑最快的线路…';
+        var pick=await pickFast(list, 1800);
+        if(pick.list.length){
+          list=pick.list.concat(list.filter(function(u){return pick.list.indexOf(u)<0;}));
+        }
+      }catch(e){}
       for(round=0; round<2; round++){
         for(i=0;i<list.length;i++){
           if(done) return;
           got=0; real=0; lastAt=Date.now();
           try{
             boot.style.display='none';
-            var html=await pullOne(list[i], round?12000:8000, 12000, 0.15);
+            var html=await pullOne(list[i], round?9000:4500, 10000, 0.15);
+            /* 先落盘再挂载：以前是挂上去再异步存，用户一进来就切走会把 6.5MB 写入打断，
+               下次打开又得从头下——表现就是「每次都很慢、进度停在 0」。 */
+            try{ await pkgSave(VER, html); }catch(e){}
             mount(html);
-            try{ pkgSave(VER, html); }catch(e){}
             return;
           }catch(e){
             lastErr=e;
