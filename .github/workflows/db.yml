@@ -1,9 +1,11 @@
 name: db-migrate
 
-# 以后所有数据库结构变更：把 SQL 追加到 docs/vip_cards.sql，push 后这里自动执行（幂等）
-# 前置：仓库 Settings → Secrets and variables → Actions 里加一条 SUPABASE_DB_URL
-#      取值：Supabase Dashboard → Project Settings → Database → Connection string → URI（postgres://...）
-# 没配置这个 secret 时，本工作流会直接跳过，不会报错。
+# 数据库结构变更自动化。push docs/*.sql 后本工作流会把每个文件整段执行一次（全部幂等，可重复跑）。
+# 支持两种凭据，任配一种即可：
+#   1) SUPABASE_ACCESS_TOKEN（推荐）：Supabase 右上头像 → Account Settings → Access Tokens 生成，sbp_ 开头
+#      用 Management API 执行 SQL，不需要数据库密码、不需要知道主机地址
+#   2) SUPABASE_DB_URL：postgres://... 直连（需要能取到数据库密码）
+# 两种都没配时直接跳过，不报错。
 
 on:
   push:
@@ -23,23 +25,43 @@ jobs:
   migrate:
     runs-on: ubuntu-latest
     env:
+      TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
       DBURL: ${{ secrets.SUPABASE_DB_URL }}
+      REF: lbykbafnkhwxqtfuaoio
     steps:
       - uses: actions/checkout@v4
 
-      - name: Skip when secret missing
-        if: env.DBURL == ''
-        run: echo "::notice::未配置 SUPABASE_DB_URL，跳过数据库迁移"
+      - name: Skip when no credential
+        if: env.TOKEN == '' && env.DBURL == ''
+        run: echo "::notice::未配置 SUPABASE_ACCESS_TOKEN 或 SUPABASE_DB_URL，跳过数据库迁移"
 
-      - name: Install psql
-        if: env.DBURL != ''
-        run: sudo apt-get update -qq && sudo apt-get install -y postgresql-client
-
-      - name: Apply docs/vip_cards.sql
-        if: env.DBURL != ''
+      - name: Apply SQL via Management API
+        if: env.TOKEN != ''
         run: |
           set -e
-          echo "执行 docs/vip_cards.sql（全部语句均为 if not exists / drop policy if exists，可重复跑）"
-          psql "$DBURL" -v ON_ERROR_STOP=1 --single-transaction -f docs/vip_cards.sql
-          psql "$DBURL" -c "select column_name from information_schema.columns where table_name='profiles' order by 1;"
-          psql "$DBURL" -c "select to_regclass('public.cards') as cards_table;"
+          API="https://api.supabase.com/v1/projects/$REF/database/query"
+          for f in docs/*.sql; do
+            echo "== 执行 $f"
+            payload=$(jq -Rs '{query: .}' "$f")
+            for attempt in 1 2 3 4 5; do
+              code=$(curl -sS -m 180 -o resp.json -w '%{http_code}' -X POST "$API" \
+                -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' -d "$payload") || code=000
+              if [ "$code" = "200" ] || [ "$code" = "201" ]; then break; fi
+              echo "第 $attempt 次失败（HTTP $code），退避重试"
+              head -c 400 resp.json || true; echo
+              sleep $((attempt*10))
+            done
+            if [ "$code" != "200" ] && [ "$code" != "201" ]; then echo "::error::$f 执行失败"; exit 1; fi
+            head -c 600 resp.json || true; echo
+          done
+          echo "全部 SQL 执行完成"
+
+      - name: Apply SQL via psql
+        if: env.TOKEN == '' && env.DBURL != ''
+        run: |
+          set -e
+          sudo apt-get update -qq && sudo apt-get install -y postgresql-client
+          for f in docs/*.sql; do
+            echo "== 执行 $f"
+            psql "$DBURL" -v ON_ERROR_STOP=1 --single-transaction -f "$f"
+          done
