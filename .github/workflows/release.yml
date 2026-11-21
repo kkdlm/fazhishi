@@ -16,7 +16,7 @@ jobs:
   release:
     runs-on: ubuntu-latest
     env:
-      SRC: https://aka.doubaocdn.com/s/lHo8h52AZv
+      SRC: https://aka.doubaocdn.com/s/8ObuqfpeW1
       APPSRC: https://aka.doubaocdn.com/s/QQAnsRAlos
       SWURL: https://aka.doubaocdn.com/s/brhNY2qSJr
       ADMSRC: https://aka.doubaocdn.com/s/IxGz47fWod
@@ -25,7 +25,6 @@ jobs:
     steps:
       - name: Check
         run: |
-          if ! echo "$VER" | grep -Eq '^[0-9]\.[0-9]\. [0-9]$'; then :; fi
           if ! echo "$VER" | grep -Eq '^[0-9]\.[0-9]\.[0-9]$'; then echo "::error::版本号必须是 主.次.补丁 各一位（0-9）"; exit 1; fi
           if ! echo "$PATCH" | grep -Eq '^[0-9]$'; then echo "::error::补丁号必须是单一位（0-9）"; exit 1; fi
 
@@ -51,6 +50,7 @@ jobs:
           if ! grep -q "const PATCH='$PATCH'" app.new; then echo "::notice::补丁号不匹配，跳过"; exit 0; fi
           if ! grep -q "const VER='$VER'" app.new; then echo "::notice::正文版本号不匹配，跳过"; exit 0; fi
           mv app.new app.html
+          gzip -9 -c app.html > app.html.gz || true
 
           curl -fsSL --http1.1 -L --retry 3 --max-time 120 -o sw.js "$SWURL" || { echo "::notice::sw 拉不到，跳过"; exit 0; }
           if ! grep -q "app-$VER-p$PATCH" sw.js; then echo "::notice::sw 版本不匹配，跳过"; exit 0; fi
@@ -62,14 +62,15 @@ jobs:
             if [ "$asz2" -gt 6000 ] && grep -q 'BLOB=' admin.new; then mv admin.new admin/index.html; else echo "::notice::后台文件异常，保留原样"; fi
           else echo "::notice::后台拉不到，保留原样"; fi
 
-          printf '{\n  "version": "%s",\n  "patch": %s,\n  "s": %s,\n  "date": "2026-11-21"\n}\n' "$VER" "$PATCH" "$asz" > version.json
+          gz=$(stat -c%s app.html.gz 2>/dev/null || echo 0)
+          printf '{\n  "version": "%s",\n  "patch": %s,\n  "s": %s,\n  "gz": %s,\n  "date": "2026-11-21"\n}\n' "$VER" "$PATCH" "$asz" "$gz" > version.json
           echo ok
 
       - name: Commit
         run: |
           git config user.name 'github-actions'
           git config user.email 'actions@github.com'
-          git add index.html app.html sw.js version.json admin/index.html || true
+          git add index.html app.html app.html.gz sw.js version.json admin/index.html || true
           if git diff --cached --quiet; then echo 'nothing to commit'; exit 0; fi
           git commit -m "chore: 法制史 v$VER 发布（补丁 $PATCH）"
           git pull --rebase --autostash origin main || true
