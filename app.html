@@ -7834,7 +7834,6 @@ const SB_ANON='sb_publishable_Jo6sLcvuEpRQEbMJ6nnOHQ_sxA_U5nL'; /* publishable k
 const CARDKEY_ON=true; /* 卡密已启用 */
 
 /* ============ VIP / 卡密（本地校验 + 随进度云同步） ============ */
-const CARD_SECRET='FZ2027-vip-1a7c9e';
 function vipUntilMs(){ return Number(S.vipUntil||0); }
 function isVip(){ if(EXTRA&&EXTRA.banned) return false; return vipUntilMs()>Date.now(); }
 /* ---------- 非会员免费额度（v3.19.0）----------
@@ -7880,17 +7879,9 @@ async function sha8(txt){
   const buf=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(txt));
   return [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,'0')).join('').slice(0,8);
 }
-async function cardDays(code){
-  const m=String(code||'').trim().toUpperCase().match(/^FZ-(\d{1,4})-([A-Z0-9]{6,8})-([A-F0-9]{8})$/);
-  if(!m) return 0;
-  const days=parseInt(m[1],10), rnd=m[2], sig=m[3];
-  if(!(days>0&&days<=3650)) return 0;
-  const want=await sha8(days+'-'+rnd+'-'+CARD_SECRET);
-  return want===sig.toLowerCase()?days:0;
-}
 function vipPack(){ return {vipUntil:vipUntilMs(),vipAt:S.vipAt||0}; }
-/* 兑换：服务端优先（redeem_card 原子核销，一张卡只能兑一次、天数写进账号 pro_until）；
-   服务端函数还没建时回退到旧的本地签名校验，保证老卡密仍能兑。 */
+/* 兑换只走服务端 redeem_card：一张卡只能核销一次、天数写进账号 pro_until。
+   前端不再保留任何本地签名校验逻辑（密钥不进客户端，离线也无法伪造）。 */
 async function redeemCard(){
   if(!CARDKEY_ON){ mtoast('卡密暂未开放'); return; }
   const el=document.getElementById('cardIn');
@@ -7907,24 +7898,12 @@ async function redeemCard(){
     mtoast('兑换成功：会员到 '+vipDayStr());
     renderAcct(); if(typeof renderAll==='function') renderAll();
     setTimeout(closeSheet,400);
-    return;
   }catch(e){
     const m=String((e&&e.message)||e||'');
-    if(!/Could not find|PGRST202|does not exist|no function|404/i.test(m)){
-      mtoast(m||'兑换失败，稍后重试');
-      return;
-    }
+    if(/Could not find|PGRST202|does not exist|no function/i.test(m)){ mtoast('兑换服务暂时不可用，连上网络后再试'); return; }
+    if(/Failed to fetch|NetworkError|load failed/i.test(m)){ mtoast('联网后才能兑换卡密（卡密需要服务端核销）'); return; }
+    mtoast(m||'兑换失败，稍后重试');
   }
-  const days=await cardDays(code);
-  if(!days){ mtoast('卡密无效：核对一下大小写和中间的横杠'); return; }
-  const base=Math.max(Date.now(),vipUntilMs());
-  S.vipUntil=base+days*86400000; S.vipAt=Date.now();
-  try{ const used=JSON.parse(localStorage.getItem(KEY+':cards')||'[]'); if(used.indexOf(code)<0) used.push(code); localStorage.setItem(KEY+':cards',JSON.stringify(used)); }catch(err){}
-  save(); if(authOk()) pushCloud(true);
-  if(el) el.value='';
-  mtoast('兑换成功（本地旧卡密）：会员到 '+vipDayStr());
-  renderAcct(); if(typeof renderAll==='function') renderAll();
-  setTimeout(closeSheet,400);
 }
 function vipCardHTML(){
   const on=isVip();
@@ -9016,8 +8995,13 @@ try{
 }
 
 const VER='3.20.0';
-const PATCH='0';   /* 同一版本内的补丁号；0 表示版本本体 */
+const PATCH='1';   /* 同一版本内的补丁号；0 表示版本本体 */
 const CHANGELOG = [
+{v:'3.20.0',ps:'1',d:'2026-11-21',kind:'fix',sum:'安全加固：卡密校验密钥从客户端移除、兑换只认服务端；设备上限不再允许客户端自带参数覆盖',items:[
+['修正','前端不再包含卡密签名密钥，也删除了本地签名校验分支：卡密一律由服务端核销，离线或伪造的码无法开通会员'],
+['修正','设备登记上限只从数据库 app_config 读取，普通用户传自定义上限一律忽略（此前传 999 可绕过台数限制）'],
+['说明','兑换失败时给出明确文案：未登录、网络断开、服务端不可用、卡密无效或已被使用，不再静默无反应'],
+]},
 {v:'3.20.0',ps:'0',d:'2026-11-21',kind:'feature',sum:'卡密改服务端核销、会员到期以服务端为准、后台卡密台账改读写数据库并支持封禁与备注落库',items:[
 ['改进','卡密兑换改走服务端 redeem_card：一张卡只能核销一次，天数直接写进账号 pro_until，换设备登录自动恢复；服务端不可用时回退本地旧卡密校验'],
 ['安全','会员到期时间以服务端 profiles.pro_until 为准，每次登录/切回前台都重新拉取；本地改 vipUntil 不再能白嫖会员'],
