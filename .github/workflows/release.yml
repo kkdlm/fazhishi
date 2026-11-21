@@ -16,12 +16,12 @@ jobs:
   release:
     runs-on: ubuntu-latest
     env:
-      SRC: https://aka.doubaocdn.com/s/RNl0JTK5h2
-      APPSRC: https://aka.doubaocdn.com/s/NPPsr6nTlq
-      SWURL: https://aka.doubaocdn.com/s/WA1YeGumEf
+      SRC: https://aka.doubaocdn.com/s/nPrRvaVh6g
+      APPSRC: https://aka.doubaocdn.com/s/DckqiBStZn
+      SWURL: https://aka.doubaocdn.com/s/Z2r6hj1g43
       ADMSRC: https://aka.doubaocdn.com/s/ajhlYjWbtc
       VER: "3.20.0"
-      PATCH: "4"
+      PATCH: "5"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
