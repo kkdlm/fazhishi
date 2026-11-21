@@ -23,7 +23,7 @@ jobs:
       SRC: https://aka.doubaocdn.com/s/yol0wuRltA
       APPSRC: https://aka.doubaocdn.com/s/EAMZQqlUct
       SWURL: https://aka.doubaocdn.com/s/J6BO8qWYCy
-      ADMSRC: https://aka.doubaocdn.com/s/gORUcGQTyn
+      ADMSRC: https://aka.doubaocdn.com/s/dkV4C7yaIW
     steps:
       - name: Check
         run: |
