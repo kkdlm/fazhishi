@@ -16,12 +16,12 @@ jobs:
   release:
     runs-on: ubuntu-latest
     env:
-      SRC: https://aka.doubaocdn.com/s/PK26n3Ayww
-      APPSRC: https://aka.doubaocdn.com/s/lpk0Hr622o
-      SWURL: https://aka.doubaocdn.com/s/sMt79mqf5O
+      SRC: https://aka.doubaocdn.com/s/GHg04npDqr
+      APPSRC: https://aka.doubaocdn.com/s/3cqZAiNaPy
+      SWURL: https://aka.doubaocdn.com/s/wLWzrhTWV5
       ADMSRC: https://aka.doubaocdn.com/s/efKpdU26Uc
-      VER: "3.20.0"
-      PATCH: "7"
+      VER: "3.21.0"
+      PATCH: "1"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -40,6 +40,7 @@ jobs:
           if [ "$asz" -lt 1500000 ]; then echo "::notice::正文字节过小，跳过"; exit 0; fi
           head -c 60 app.new | grep -q '<!DOCTYPE html>'
           if ! grep -q "const PATCH='$PATCH'" app.new; then echo "::notice::补丁号不匹配，跳过"; exit 0; fi
+          if ! grep -q "const VER='$VER'" app.new; then echo "::notice::正文版本号不匹配，跳过"; exit 0; fi
           mv app.new app.html
 
           curl -fsSL --http1.1 -L --retry 3 --max-time 120 -o sw.js "$SWURL" || { echo "::notice::sw 拉不到，跳过"; exit 0; }
