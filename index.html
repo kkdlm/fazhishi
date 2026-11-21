@@ -98,7 +98,11 @@ html,body{margin:0;padding:0;background:#EAEDE1}
 </div></div>
 <script>
 (function(){
-  var VER='4.2.0-p0', VERB='4.2.0', PATCH='0';
+  var VER='4.2.0-p1', VERB='4.2.0', PATCH='0';
+  /* 缓存键只跟「正文版本」，不跟壳版本：
+     这样以后只改壳（换线路、改文案）时，已在手机里的 6.5MB 正文照样命中，
+     不会因为壳升级就逼所有人重下一遍。 */
+  var KV=VERB+'-'+PATCH;
   var fill=document.getElementById('spFill'),pct=document.getElementById('spPct'),
       status=document.getElementById('spStatus'),splash=document.getElementById('splash'),
       boot=document.getElementById('boot');
@@ -322,7 +326,7 @@ html,body{margin:0;padding:0;background:#EAEDE1}
   async function bgPull(){
     try{
       var html=await pullOne('app.html?v='+VER, 9000, 30000, 0.15);
-      await pkgSave(VER, html);
+      await pkgSave(KV, html);
       showUpd();
     }catch(e){}
   }
@@ -421,43 +425,67 @@ html,body{margin:0;padding:0;background:#EAEDE1}
     } finally { if(tid){ clearTimeout(tid); tid=null; } if(st){ clearInterval(st); st=null; } }
   }
 
+  /* 拿到 version.json 里的 commit sha 后，才把 jsDelivr 的「sha 锚定」线路插到第 2 位：
+     用 sha 而不是 @main，就不会像 @main 那样给你上一版正文。谁先回来顺序都可能变，所以做成幂等。 */
+  var RTLIST=null;
+  function tryJd(){
+    try{
+      if(!window.__fzSha) return;
+      var jd='https://cdn.jsdelivr.net/gh/kkdlm/fazhishi@'+window.__fzSha+'/app.html';
+      if(RTLIST && RTLIST.indexOf(jd)<0) RTLIST.splice(1,0,jd);
+      else window.__fzJd=jd;
+    }catch(e){}
+  }
+
   async function run(){
-    var lastErr=null, round, i, list;
+    var lastErr=null, round, i;
     try{
       /* ① 本机已有正文 → 直接秒开。版本不一致就先开旧版，同时在后台换新版 */
       var pk=await pkgLoad();
       if(pk && pk.html){
         quick(pk.html);
-        if(pk.ver!==VER) bgPull();
+        if(pk.ver!==KV) bgPull();
         return;
       }
       /* 版本信息只用来算进度分母，不必等它：和正文同时开跑，回来了再补上总量 */
       fetch('version.json?ts='+Date.now(),{cache:'no-store'}).then(function(r){return r.json();})
-        .then(function(v){ if(v&&v.s) total=Number(v.s)||0; }).catch(function(){});
+        .then(function(v){
+          if(v&&v.s) total=Number(v.s)||0;
+          if(v&&v.sha){ window.__fzSha=v.sha; tryJd(); }
+        }).catch(function(){});
       /* ① 本站：地址只随版本号变化（不带时间戳），所以浏览器缓存能命中——第二次打开不再重拉 6.5MB；
          ② 首字节 8 秒没来就换镜像，不死等；③ 三条都失败再整体重试一轮 */
-      list=MIRRORS.concat(['app.html?v='+VER]);
+      RTLIST=MIRRORS.concat(['app.html?v='+VER]);
+      window.__fzSha='';
+      /* 国内（尤其中华人民共和国境内手机网络）直连 raw.githubusercontent 常见超时，
+         Pages 又只有 20–500KB/s（6.5MB 要几十秒到几分钟）。
+         所以加两条转发热线垫在中间：
+           gh-proxy  → Cloudflare 反代 raw，内容永远是最新 main，带 CORS
+           jsDelivr  → 用 commit SHA 锚定（不吃 @main 的 24 小时缓存滞后），带 CORS
+         两条都给的是同一份正文，版本号/补丁号校验过不了照样被拒，不会进旧版。 */
+      RTLIST.splice(1,0,'https://gh-proxy.com/https://raw.githubusercontent.com/kkdlm/fazhishi/main/app.html');
+      if(window.__fzSha) tryJd();
       /* 按实测速度排好的顺序试；首字节 4.5 秒不来、或 12 秒还不到 15%，立刻换下一条。
          不再做「竞速」：首字节快不等于下得快，会挑到吞吐只有 100KB/s 的线路，反而更慢。 */
       status.textContent='正在获取正文…';
       for(round=0; round<2; round++){
-        for(i=0;i<list.length;i++){
+        for(i=0;i<RTLIST.length;i++){
           if(done) return;
           got=0; real=0; lastAt=Date.now();
           try{
             boot.style.display='none';
-            var html=await pullOne(list[i], round?9000:4500, 10000, 0.15);
+            var html=await pullOne(RTLIST[i], round?9000:4500, 10000, 0.15);
             /* 镜像可能缓存着上一版（jsDelivr 的 @main 有缓存）：版本/补丁对不上一律当这条线路失败，换下一条 */
             if(html.indexOf("const VER='"+VERB+"'")<0 || html.indexOf("const PATCH='"+PATCH+"'")<0)
               throw new Error('这条线路给的是旧版本');
             /* 先落盘再挂载：以前是挂上去再异步存，用户一进来就切走会把 6.5MB 写入打断，
                下次打开又得从头下——表现就是「每次都很慢、进度停在 0」。 */
-            try{ await pkgSave(VER, html); }catch(e){}
+            try{ await pkgSave(KV, html); }catch(e){}
             mount(html);
             return;
           }catch(e){
             lastErr=e;
-            if(!done && !finishing && i<list.length-1) status.textContent='这条线路太慢，换一条再试…';
+            if(!done && !finishing && i<RTLIST.length-1) status.textContent='这条线路太慢，换一条再试…';
           }
           if(!navigator.onLine) throw (lastErr||new Error('现在没有网络'));
         }
