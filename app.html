@@ -176,6 +176,28 @@ svg{display:block}
 .splash-strip{margin-top:22px;display:flex;align-items:center;gap:7px;font-size:11px;letter-spacing:.18em;
   color:var(--bamboo);opacity:.8;animation:splashFade .5s ease both}
 .splash-strip s{display:block;width:26px;height:1px;background:var(--bamboo);opacity:.45;text-decoration:none}
+[hidden]{display:none!important}
+/* 登录墙：未登录时整块盖住 App，只留登录入口 */
+.gate{position:fixed;inset:0;z-index:900;display:flex;align-items:center;justify-content:center;
+  padding:24px 22px calc(24px + env(safe-area-inset-bottom));background:var(--paper);overflow:auto;
+  -webkit-overflow-scrolling:touch}
+.gate-in{width:100%;max-width:340px;text-align:center;display:flex;flex-direction:column;align-items:center}
+.gate-in .splash-seal{width:66px;height:66px;font-size:34px}
+.gate-t{margin:18px 0 8px;font-family:var(--serif);font-size:23px;letter-spacing:.14em;color:var(--ink);font-weight:600}
+.gate-s{margin:0;font-size:13px;line-height:1.85;color:var(--ink-2);letter-spacing:.01em}
+.gate-box{width:100%;margin-top:22px;background:var(--card);border:1px solid var(--line);border-radius:var(--r);
+  padding:16px 14px;text-align:left;box-shadow:var(--shadow)}
+.gate-li{display:flex;align-items:flex-start;gap:9px;font-size:12.5px;line-height:1.7;color:var(--ink-2);margin:0 0 7px}
+.gate-li:last-child{margin-bottom:0}
+.gate-li i{flex:0 0 auto;width:17px;height:17px;margin-top:1px;border-radius:50%;background:var(--red-soft);
+  color:var(--red);display:grid;place-items:center;font-style:normal;font-size:10.5px}
+.gate-btn{width:100%;margin-top:20px;padding:13px 0;border:0;border-radius:12px;background:var(--red);color:#FBF6EC;
+  font-size:15.5px;letter-spacing:.06em;font-family:var(--sans);cursor:pointer}
+.gate-btn:active{transform:scale(.985)}
+.gate-alt{width:100%;margin-top:10px;display:flex;gap:9px}
+.gate-alt button{flex:1;padding:11px 0;border:1px solid var(--line);border-radius:11px;background:var(--card);
+  color:var(--ink-2);font-size:13px;cursor:pointer}
+.gate-fine{margin-top:16px;font-size:11.5px;line-height:1.8;color:var(--ink-3);letter-spacing:.02em}
 @keyframes slipIn{from{opacity:0;transform:scaleY(.12) translateY(-8px)}to{opacity:1;transform:none}}
 @keyframes splashIn{from{opacity:0;transform:rotate(-4deg) scale(.72)}to{opacity:1;transform:rotate(-4deg) scale(1)}}
 @keyframes splashFade{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
@@ -2309,7 +2331,7 @@ window.__bootOk=function(){ window.__booted=true; var d=document.getElementById(
       <p>彩色词就是考点本身：法典名、罪名、刑名、机构名、原则名。灰黑部分读过去，先把彩色的记住。</p>
       <div class="src">—— 正文逐条校对《2027 法硕背诵一本通·法制史》（龚成思）；题库取自讲义配套真题</div>
     </div>
-    <div class="tip">未登录只能用「总览」；注册登录后解锁速览、背诵、专题、刷题，并把进度同步到云端（底部「我的」）。</div>
+    <div class="tip">现在起要先登录才能使用：注册免费，每天 5 张背诵 + 专题整合版，进度同步到云端。</div>
     <div style="height:20px"></div>
   </div>
 </section>
@@ -2438,6 +2460,25 @@ window.__bootOk=function(){ window.__booted=true; var d=document.getElementById(
       <span>我的</span></button>
   </div>
 </nav>
+
+<div class="gate" id="gate" hidden>
+  <div class="gate-in">
+    <div class="splash-seal">史</div>
+    <h1 class="gate-t">法制史一点通</h1>
+    <p class="gate-s">登录后才能使用。注册免费，每天可背 5 张闪卡，进度自动同步到云端。</p>
+    <div class="gate-box">
+      <div class="gate-li"><i>1</i><span>免费账号：每天 5 张背诵 + 专题史整合版 + 一图流原页</span></div>
+      <div class="gate-li"><i>2</i><span>会员：全站背诵、刷题、精讲全文、换设备不丢进度</span></div>
+      <div class="gate-li"><i>3</i><span>一个账号最多 3 台设备，手机换机不用重新买</span></div>
+    </div>
+    <button class="gate-btn" onclick="gateTo('me')">登录 / 注册</button>
+    <div class="gate-alt">
+      <button onclick="gateTo('reg')">注册新账号</button>
+      <button onclick="gateTo('otp')">验证码登录</button>
+    </div>
+    <div class="gate-fine">忘记密码可在登录页重设 · 第一次加载慢是在下载全书内容</div>
+  </div>
+</div>
 
 <button class="totop" id="totop" onclick="window.scrollTo({top:0,behavior:'smooth'})">
   <svg viewBox="0 0 24 24"><path d="M12 19V5M5 12l7-7 7 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -8018,7 +8059,7 @@ function setAcctab(t){ ACCTAB=t; if(t!=='in') newCaptcha(); renderAcct(); window
 function renderAcct(){
   if(sbOn() && !authOk() && !CAPTCHA) newCaptcha();   /* 首次进「我的」也要有图灵字符 */
   const el=document.getElementById('meBody'); if(el) el.innerHTML=meHTML();
-  markLocked();
+  syncGate();
 }
 function meCard(inner){ return '<div class="me-card">'+inner+'</div>'; }
 /* ---------- 邀请码 / 设备绑定（v3.18.0） ---------- */
@@ -8254,7 +8295,7 @@ function meHTML(){
         <div class="me-row me-two"><button onclick="setAcctab('in')">返回登录</button></div>`);
     }
     return meCard(`<h3>登录</h3>
-      <div class="me-note">现在是访客：只有「总览」可用。登录后解锁速览、背诵、专题、刷题，进度自动同步到云端。</div>
+      <div class="me-note">还没登录：登录后才能使用。注册免费，每天 5 张背诵，进度自动同步到云端。</div>
       ${mail}
       <div class="me-row"><input id="acctPwd" type="password" autocomplete="current-password" placeholder="密码，至少 6 位"></div>
       <div class="me-row"><button class="pri" onclick="pwdGo('in',this)">登录</button></div>
@@ -8287,7 +8328,7 @@ function meHTML(){
       <button class="me-link" onclick="openChangelog()">版本记录<span>v${VER} · 补丁 ${patchNo()}</span></button>
       <button class="me-link" onclick="checkNow()">检查新版本<span>查</span></button>`)
    + meCard(`<button class="me-danger" onclick="signOutAsk()">退出登录</button>
-      <div class="me-note">退出后回到访客模式：只能看总览，云端进度保留，再登录即恢复。</div>`);
+      <div class="me-note">退出后需要重新登录才能继续使用，云端进度保留，再登录即恢复。</div>`);
 }
 async function changePwd(){
   if(!authOk()){ mtoast('先登录'); return; }
@@ -8435,7 +8476,7 @@ function signOutAsk(){
   const up=S.syncAt?'最近同步 '+syncTimeText():'本机还没同步过';
   openSheet('退出登录？',`
     <div class="sheet-sec">
-      <div class="fine">${esc(up)}。退出后回到访客模式：本机进度保留，云端进度也保留；用同一个邮箱再登录会合并回来。</div>
+      <div class="fine">${esc(up)}。退出后这一台要重新登录才能用；云端进度保留，用同一个邮箱再登录会合并回来。</div>
       <div class="keyrow"><button style="flex:1" onclick="closeSheet()">先不退</button>
         <button style="flex:1" onclick="closeSheet();signOut()">确认退出</button></div>
     </div>`);
@@ -8443,7 +8484,8 @@ function signOutAsk(){
 async function signOut(){
   try{ await sbReq('/auth/v1/logout',{method:'POST'}); }catch(e){}
   AUTH=null; saveAuth(); S.nick=''; PRESENT_AT=0; SYNC_RETRY=0;
-  renderAcct(); go('home'); mtoast('已退出，回到访客模式：只保留总览，云端进度仍在');
+  GATEPASS=false;
+  renderAcct(); syncGate(); mtoast('已退出：重新登录后才能继续使用，云端进度仍在');
 }
 
 /* ---------- 登录之后：建档 + 拉云端进度 + 冲突处理 ---------- */
@@ -8636,7 +8678,7 @@ function accountHTML(){
     <div id="syncTip" class="fine">${esc(SYNCERR?'上次没同步上：'+SYNCERR:'改一点就会自动同步；切回前台也会补推')}</div>
     <div class="keyrow"><button style="flex:1" onclick="syncNow()">立即同步</button>
       <button style="flex:1" onclick="pullCloud(true)">从云端拉取</button></div>
-    <button class="opt" onclick="signOutAsk()"><span>退出登录<small>退出后回到访客模式，云端记录保留</small></span><span class="n">退</span></button>
+    <button class="opt" onclick="signOutAsk()"><span>退出登录<small>退出后要重新登录才能用，云端记录保留</small></span><span class="n">退</span></button>
   </div>`+cardKeyHTML();
 }
 function cardKeyHTML(){
@@ -8892,20 +8934,33 @@ function toggleEraNote(k,btn){
 
 /* ---------- 路由 ---------- */
 const SCROLLMEM={};
+let GATEPASS=false;   /* 已从登录墙点进登录页：这次不马上把墙盖回来 */
 function blocked(){ return sbOn() && !authOk(); }
+/* 登录墙：未登录什么都不给看（服务端没配置时仍保留访客可用，避免本地调试直接变砖） */
+function showGate(){
+  const g=document.getElementById('gate');
+  if(g && g.hidden){ g.hidden=false; }
+  markLocked();
+}
+function hideGate(){ const g=document.getElementById('gate'); if(g && !g.hidden) g.hidden=true; markLocked(); }
+function syncGate(){
+  if(!blocked()){ GATEPASS=false; hideGate(); return; }
+  if(GATEPASS){ hideGate(); return; }
+  showGate();
+}
+function gateTo(t){
+  GATEPASS=true;
+  hideGate();
+  go('me');
+  try{ setAcctab(t==='reg'?'reg':(t==='otp'?'otp':'in')); }catch(e){}
+  try{ window.scrollTo({top:0,behavior:'auto'}); }catch(e){}
+}
 function askLogin(){
-  document.querySelectorAll('.view').forEach(x=>x.classList.remove('on'));
-  const el=document.getElementById('v-me'); if(el) el.classList.add('on');
-  document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('on',b.dataset.v==='me'));
-  renderAcct();
-  window.scrollTo({top:0,behavior:'auto'});
-  mtoast('登录后才能用速览、背诵、专题、刷题；总览不用登录');
+  mtoast('先登录才能用：注册免费，登录后所有板块才打开');
 }
 function markLocked(){
   const b=blocked();
-  document.querySelectorAll('.nav button').forEach(x=>{
-    x.classList.toggle('lock', b && x.dataset.v!=='home' && x.dataset.v!=='me');
-  });
+  document.querySelectorAll('.nav button').forEach(x=>{ x.classList.toggle('lock', b); });
 }
 function setSub(m){
   if(blocked()){ askLogin(); return; }
@@ -8937,7 +8992,7 @@ function topLayer(){
 }
 addEventListener('scroll',topLayer,{passive:true});
 function go(v){
-  if(v!=='home' && v!=='me' && blocked()){ askLogin(); return; }
+  if(v!=='me' && blocked()){ askLogin(); return; }
   if(!isVip() && v==='quiz'){ askVip('刷题是会员功能：非会员可先背 5 张/天、看专题整合版'); return; }
   if(v==='recite'){ setSub('rec'); return; }
   if(v==='cloze'){ setSub('clo'); return; }
@@ -9067,9 +9122,16 @@ try{
   if(window.__bootFail) window.__bootFail('页面没加载出来','启动时有一处数据读不出来，重开一次通常就好。',!navigator.onLine);
 }
 
-const VER='3.20.0';
-const PATCH='7';   /* 同一版本内的补丁号；0 表示版本本体 */
+const VER='3.21.0';
+const PATCH='1';   /* 同一版本内的补丁号；0 表示版本本体 */
 const CHANGELOG = [
+{v:'3.21.0',ps:'1',d:'2026-11-21',kind:'feature',sum:'改为登录后使用：没登录不再能浏览任何板块，打开就是登录墙；免费额度全部按账号在服务端计数',items:[
+ ['调整','未登录时打开 App 直接看到登录墙（只有一个「登录 / 注册」入口），总览、速览、背诵、专题、刷题全部关闭，不再保留访客可看的板块'],
+ ['调整','底栏五个按钮在未登录时统一变灰并锁定，点任一板块只提示「先登录才能用」，不会再跳回总览'],
+ ['修复','以前访客的免费背诵额度记在本机，清缓存就能重置；现在没有访客额度这条路，额度只按账号在服务端算，清缓存不再恢复'],
+ ['调整','退出登录后回到登录墙，而不是回到总览；再次登录即恢复到之前的进度'],
+ ['说明','登录墙里写明免费/会员边界与设备上限；服务端没配置时仍保留访客浏览，避免本地调试直接变砖']
+]},
 {v:'3.20.0',ps:'7',d:'2026-11-21',kind:'fix',sum:'慢网也会换线路：主站在 12 秒内只下到不到 15% 就自动切镜像，不再干等几分钟',items:[
  ['修复','以前只要开始出字节就一直等，遇到几十 KB/s 的线路要卡好几分钟；现在 12 秒不到 15% 就判定「太慢」，换镜像重下'],
  ['调整','换线路时启动页显示「这条线路太慢，换一条再试…」，进度条重置为当前线路的真实进度，不再虚涨'],
@@ -9911,6 +9973,7 @@ setTimeout(bootVer,600);
 /* 账号：恢复会话，登录态下拉一次云端 */
 loadAuth();
 renderAcct();
+syncGate();
 setTimeout(function(){ refreshExtras(0); },300);
 if(authOk()) setTimeout(()=>{ pullCloud(false); },1800);
 else if(sbOn()) setTimeout(()=>{ markLocked(); },0);
