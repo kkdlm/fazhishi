@@ -63,6 +63,16 @@ html,body{margin:0;padding:0;background:#EAEDE1}
 #boot p{color:#5b6660;margin:0 0 6px}
 #boot button{padding:12px 20px;border:0;border-radius:10px;background:#2C4A3E;color:#fff;font-size:15px;margin-top:10px}
 #appframe{position:fixed;inset:0;width:100%;height:100%;border:0;z-index:1;background:#EAEDE1}
+#upbar{position:fixed;left:50%;bottom:calc(82px + env(safe-area-inset-bottom));transform:translateX(-50%) translateY(14px);
+  z-index:10010;display:none;align-items:center;gap:8px;padding:9px 10px 9px 15px;border-radius:14px;
+  background:rgba(28,48,40,.94);color:#F3F0E6;font-size:13px;letter-spacing:.02em;white-space:nowrap;
+  box-shadow:0 16px 34px -16px rgba(0,0,0,.65);opacity:0;transition:opacity .3s ease,transform .3s ease}
+#upbar.on{display:flex;opacity:1;transform:translateX(-50%) translateY(0)}
+#upbar b{font-weight:600;color:#FCEBC4}
+#upbar a{color:#F3F0E6;text-decoration:none;font-weight:600;padding:5px 11px;border-radius:9px;
+  background:rgba(255,255,255,.14);transition:background .2s}
+#upbar a:active{background:rgba(255,255,255,.24)}
+#upbar i{font-style:normal;font-size:16px;line-height:1;color:rgba(255,255,255,.45);padding:3px 5px}
 </style>
 </head>
 <body>
@@ -78,6 +88,7 @@ html,body{margin:0;padding:0;background:#EAEDE1}
     <p class="sp-meta" id="spPct"></p>
   </div>
 </div>
+<div id="upbar" aria-live="polite"><b>新版本已备好</b><a id="upgo" onclick="applyUpd()">重启生效</a><i id="upx" onclick="dismissUpd()">×</i></div>
 <div id="boot"><div class="in">
   <div style="width:52px;height:52px;border-radius:9px;background:#B4483F;color:#FBF2E3;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:600">史</div>
   <h2 id="bootT">页面没加载出来</h2>
@@ -87,7 +98,7 @@ html,body{margin:0;padding:0;background:#EAEDE1}
 </div></div>
 <script>
 (function(){
-  var VER='4.0.1-p1';
+  var VER='4.0.3-p3';
   var fill=document.getElementById('spFill'),pct=document.getElementById('spPct'),
       status=document.getElementById('spStatus'),splash=document.getElementById('splash'),
       boot=document.getElementById('boot');
@@ -197,9 +208,63 @@ html,body{margin:0;padding:0;background:#EAEDE1}
     setTimeout(function(){ if(!mounted && Date.now()-t0>8000){ mounted=true; gate=Math.max(gate,Date.now()+150); } },8000);
   }
 
+  /* 正文只下一次：拉到的正文存进本机缓存，之后打开、重启、断电重来都直接读本机，
+     不再重下 6.5MB。缓存按版本号分键：版本没变秒开；版本变了先秒开旧版，后台悄悄换新版。 */
+  var PKGC='fz-pkg';
+  function pkgURL(ver){ return location.origin+'/__fz_pkg__/'+encodeURIComponent(ver); }
+  async function pkgSave(ver,html){
+    try{
+      if(!window.caches||!html||html.length<500000) return;
+      var c=await caches.open(PKGC), ks=await c.keys(), keep=pkgURL(ver), i;
+      await c.put(new Request(keep,{cache:'no-store'}), new Response(html,{headers:{'content-type':'text/html;charset=utf-8'}}));
+      for(i=0;i<ks.length;i++){ if(ks[i].url!==keep){ try{ await c.delete(ks[i]); }catch(e){} } }
+    }catch(e){}
+  }
+  async function pkgLoad(){
+    try{
+      if(!window.caches) return null;
+      var c=await caches.open(PKGC), ks=await c.keys();
+      if(!ks.length) return null;
+      var r=await c.match(ks[0]); if(!r) return null;
+      var html=await r.text(); if(!html||html.length<500000) return null;
+      var m=/__fz_pkg__\/([^\/]*)$/.exec(ks[0].url);
+      return {ver:m?decodeURIComponent(m[1]):'', html:html};
+    }catch(e){ return null; }
+  }
+  /* 秒开：不播进度条，直接把正文挂上去 */
+  function quick(html){
+    finishing=true; mounted=true; done=true; real=1; shown=100;
+    try{
+      fill.style.width='100%'; pct.textContent=''; status.textContent='';
+      splash.classList.add('hide'); setTimeout(function(){ if(splash.parentNode) splash.remove(); },220);
+    }catch(e){}
+    boot.style.display='none';
+    mount(html);
+  }
+  function showUpd(){ try{ document.getElementById('upbar').classList.add('on'); }catch(e){} }
+  window.dismissUpd=function(){ try{ document.getElementById('upbar').classList.remove('on'); }catch(e){} };
+  window.applyUpd=function(){ try{ var b=document.getElementById('upbar'); if(b) b.classList.remove('on'); }catch(e){}; hardReload(); };
+  /* 后台静默换新版：不等它，下好就写进缓存，页面上提示一下「重启生效」，不打断当前阅读 */
+  async function bgPull(){
+    try{
+      var html=await pullOne('app.html?v='+VER, 9000, 30000, 0.15);
+      await pkgSave(VER, html);
+      showUpd();
+    }catch(e){}
+  }
+  /* 「清缓存重启」按钮原本点不动（函数没挂到 window），这里补上 */
+  window.resetAll=async function(){
+    try{ var rs=await navigator.serviceWorker.getRegistrations(); await Promise.all(rs.map(function(r){ return r.unregister(); })); }catch(e){}
+    try{ var ks=await caches.keys(); await Promise.all(ks.map(function(k){ return caches.delete(k); })); }catch(e){}
+    try{ localStorage.removeItem('fz_pkg'); }catch(e){}
+    location.replace(location.pathname+'?r='+Date.now());
+  };
+
   /* 备用线路：主站拉不动（0 字节、超时、被墙）时换镜像。
      两个镜像都返回 Access-Control-Allow-Origin: *，可以直接 fetch 读取正文。 */
   var MIRRORS=[
+    'https://fastly.jsdelivr.net/gh/kkdlm/fazhishi@main/app.html',
+    'https://gcore.jsdelivr.net/gh/kkdlm/fazhishi@main/app.html',
     'https://cdn.jsdelivr.net/gh/kkdlm/fazhishi@main/app.html',
     'https://raw.githubusercontent.com/kkdlm/fazhishi/main/app.html'
   ];
@@ -255,6 +320,13 @@ html,body{margin:0;padding:0;background:#EAEDE1}
   async function run(){
     var lastErr=null, round, i, list;
     try{
+      /* ① 本机已有正文 → 直接秒开。版本不一致就先开旧版，同时在后台换新版 */
+      var pk=await pkgLoad();
+      if(pk && pk.html){
+        quick(pk.html);
+        if(pk.ver!==VER) bgPull();
+        return;
+      }
       try{
         var v=await fetch('version.json?ts='+Date.now(),{cache:'no-store'}).then(function(r){return r.json();});
         if(v && v.s) total=Number(v.s)||0;
@@ -268,7 +340,9 @@ html,body{margin:0;padding:0;background:#EAEDE1}
           got=0; real=0; lastAt=Date.now();
           try{
             boot.style.display='none';
-            mount(await pullOne(list[i], round?12000:8000, 12000, 0.15));
+            var html=await pullOne(list[i], round?12000:8000, 12000, 0.15);
+            mount(html);
+            try{ pkgSave(VER, html); }catch(e){}
             return;
           }catch(e){
             lastErr=e;
@@ -305,7 +379,7 @@ html,body{margin:0;padding:0;background:#EAEDE1}
   /* 更新：先在外壳层清 SW 与缓存，再硬跳到带版本参数的地址（SW 见 ?v= 会跳过缓存） */
   async function hardReload(){
     try{ var rs=await navigator.serviceWorker.getRegistrations(); await Promise.all(rs.map(function(r){return r.unregister();})); }catch(err){}
-    try{ var ks=await caches.keys(); await Promise.all(ks.map(function(k){return caches.delete(k);})); }catch(err){}
+    /* 只换壳（40KB 的 index 走新地址），正文那 6.5MB 已经在缓存里，重启后直接秒开 */
     location.replace(location.pathname+'?v='+Date.now());
   }
   window.addEventListener('message',function(e){

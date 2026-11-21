@@ -738,6 +738,24 @@ html[data-theme="night"] .rate .ok{background:#1A2A26;border-color:#254039}
 mark.hl{background:#f3d98a;color:inherit;border-radius:3px;padding:0 1px}
 html[data-theme="night"] mark.hl{background:#8a6d2f;color:#fff}
 
+/* ============ 操作记录（v4.0.3） ============ */
+.log-filt{display:flex;flex-wrap:wrap;gap:6px;padding:2px 0 10px}
+.log-filt button{flex:none;padding:6px 11px;border-radius:9px;border:1px solid var(--line);background:var(--card);
+  color:var(--ink-2);font-size:12px;font-family:inherit;letter-spacing:.02em}
+.log-filt button.on{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.log-day{margin:14px 0 4px;font-size:10.5px;letter-spacing:.14em;color:var(--ink-3);font-family:var(--mono)}
+.log-day:first-child{margin-top:2px}
+.log-it{display:flex;gap:10px;padding:9px 0;border-bottom:1px dashed var(--line)}
+.log-it:last-child{border-bottom:none}
+.log-it .lt{flex:none;width:40px;font-family:var(--mono);font-size:11px;color:var(--ink-3);padding-top:2px}
+.log-it .lb{flex:1;min-width:0}
+.log-it .lb b{font-size:13.5px;font-weight:600;color:var(--ink);letter-spacing:.01em}
+.log-it .lb b em{font-style:normal;font-size:11px;font-weight:400;color:var(--ink-3);margin-left:7px;font-family:var(--mono)}
+.log-it .lb p{margin:2px 0 0;font-size:11.5px;color:var(--ink-3);line-height:1.55;word-break:break-word}
+.log-empty{padding:26px 0;text-align:center;color:var(--ink-3);font-size:12.5px;line-height:1.7}
+.log-more{width:100%;margin-top:12px;padding:10px;border-radius:10px;border:1px solid var(--line);
+  background:var(--card);color:var(--ink-2);font-size:12.5px;font-family:inherit}
+
 /* ============ 回到顶部 ============ */
 .totop{position:fixed;right:14px;bottom:calc(84px + env(safe-area-inset-bottom));z-index:45;
   width:40px;height:40px;border-radius:50%;background:var(--card);border:1px solid var(--line);
@@ -7911,8 +7929,8 @@ function freeBookAllow(e){
   if(u.ids.indexOf(k)>=0){ S.freeBk=u; return true; }
   const lim=freeLimitNow();
   /* 服务端当天额度已用完：本机名单里没有这张卡也不再放行（清缓存也绕不过去） */
-  if(EXTRA.freeSrv&&EXTRA.freeSrv.used>=lim){ S.freeBk=u; renderFreeLimit(); return false; }
-  if(u.ids.length>=lim){ S.freeBk=u; save(); return false; }
+  if(EXTRA.freeSrv&&EXTRA.freeSrv.used>=lim){ S.freeBk=u; logOnce('free_quota','day',{limit:lim}); renderFreeLimit(); return false; }
+  if(u.ids.length>=lim){ S.freeBk=u; logOnce('free_quota','day',{limit:lim}); save(); return false; }
   u.ids.push(k); S.freeBk=u; save();
   if(authOk()){
     try{
@@ -7976,6 +7994,9 @@ async function redeemCard(btn){
     else if(j&&typeof j==='object'){ const v=(j.until||j.vip_until||j.v); if(v) ms=Date.parse(String(v)); }
     if(!ms){ mtoast('兑换已提交但没读到到期时间：重开「我的」看会员是否已开通，别重复兑'); return; }
     S.vipUntil=ms; S.vipAt=Date.now(); save();
+    const dv=Math.max(0,Math.round((ms-Date.now())/86400000));
+    logAct('card_redeem', code.slice(-4), {days:dv, prefix:code.slice(0,3)});
+    logAct('vip_on', null, {days:dv, until:new Date(ms).toISOString().slice(0,10)});
     try{ await pushCloud(true); }catch(e){}
     if(el) el.value='';
     mtoast('兑换成功：会员到 '+vipDayStr());
@@ -7984,6 +8005,7 @@ async function redeemCard(btn){
     setTimeout(closeSheet,500);
   }catch(e){
     const m=String((e&&e.message)||e||'');
+    logAct('card_fail', code.slice(-4), {reason:m.slice(0,40)});
     if(e&&e.code==='TIMEOUT'){ mtoast('网络太慢，核销结果还没回来：别急着重兑，重进「我的」看会员到没到'); return; }
     if(/Could not find|PGRST202|does not exist|no function/i.test(m)){ mtoast('兑换服务暂时不可用（服务端还没建兑换函数），稍后再试'); return; }
     if(/Failed to fetch|NetworkError|load failed|AbortError/i.test(m)){ mtoast('联网后才能兑换卡密（卡密需要服务端核销）'); return; }
@@ -8024,6 +8046,96 @@ function vipGate(){ if(isVip()) return false; openVip(); return true; }
 const AUTHKEY=KEY+':auth';
 let AUTH=null, ACCTAB='in',   /* in=密码登录（默认） reg=注册 otp=验证码登录 */ OTPLEFT=0, OTPTIMER=null, SYNCING=false, SYNCTIMER=null, SYNCERR='', CAPTCHA='';
 function sbOn(){ return !!(SB_URL && SB_ANON); }
+/* ---------- 操作日志（v4.0.3）----------
+   只记「做了什么」：登录、兑换、换设备、改密码、邀请；
+   不记学习内容、不记笔记正文、不记 IP。写不进去也不影响主流程。 */
+function logAct(act,target,detail){
+  if(!sbOn()||!authOk()) return;
+  try{
+    sbReq('/rest/v1/rpc/log_activity',{method:'POST',timeout:8000,
+      body:{p_action:act,p_target:target||null,p_detail:detail||{}}}).catch(function(){});
+  }catch(e){}
+}
+/* 同类动作一天只记一次（避免每次进「我的」都刷一条） */
+function logOnce(act,tag,detail,target){
+  try{
+    const k=KEY+':log:'+act+':'+tag, v=freeDay();
+    if(localStorage.getItem(k)===v) return;
+    localStorage.setItem(k,v); logAct(act,target,detail);
+  }catch(e){ logAct(act,target,detail); }
+}
+
+let LOGROWS=[], LOGBUSY=false, LOGEND=false, LOGFILT='';
+const LOGKIND=[['','全部'],['login','登录'],['card_redeem','兑换'],['vip_on','会员'],['device_bind','设备'],['invite_claim','邀请'],['pwd_change','账号']];
+function logTimeText(s){
+  const d=new Date(s||0), pad=n=>String(n).padStart(2,'0');
+  return {day:d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate()), hm:pad(d.getHours())+':'+pad(d.getMinutes())};
+}
+function logDetailText(r){
+  const d=r.detail||{}, bits=[];
+  if(d.days) bits.push('+'+d.days+' 天');
+  if(d.until) bits.push('到 '+d.until);
+  if(d.method) bits.push('方式：'+d.method);
+  if(d.tail) bits.push('尾号 '+d.tail);
+  if(d.limit) bits.push('每天 '+d.limit+' 张');
+  if(d.prefix) bits.push('卡号 '+d.prefix+'…');
+  if(d.reason) bits.push('原因：'+d.reason);
+  if(d.invited) bits.push('带了邀请码');
+  return bits.join(' · ');
+}
+function logHeadHTML(){
+  return '<div class="fine" style="margin-bottom:10px">只记「操作本身」：登录、兑换、换设备、改密码、邀请。'
+    +'你背到哪、收藏、笔记写了什么，都不在这里，也不在后台这份日志里。</div>'
+    +'<div class="log-filt">'
+    +LOGKIND.map(function(k){ return '<button class="'+(LOGFILT===k[0]?'on':'')+'" onclick="logFilt(\''+k[0]+'\')">'+k[1]+'</button>'; }).join('')
+    +'</div>';
+}
+function renderLogs(){
+  const list=document.getElementById('logList'); if(!list) return;
+  if(!LOGROWS.length){
+    list.innerHTML='<div class="log-empty">'+((LOGFILT)?'这一类还没有记录。':'还没有记录。登录、兑换、换设备这些操作会自动出现在这里。')+'</div>';
+    return;
+  }
+  let html='', day='';
+  LOGROWS.forEach(function(r){
+    const tt=logTimeText(r.at);
+    if(tt.day!==day){ day=tt.day; html+='<div class="log-day">'+day+'</div>'; }
+    const dt=logDetailText(r);
+    html+='<div class="log-it"><span class="lt">'+tt.hm+'</span><div class="lb">'
+        +'<b>'+esc(r.label||r.act||'操作')+(r.target?'<em>'+esc(String(r.target))+'</em>':'')+'</b>'
+        +(dt?'<p>'+esc(dt)+'</p>':'')
+        +'</div></div>';
+  });
+  if(!LOGEND) html+='<button class="log-more" onclick="loadLogs(true)">看更早的记录</button>';
+  list.innerHTML=html;
+}
+async function loadLogs(more){
+  if(LOGBUSY) return;
+  const list=document.getElementById('logList'); if(!list) return;
+  LOGBUSY=true;
+  if(!more){ list.innerHTML='<div class="log-empty">正在读取…</div>'; }
+  try{
+    const rows=await rpc('my_logs',{p_limit:25,p_offset:(more?LOGROWS.length:0),p_act:(LOGFILT||null)});
+    const arr=(rows||[]).slice();
+    LOGROWS = more ? LOGROWS.concat(arr) : arr;
+    if(arr.length<25) LOGEND=true;
+    renderLogs();
+  }catch(e){
+    list.innerHTML='<div class="log-empty">'+esc('读取失败：'+zhErr(e))+'</div>';
+  }
+  LOGBUSY=false;
+}
+function logFilt(k){
+  LOGFILT=k; LOGROWS=[]; LOGEND=false; LOGBUSY=false;
+  const bs=document.querySelectorAll('.log-filt button');
+  [].forEach.call(bs,function(b,i){ b.classList.toggle('on', LOGKIND[i] && LOGKIND[i][0]===k); });
+  loadLogs(false);
+}
+function openLogs(){
+  LOGROWS=[]; LOGEND=false; LOGBUSY=false; LOGFILT='';
+  openSheet('操作记录', logHeadHTML()+'<div id="logList"><div class="log-empty">正在读取…</div></div>');
+  loadLogs(false);
+}
 function loadAuth(){ try{ AUTH=JSON.parse(localStorage.getItem(AUTHKEY)||'null'); }catch(e){ AUTH=null; } return AUTH; }
 function saveAuth(){ try{ if(AUTH&&AUTH.access_token) localStorage.setItem(AUTHKEY,JSON.stringify(AUTH)); else localStorage.removeItem(AUTHKEY); }catch(e){} }
 function authOk(){ return !!(AUTH && AUTH.access_token && AUTH.uid); }
@@ -8205,7 +8317,7 @@ async function renderDevices(){
 async function unbindDevice(id){
   try{
     const j=await rpc('unbind_device',{p_device:id});
-    if(j&&j.ok){ mtoast('已解绑：那台设备下次要重新登录'); await renderDevices(); }
+    if(j&&j.ok){ logAct('device_unbind', String(id).slice(-4), {}); mtoast('已解绑：那台设备下次要重新登录'); await renderDevices(); }
     else mtoast('这台已经不在活跃列表里了');
   }catch(e){ mtoast('解绑失败：'+zhErr(e)); }
 }
@@ -8227,6 +8339,7 @@ async function deleteAccountGo(btn){
   try{
     const j=await rpc('request_account_delete',{});
     if(!j||!j.ok) throw new Error((j&&j.msg)||'注销失败');
+    logAct('delete_request',null,{});
     try{ await sbReq('/auth/v1/logout',{method:'POST'}); }catch(e){}
     AUTH=null; saveAuth(); S.nick=''; S.status={}; S.fav=[]; S.notes={};
     closeSheet(); GATEPASS=false; renderAcct(); syncGate();
@@ -8325,7 +8438,7 @@ async function claimPendingInvite(){
   const v=takeInvite(); if(!v) return;
   try{
     const j=await rpc('claim_invite',{p_code:v});
-    if(j&&j.ok){ if(j.until){ S.vipUntil=Date.parse(j.until)||S.vipUntil; S.vipAt=Date.now(); save(); } mtoast(j.msg||'邀请码已生效'); renderAcct(); }
+    if(j&&j.ok){ if(j.until){ S.vipUntil=Date.parse(j.until)||S.vipUntil; S.vipAt=Date.now(); save(); } logAct('invite_claim', v, {days_inviter:j.days_inviter||0, days_invitee:j.days_invitee||0}); mtoast(j.msg||'邀请码已生效'); renderAcct(); }
     else if(j&&j.msg){ mtoast(j.msg); }
   }catch(e){ /* 表未建或网络失败：直接丢弃，避免每次登录重复打扰 */ }
 }
@@ -8407,7 +8520,7 @@ async function syncExtras(){
   try{
     const r=await rpc('register_device',{p_device:devId(),p_ua:(navigator.userAgent||'').slice(0,140)});
     if(r&&typeof r==='object'&&r.ok===false){ EXTRA.devBlocked=true; showDeviceGate(r.devices||[],r.msg||''); }
-    else if(r&&r.ok===true){ EXTRA.devBlocked=false; }
+    else if(r&&r.ok===true){ EXTRA.devBlocked=false; logOnce('device_bind', devId().slice(-6), {tail:devId().slice(-4)}); }
   }catch(e){}
   try{ renderAcct(); }catch(e){}
 }
@@ -8459,6 +8572,7 @@ async function unbindDev(id){
   try{
     const j=await rpc('unbind_device',{p_device:id});
     if(j&&j.ok){
+      logAct('device_unbind', String(id).slice(-4), {});
       mtoast('已解绑，本机重新登记');
       closeSheet();
       const r=await rpc('register_device',{p_device:devId(),p_ua:(navigator.userAgent||'').slice(0,140)});
@@ -8531,6 +8645,9 @@ function meHTML(){
       <div class="me-row"><input id="newPwd" type="password" autocomplete="new-password" placeholder="新密码，至少 6 位"></div>
       <div class="me-row"><input id="newPwd2" type="password" autocomplete="new-password" placeholder="再输一次确认"></div>
       <div class="me-row"><button class="pri" onclick="changePwd(this)">保存新密码</button></div>`)
+   + meCard(`<h3>操作记录</h3>
+      <button class="me-link" onclick="openLogs()">我的操作记录<span>时间线</span></button>
+      <div class="me-note">只记登录、兑换、换设备这类操作；背了什么、笔记写了什么都不会记。</div>`)
    + meCard(`<h3>学习与数据</h3>
       <button class="me-link" onclick="openStats()">学习统计<span>›</span></button>
       <button class="me-link" onclick="openInstall()">安装到主屏<span>›</span></button>`)
@@ -8550,6 +8667,7 @@ async function changePwd(){
   try{
     await sbReq('/auth/v1/user',{method:'PUT',body:{password:a}});
     try{ localStorage.removeItem(KEY+':pwdSet'); }catch(e){}
+    logAct('pwd_change',null,{});
     mtoast('密码已更新：以后可以用新密码登录');
   }catch(err){
     mtoast('改密码没成功：'+zhErr(err));
@@ -8633,7 +8751,7 @@ async function verifyOtp(btn){
   try{
     const j=await sbReq('/auth/v1/verify',{method:'POST',body:{type:'email',email:e,token:c}});
     if(!adoptSession(j)){ mtoast('登录没成功：服务端没返回登录凭证，再试一次'); if(done) done(); return; }
-    await afterLogin(); mtoast('验证码登录成功'); if(done) done();
+    await afterLogin(); logAct('login',null,{method:'验证码'}); mtoast('验证码登录成功'); if(done) done();
   }catch(err){ mtoast(zhErr(err)); if(done) done(); }
 }
 async function regGo(btn){
@@ -8652,6 +8770,7 @@ async function regGo(btn){
     catch(err){ mtoast('账号建好了，但密码没设上，先用验证码登录'); }
     await afterLogin(); mtoast('注册完成，已登录（下次可用密码或验证码登录）');
     const inv=((document.getElementById('acctInv')||{}).value||'').trim().toUpperCase();
+    logAct('signup',null,{method:'验证码',invited:!!inv});
     if(inv){ stashInvite(inv); await claimPendingInvite(); }
     if(done) done();
   }catch(err){ mtoast(zhErr(err)); if(done) done(); }
@@ -8667,7 +8786,7 @@ async function pwdGo(mode,btn){
       const inv=((document.getElementById('acctInv')||{}).value||'').trim().toUpperCase();
       if(inv) stashInvite(inv);
       const j=await sbReq('/auth/v1/signup',{method:'POST',body:{email:e,password:p}});
-      if(j&&j.access_token){ adoptSession(j); await afterLogin(); mtoast('注册完成，已登录'); }
+      if(j&&j.access_token){ adoptSession(j); await afterLogin(); logAct('signup',null,{method:'密码',invited:!!inv}); mtoast('注册完成，已登录'); }
       else if(j&&j.user){ EXTRA.pendingMail=e; renderAcct(); mtoast('账号建好了：先去邮箱点确认链接；填的邀请码会在首次登录后自动到账'); }
       else mtoast('注册没成功，稍后再试一次');
       if(done) done();
@@ -8675,7 +8794,7 @@ async function pwdGo(mode,btn){
     }
     const j=await sbReq('/auth/v1/token?grant_type=password',{method:'POST',body:{email:e,password:p}});
     if(!adoptSession(j)){ mtoast('登录没成功：服务端没返回登录凭证，再试一次'); if(done) done(); return; }
-    await afterLogin(); if(done) done();
+    await afterLogin(); logAct('login',null,{method:'密码'}); if(done) done();
   }catch(err){
     const m=((err&&err.message)||'').toLowerCase();
     if(mode==='reg' && m.indexOf('already')>=0) mtoast('这个邮箱已经注册过：直接点「登录」');
@@ -8693,6 +8812,7 @@ function signOutAsk(){
     </div>`);
 }
 async function signOut(){
+  logAct('logout',null,{});
   try{ await sbReq('/auth/v1/logout',{method:'POST'}); }catch(e){}
   AUTH=null; saveAuth(); S.nick=''; PRESENT_AT=0; SYNC_RETRY=0;
   GATEPASS=false;
@@ -9334,9 +9454,22 @@ try{
   if(window.__bootFail) window.__bootFail('页面没加载出来','启动时有一处数据读不出来，重开一次通常就好。',!navigator.onLine);
 }
 
-const VER='4.0.1';
-const PATCH='1';   /* 同一版本内的补丁号；0 表示版本本体 */
+const VER='4.0.3';
+const PATCH='3';   /* 同一版本内的补丁号；0 表示版本本体 */
 const CHANGELOG = [
+{v:'4.0.3',ps:'3',d:'2026-11-21',kind:'feature',sum:'加了操作日志：你自己在「我的 → 操作记录」能看登录、兑换、换设备这些操作；管理员后台能看全部人的',items:[
+ ['新增','「我的」多一张「操作记录」卡：按时间线列出登录、退出、兑换卡密、会员开通、绑定与解绑设备、邀请成功、修改密码、注销申请、免费用完；可按类别筛'],
+ ['说明','这份记录只到「做了什么」，不到「学了什么」：背到哪、收藏、笔记内容都不记，也不记 IP，卡密只留后 4 位'],
+ ['新增','后台多一个「日志」页：能按用户、按动作、按时间翻所有人的操作记录，也能看管理员自己做的动作（加会员、封禁、清数据）'],
+ ['说明','日志写不进去不影响任何主流程，网络不好时只是这一条没记上']
+]},
+{v:'4.0.2',ps:'2',d:'2026-11-21',kind:'fix',sum:'打开和更新不再干等：正文只下载一次，之后都从本机读，几秒就进去',items:[
+ ['提速','正文（6.5MB）下载成功后存在本机，之后打开、退出重进、断电重来都直接读本机，不再重下一次；第一次装或者换版本时才下'],
+ ['修复','「更新后自动重启」原来会把缓存一起清掉，结果每次都要从 0 重新下 6.5MB，成了打开最慢的一步；现在重启只换外壳，正文秒开'],
+ ['新增','发现新版时不再逼你立刻重启：先用旧版照常看，新版在后台悄悄下好，底部弹一条「新版本已备好 · 重启生效」，你什么时候方便再点'],
+ ['修复','下载卡住那张提示上的「清缓存重启」按钮点了没反应，现在能点了'],
+ ['说明','线路换成先试 jsDelivr 的 fastly、gcore 两个节点，连不上才试原来的；首字节等 5 秒没来就换线，不死等']
+]},
 {v:'4.0.1',ps:'1',d:'2026-11-21',kind:'fix',sum:'修三处看着别扭的地方：底栏压字、版本记录补丁号错位、背诵页那段说明太长',items:[
  ['修复','版本记录里的补丁号算错了：3.21.0 明明是补丁 4，列表里显示成「补丁 1」；现在单值补丁号照原样显示，只有写成区间（如 5–7）的才按版本内重新计数'],
  ['修复','底栏和顶部标题栏都是半透明磨砂，正文滚过去时文字会透出来，看着像叠字；两处底色都改成基本不透明，保留磨砂感但不再透字（日间、夜间都改了）'],
