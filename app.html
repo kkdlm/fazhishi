@@ -739,9 +739,9 @@ mark.hl{background:#f3d98a;color:inherit;border-radius:3px;padding:0 1px}
 html[data-theme="night"] mark.hl{background:#8a6d2f;color:#fff}
 
 /* ============ 操作记录（v4.0.3） ============ */
-.log-filt{display:flex;flex-wrap:wrap;gap:6px;padding:2px 0 10px}
-.log-filt button{flex:none;padding:6px 11px;border-radius:9px;border:1px solid var(--line);background:var(--card);
-  color:var(--ink-2);font-size:12px;font-family:inherit;letter-spacing:.02em}
+.log-filt{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;padding:2px 0 10px}
+.log-filt button{padding:7px 0;border-radius:9px;border:1px solid var(--line);background:var(--card);text-align:center;
+  color:var(--ink-2);font-size:12px;font-family:inherit;letter-spacing:.02em;white-space:nowrap}
 .log-filt button.on{background:var(--ink);color:var(--paper);border-color:var(--ink)}
 .log-day{margin:14px 0 4px;font-size:10.5px;letter-spacing:.14em;color:var(--ink-3);font-family:var(--mono)}
 .log-day:first-child{margin-top:2px}
@@ -8646,7 +8646,7 @@ function meHTML(){
       <div class="me-row"><input id="newPwd2" type="password" autocomplete="new-password" placeholder="再输一次确认"></div>
       <div class="me-row"><button class="pri" onclick="changePwd(this)">保存新密码</button></div>`)
    + meCard(`<h3>操作记录</h3>
-      <button class="me-link" onclick="openLogs()">我的操作记录<span>时间线</span></button>
+      <button class="me-link" onclick="openLogs()">我的操作记录<span>›</span></button>
       <div class="me-note">只记登录、兑换、换设备这类操作；背了什么、笔记写了什么都不会记。</div>`)
    + meCard(`<h3>学习与数据</h3>
       <button class="me-link" onclick="openStats()">学习统计<span>›</span></button>
@@ -9454,9 +9454,13 @@ try{
   if(window.__bootFail) window.__bootFail('页面没加载出来','启动时有一处数据读不出来，重开一次通常就好。',!navigator.onLine);
 }
 
-const VER='4.0.3';
-const PATCH='3';   /* 同一版本内的补丁号；0 表示版本本体 */
+const VER='4.0.4';
+const PATCH='4';   /* 同一版本内的补丁号；0 表示版本本体 */
 const CHANGELOG = [
+{v:'4.0.4',ps:'4',d:'2026-11-21',kind:'fix',sum:'两处小整理：操作记录入口的箭头、类别筛选的排布',items:[
+ ['修复','「我的」里那张「操作记录」卡右侧原来只写「时间线」两个字、没有箭头，看着像标签不像入口；现在和其它几行统一成「›」，点整行都能进'],
+ ['调整','操作记录的类别筛选原来挤在一起自然换行，最后一项「账号」被挤到第二行只剩一个、右边大片空白；现在固定四列，第一行四个、第二行三个，对齐不再零散']
+]},
 {v:'4.0.3',ps:'3',d:'2026-11-21',kind:'feature',sum:'加了操作日志：你自己在「我的 → 操作记录」能看登录、兑换、换设备这些操作；管理员后台能看全部人的',items:[
  ['新增','「我的」多一张「操作记录」卡：按时间线列出登录、退出、兑换卡密、会员开通、绑定与解绑设备、邀请成功、修改密码、注销申请、免费用完；可按类别筛'],
  ['说明','这份记录只到「做了什么」，不到「学了什么」：背到哪、收藏、笔记内容都不记，也不记 IP，卡密只留后 4 位'],
