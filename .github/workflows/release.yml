@@ -12,11 +12,11 @@ jobs:
   release:
     runs-on: ubuntu-latest
     env:
-      VER: "1.1.8.9"
-      APPVER: "1.1.8.9"
-      SRC: https://aka.doubaocdn.com/s/p1MJR5p1eC
-      APPSRC: https://aka.doubaocdn.com/s/vyWLuMOTRd
-      SWURL: https://aka.doubaocdn.com/s/h1m2DSqR6G
+      VER: "1.1.9.0"
+      APPVER: "1.1.9.0"
+      SRC: https://aka.doubaocdn.com/s/cxu1n4l7cq
+      APPSRC: https://aka.doubaocdn.com/s/0SGKP2BLv4
+      SWURL: https://aka.doubaocdn.com/s/6iY4yRTzyJ
       ADMSRC: https://aka.doubaocdn.com/s/dkV4C7yaIW
     steps:
       - name: Check
@@ -63,7 +63,8 @@ jobs:
           else echo "::notice::后台拉不到，保留原样"; fi
 
           gz=$(stat -c%s app.html.gz 2>/dev/null || echo 0)
-          printf '{\n  "version": "%s",\n  "s": %s,\n  "gz": %s,\n  "app": "%s",\n  "sha": "%s",\n  "date": "2026-11-22"\n}\n' "$APPVER" "$asz" "$gz" "$APPSRC" "$GITHUB_SHA" > version.json
+          TODAY=$(TZ=Asia/Shanghai date +%F)
+          printf '{\n  "version": "%s",\n  "s": %s,\n  "gz": %s,\n  "app": "%s",\n  "sha": "%s",\n  "date": "%s"\n}\n' "$APPVER" "$asz" "$gz" "$APPSRC" "$GITHUB_SHA" "$TODAY" > version.json
           echo ok
 
       - name: Commit
