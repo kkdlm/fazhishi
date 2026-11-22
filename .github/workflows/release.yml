@@ -12,7 +12,7 @@ jobs:
   release:
     runs-on: ubuntu-latest
     env:
-      VER: "4.6.0-p1"
+      VER: "4.6.0"
       PATCH: "1"
       APPVER: "4.6.0"
       APPPATCH: "1"
@@ -23,7 +23,7 @@ jobs:
     steps:
       - name: Check
         run: |
-          if ! echo "$VER" | grep -Eq '^[0-9]\.[0-9]\.[0-9]-p[0-9]$' && ! echo "$VER" | grep -Eq '^[0-9]\.[0-9]\.[0-9]$'; then echo "::error::版本号必须是 主.次.补丁 各一位（0-9）"; exit 1; fi
+          if ! echo "$VER" | grep -Eq '^[0-9]\.[0-9]\.[0-9]$'; then echo "::error::版本号必须是 主.次.补丁 各一位（0-9）"; exit 1; fi
           if ! echo "$PATCH" | grep -Eq '^[0-9]$'; then echo "::error::补丁号必须是单一位（0-9）"; exit 1; fi
           if ! echo "$APPPATCH" | grep -Eq '^[0-9]$'; then echo "::error::正文补丁号必须是单一位（0-9）"; exit 1; fi
 
