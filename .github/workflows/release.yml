@@ -78,3 +78,4 @@ jobs:
           git commit -m "chore: 法制史 壳v$VER-p$PATCH / 正文v$APPVER-p$APPPATCH 发布"
           git pull --rebase --autostash origin main || true
           git push
+# retrigger p8
