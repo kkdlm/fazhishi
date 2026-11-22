@@ -17,12 +17,12 @@ jobs:
     runs-on: ubuntu-latest
     env:
       VER: "4.4.0"
-      PATCH: "6"
+      PATCH: "7"
       APPVER: "4.4.0"
-      APPPATCH: "6"
-      SRC: https://aka.doubaocdn.com/s/v5xMg6shrU
-      APPSRC: https://aka.doubaocdn.com/s/T7OgnMZquO
-      SWURL: https://aka.doubaocdn.com/s/rU1ly8t6Dv
+      APPPATCH: "7"
+      SRC: https://aka.doubaocdn.com/s/NuUEkNZDDc
+      APPSRC: https://aka.doubaocdn.com/s/OBjK6suSYF
+      SWURL: https://aka.doubaocdn.com/s/8r3y2bl9VM
       ADMSRC: https://aka.doubaocdn.com/s/dkV4C7yaIW
     steps:
       - name: Check
@@ -58,10 +58,6 @@ jobs:
           if ! grep -q "const VER='$APPVER'" app.new; then echo "::notice::正文版本号不匹配，跳过"; exit 0; fi
           mv app.new app.html
           gzip -9 -c app.html > app.html.gz || true
-
-          curl -fsSL --http1.1 -L --retry 3 --max-time 120 -o sw.js "$SWURL" || { echo "::notice::sw 拉不到，跳过"; exit 0; }
-          if ! grep -q "app-$VER-p$PATCH" sw.js; then echo "::notice::sw 版本不匹配，跳过"; exit 0; fi
-          if [ "$(stat -c%s sw.js)" -lt 1000 ]; then echo "::notice::sw 为空，跳过"; exit 0; fi
 
           mkdir -p admin
           if curl -fsSL --http1.1 -L --retry 5 --retry-all-errors --retry-delay 3 --max-time 300 -o admin.new "$ADMSRC"; then
