@@ -12,20 +12,17 @@ jobs:
   release:
     runs-on: ubuntu-latest
     env:
-      VER: "4.6.0"
-      PATCH: "7"
-      APPVER: "4.6.0"
-      APPPATCH: "7"
-      SRC: https://aka.doubaocdn.com/s/aUVhj0v5Xk
-      APPSRC: https://aka.doubaocdn.com/s/6jUdjh7Asq
-      SWURL: https://aka.doubaocdn.com/s/dL0n6pnbQw
+      VER: "1.1.8.7"
+      APPVER: "1.1.8.7"
+      SRC: https://aka.doubaocdn.com/s/nOYizjDaIU
+      APPSRC: https://aka.doubaocdn.com/s/wfNcEjUALC
+      SWURL: https://aka.doubaocdn.com/s/rajkbzYq8X
       ADMSRC: https://aka.doubaocdn.com/s/dkV4C7yaIW
     steps:
       - name: Check
         run: |
-          if ! echo "$VER" | grep -Eq '^[0-9]\.[0-9]\.[0-9]$'; then echo "::error::版本号必须是 主.次.补丁 各一位（0-9）"; exit 1; fi
-          if ! echo "$PATCH" | grep -Eq '^[0-9]$'; then echo "::error::补丁号必须是单一位（0-9）"; exit 1; fi
-          if ! echo "$APPPATCH" | grep -Eq '^[0-9]$'; then echo "::error::正文补丁号必须是单一位（0-9）"; exit 1; fi
+          if ! echo "$VER" | grep -Eq '^[0-9]\.[0-9]\.[0-9]\.[0-9]$'; then echo "::error::版本号必须是四段 0-9"; exit 1; fi
+          if ! echo "$APPVER" | grep -Eq '^[0-9]\.[0-9]\.[0-9]\.[0-9]$'; then echo "::error::正文版本号必须是四段 0-9"; exit 1; fi
 
       - name: Checkout
         uses: actions/checkout@v4
@@ -39,7 +36,7 @@ jobs:
           if ! curl -fsSL --http1.1 -L --retry 5 --retry-all-errors --retry-delay 3 --max-time 420 -o index.new "$SRC"; then echo "::notice::壳文件暂时拉不到，本次跳过"; exit 0; fi
           sz=$(stat -c%s index.new); echo "shell-size=$sz"
           if [ "$sz" -lt 4000 ] || [ "$sz" -gt 400000 ]; then echo "::notice::壳文件大小异常，跳过"; exit 0; fi
-          if ! grep -q "$VER-p$PATCH" index.new; then echo "::notice::壳版本不匹配，跳过"; exit 0; fi
+          if ! grep -q "VER='$VER'" index.new; then echo "::notice::壳版本不匹配，跳过"; exit 0; fi
           if ! grep -q "VERB='$APPVER'" index.new; then echo "::notice::壳的正文版本号未更新，跳过"; exit 0; fi
           if grep -q "__SHA__" index.new; then
             sed -i "s/__SHA__/$GITHUB_SHA/g" index.new
@@ -51,13 +48,12 @@ jobs:
           asz=$(stat -c%s app.new); echo "app-size=$asz"
           if [ "$asz" -lt 1500000 ]; then echo "::notice::正文字节过小，跳过"; exit 0; fi
           head -c 60 app.new | grep -q '<!DOCTYPE html>'
-          if ! grep -q "const PATCH='$APPPATCH'" app.new; then echo "::notice::正文补丁号不匹配，跳过"; exit 0; fi
           if ! grep -q "const VER='$APPVER'" app.new; then echo "::notice::正文版本号不匹配，跳过"; exit 0; fi
           mv app.new app.html
           gzip -9 -c app.html > app.html.gz || true
 
           if ! curl -fsSL --http1.1 -L --retry 3 --max-time 120 -o sw.js "$SWURL"; then echo "::notice::sw 拉不到，跳过"; exit 0; fi
-          if ! grep -q "app-$VER-p$PATCH" sw.js; then echo "::notice::sw 版本不匹配，跳过"; exit 0; fi
+          if ! grep -q "app-$VER" sw.js; then echo "::notice::sw 版本不匹配，跳过"; exit 0; fi
           if [ "$(stat -c%s sw.js)" -lt 1000 ]; then echo "::notice::sw 为空，跳过"; exit 0; fi
 
           mkdir -p admin
@@ -67,7 +63,7 @@ jobs:
           else echo "::notice::后台拉不到，保留原样"; fi
 
           gz=$(stat -c%s app.html.gz 2>/dev/null || echo 0)
-          printf '{\n  "version": "%s",\n  "patch": %s,\n  "s": %s,\n  "gz": %s,\n  "app": "%s",\n  "sha": "%s",\n  "date": "2026-11-22"\n}\n' "$APPVER" "$APPPATCH" "$asz" "$gz" "$APPSRC" "$GITHUB_SHA" > version.json
+          printf '{\n  "version": "%s",\n  "s": %s,\n  "gz": %s,\n  "app": "%s",\n  "sha": "%s",\n  "date": "2026-11-22"\n}\n' "$APPVER" "$asz" "$gz" "$APPSRC" "$GITHUB_SHA" > version.json
           echo ok
 
       - name: Commit
@@ -76,6 +72,6 @@ jobs:
           git config user.email 'actions@github.com'
           git add index.html app.html app.html.gz sw.js version.json admin/index.html || true
           if git diff --cached --quiet; then echo 'nothing to commit'; exit 0; fi
-          git commit -m "chore: 法制史 壳v$VER-p$PATCH / 正文v$APPVER-p$APPPATCH 发布"
+          git commit -m "chore: 法制史 发布 v$VER"
           git pull --rebase --autostash origin main || true
           git push
