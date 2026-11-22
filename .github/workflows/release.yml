@@ -16,7 +16,7 @@ jobs:
       PATCH: "0"
       APPVER: "4.6.0"
       APPPATCH: "0"
-      SRC: https://aka.doubaocdn.com/s/zQVkMCGZ1U
+      SRC: https://aka.doubaocdn.com/s/KoQIiJLaCQ
       APPSRC: https://aka.doubaocdn.com/s/bN20l00NuR
       SWURL: https://aka.doubaocdn.com/s/1D2lj3NqJn
       ADMSRC: https://aka.doubaocdn.com/s/dkV4C7yaIW
@@ -40,6 +40,7 @@ jobs:
           sz=$(stat -c%s index.new); echo "shell-size=$sz"
           if [ "$sz" -lt 4000 ] || [ "$sz" -gt 400000 ]; then echo "::notice::壳文件大小异常，跳过"; exit 0; fi
           if ! grep -q "$VER-p$PATCH" index.new; then echo "::notice::壳版本不匹配，跳过"; exit 0; fi
+          if ! grep -q "VERB='$APPVER'" index.new; then echo "::notice::壳的正文版本号未更新，跳过"; exit 0; fi
           if grep -q "__SHA__" index.new; then
             sed -i "s/__SHA__/$GITHUB_SHA/g" index.new
             echo "shell-sha=$GITHUB_SHA"
