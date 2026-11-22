@@ -98,14 +98,14 @@ html,body{margin:0;padding:0;background:#EAEDE1}
 </div></div>
 <script>
 (function(){
-  var VER='4.6.0-p6', VERB='4.6.0', PATCH='6';
+  var VER='1.1.8.7', VERB='1.1.8.7';
   /* release 会把下面这个占位符替换成本次发布的 commit sha：
      有了它，jsDelivr 的 SHA 锚定线路在第一次尝试时就在队列里，不用等 version.json 回来。 */
-  var RAW_SHA='4775af7868b6700d0917550d23362e64840b7fb8';
+  var RAW_SHA='99a281fc362517dd35a3f09e707564d629bf3c0c';
   /* 缓存键只跟「正文版本」，不跟壳版本：
      这样以后只改壳（换线路、改文案）时，已在手机里的 6.5MB 正文照样命中，
      不会因为壳升级就逼所有人重下一遍。 */
-  var KV=VERB+'-'+PATCH;
+  var KV=VERB;
   var fill=document.getElementById('spFill'),pct=document.getElementById('spPct'),
       status=document.getElementById('spStatus'),splash=document.getElementById('splash'),
       boot=document.getElementById('boot');
@@ -359,7 +359,7 @@ html,body{margin:0;padding:0;background:#EAEDE1}
        jsDelivr(@main)       速度尚可但缓存的是上一版正文，校验会被拒，白跑一趟
      所以：raw 优先，Pages 兜底；jsDelivr 不再使用。 */
   /* 发版直链（CDN，国内可直连）：优先级最高，内容与当前版本一致才用 */
-  var APPCDN='https://aka.doubaocdn.com/s/UWst7janCk';
+  var APPCDN='https://aka.doubaocdn.com/s/wfNcEjUALC';
 
   var MIRRORS=[
     'https://raw.githubusercontent.com/kkdlm/fazhishi/main/app.html'
@@ -495,7 +495,7 @@ html,body{margin:0;padding:0;background:#EAEDE1}
             boot.style.display='none';
             var html=await pullOne(RTLIST[i], round?8000:6000, 7000, 150000);
             /* 镜像可能缓存着上一版（jsDelivr 的 @main 有缓存）：版本/补丁对不上一律当这条线路失败，换下一条 */
-            if(html.indexOf("const VER='"+VERB+"'")<0 || html.indexOf("const PATCH='"+PATCH+"'")<0)
+            if(html.indexOf("const VER='"+VERB+"'")<0)
               throw new Error('这条线路给的是旧版本');
             /* 先落盘再挂载：以前是挂上去再异步存，用户一进来就切走会把 6.5MB 写入打断，
                下次打开又得从头下——表现就是「每次都很慢、进度停在 0」。 */
