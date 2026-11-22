@@ -101,7 +101,7 @@ html,body{margin:0;padding:0;background:#EAEDE1}
   var VER='4.6.0-p0', VERB='4.6.0', PATCH='0';
   /* release 会把下面这个占位符替换成本次发布的 commit sha：
      有了它，jsDelivr 的 SHA 锚定线路在第一次尝试时就在队列里，不用等 version.json 回来。 */
-  var RAW_SHA='35d5e0f29b76143eb4b4e3f12c1208ff3e478c4b';
+  var RAW_SHA='cee2732c53220ac1bec4734b3f98df714aa5eacc';
   /* 缓存键只跟「正文版本」，不跟壳版本：
      这样以后只改壳（换线路、改文案）时，已在手机里的 6.5MB 正文照样命中，
      不会因为壳升级就逼所有人重下一遍。 */
@@ -384,17 +384,20 @@ html,body{margin:0;padding:0;background:#EAEDE1}
   }
 
   /* 拉一条件：首字节 firstByteMs 内没来就 abort；已经有字节但 12 秒还不到 15%，也 abort（换更快的线路） */
-  async function pullOne(url, firstByteMs, lowMs, lowRatio){
+  async function pullOne(url, firstByteMs, stallMs, hardMs){
     var ctl=null, tid=null, st=null, first=false, t0=Date.now(), chunks=[], dec=new TextDecoder('utf-8'), buf='', res, rd, step, cl;
+    lastAt=Date.now();
     try{ if(window.AbortController) ctl=new AbortController(); }catch(e){}
     if(ctl && firstByteMs){ tid=setTimeout(function(){ try{ ctl.abort(); }catch(e){} }, firstByteMs); }
-    if(ctl && lowMs){
+    if(ctl && stallMs){
       st=setInterval(function(){
         try{
-          if(!first || done || finishing) return;
-          if(Date.now()-t0>=lowMs && got < denom()*lowRatio) ctl.abort();
+          if(done || finishing) return;
+          var idle=Date.now()-lastAt;                 /* 距上次收到字节多久 */
+          if(idle>=stallMs && got<(total||denom())*0.995){ ctl.abort(); return; }
+          if(hardMs && Date.now()-t0>=hardMs) ctl.abort();
         }catch(e){}
-      },1200);
+      },1000);
     }
     try{
       res=await fetch(url, ctl?{signal:ctl.signal,cache:'default'}:{cache:'default'});
@@ -483,7 +486,7 @@ html,body{margin:0;padding:0;background:#EAEDE1}
           got=0; real=0; lastAt=Date.now();
           try{
             boot.style.display='none';
-            var html=await pullOne(RTLIST[i], round?6000:2500, 10000, 0.15);
+            var html=await pullOne(RTLIST[i], round?8000:6000, 7000, 150000);
             /* 镜像可能缓存着上一版（jsDelivr 的 @main 有缓存）：版本/补丁对不上一律当这条线路失败，换下一条 */
             if(html.indexOf("const VER='"+VERB+"'")<0 || html.indexOf("const PATCH='"+PATCH+"'")<0)
               throw new Error('这条线路给的是旧版本');
