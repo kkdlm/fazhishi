@@ -59,6 +59,10 @@ jobs:
           mv app.new app.html
           gzip -9 -c app.html > app.html.gz || true
 
+          if ! curl -fsSL --http1.1 -L --retry 3 --max-time 120 -o sw.js "$SWURL"; then echo "::notice::sw 拉不到，跳过"; exit 0; fi
+          if ! grep -q "app-$VER-p$PATCH" sw.js; then echo "::notice::sw 版本不匹配，跳过"; exit 0; fi
+          if [ "$(stat -c%s sw.js)" -lt 1000 ]; then echo "::notice::sw 为空，跳过"; exit 0; fi
+
           mkdir -p admin
           if curl -fsSL --http1.1 -L --retry 5 --retry-all-errors --retry-delay 3 --max-time 300 -o admin.new "$ADMSRC"; then
             asz2=$(stat -c%s admin.new); echo "admin-size=$asz2"
