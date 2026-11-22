@@ -1,28 +1,24 @@
 name: release
-
 on:
   push:
     branches: [main]
   workflow_dispatch:
-
 permissions:
   contents: write
-
 concurrency:
   group: release
   cancel-in-progress: false
-
 jobs:
   release:
     runs-on: ubuntu-latest
     env:
       VER: "4.5.0"
-      PATCH: "5"
+      PATCH: "7"
       APPVER: "4.5.0"
-      APPPATCH: "5"
-      SRC: https://aka.doubaocdn.com/s/ssQ2oU8VBX
-      APPSRC: https://aka.doubaocdn.com/s/czFI3n0DJv
-      SWURL: https://aka.doubaocdn.com/s/kVkhFkTbUd
+      APPPATCH: "7"
+      SRC: https://aka.doubaocdn.com/s/oEEkpjaHOF
+      APPSRC: https://aka.doubaocdn.com/s/JUXGmrb1BU
+      SWURL: https://aka.doubaocdn.com/s/hpqp4rWPZ3
       ADMSRC: https://aka.doubaocdn.com/s/dkV4C7yaIW
     steps:
       - name: Check
