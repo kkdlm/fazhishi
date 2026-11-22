@@ -5,9 +5,9 @@
 
 -- 1) 用户地区字段
 alter table profiles add column if not exists ip         text;
-alter table profiles add column if not exists ip_prov    text;   -- 省/直辖市
-alter table profiles add column if not exists ip_city    text;   -- 城市
-alter table profiles add column if not exists ip_isp     text;   -- 运营商/网络
+alter table profiles add column if not exists ip_prov    text;
+alter table profiles add column if not exists ip_city    text;
+alter table profiles add column if not exists ip_isp     text;
 alter table profiles add column if not exists geo_at     timestamptz;
 
 -- 客户端上报自己的出口 IP 与归属地
@@ -34,8 +34,8 @@ end $$;
 create table if not exists support_msgs (
   id          bigserial primary key,
   uid         uuid not null,
-  role        text not null default 'user',      -- user | admin
-  kind        text not null default 'text',      -- text | order | card | system
+  role        text not null default 'user',
+  kind        text not null default 'text',
   body        text,
   meta        jsonb,
   created_at  timestamptz not null default now(),
@@ -97,7 +97,7 @@ begin
   return json_build_object('ok', true, 'msgs', coalesce(arr, '[]'::json));
 end $$;
 
--- 用户未读数（进「我的」页时拉一次，用来显示红点）
+-- 用户未读数
 create or replace function chat_unread()
 returns json
 language plpgsql
@@ -111,8 +111,7 @@ begin
   return json_build_object('ok', true, 'n', n);
 end $$;
 
--- ============ 管理员侧（只有白名单邮箱能调） ============
--- 管理员邮箱写在下面两处，换人时改这里即可
+-- ============ 管理员侧 ============
 create or replace function chat_is_admin()
 returns boolean
 language sql
@@ -121,7 +120,7 @@ as $$
   select coalesce((auth.jwt() ->> 'email') = '2116829553@qq.com', false);
 $$;
 
--- 会话列表：每个用户最后一条 + 未读数
+-- 会话列表：每个用户最后一条 + 未读数（昵称列名是 nickname）
 create or replace function admin_chat_threads()
 returns json
 language plpgsql
@@ -134,7 +133,7 @@ begin
   select json_agg(t) into arr from (
     select m.uid,
            p.email,
-           p.nick,
+           p.nickname as nick,
            p.ip_prov,
            p.ip_city,
            max(m.id)                                  as last_id,
@@ -144,14 +143,14 @@ begin
            sum(case when m.role = 'user' and m.seen_admin = false then 1 else 0 end)::int as unread
       from support_msgs m
       left join profiles p on p.uid = m.uid
-     group by m.uid, p.email, p.nick, p.ip_prov, p.ip_city
+     group by m.uid, p.email, p.nickname, p.ip_prov, p.ip_city
      order by max(m.id) desc
      limit 200
   ) t;
   return coalesce(arr, '[]'::json);
 end $$;
 
--- 某个用户的全部消息（管理员看，并把用户消息标记为已读）
+-- 某个用户的全部消息
 create or replace function admin_chat_msgs(p_uid uuid, p_since bigint default 0)
 returns json
 language plpgsql
