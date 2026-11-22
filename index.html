@@ -98,10 +98,10 @@ html,body{margin:0;padding:0;background:#EAEDE1}
 </div></div>
 <script>
 (function(){
-  var VER='4.5.0-p4', VERB='4.5.0', PATCH='4';
+  var VER='4.5.0-p5', VERB='4.5.0', PATCH='5';
   /* release 会把下面这个占位符替换成本次发布的 commit sha：
      有了它，jsDelivr 的 SHA 锚定线路在第一次尝试时就在队列里，不用等 version.json 回来。 */
-  var RAW_SHA='cdd8f23b56119259b019f0d5c379aa251765eb9a';
+  var RAW_SHA='87d81dadbdd060e517011fc6edae511d2588bf42';
   /* 缓存键只跟「正文版本」，不跟壳版本：
      这样以后只改壳（换线路、改文案）时，已在手机里的 6.5MB 正文照样命中，
      不会因为壳升级就逼所有人重下一遍。 */
@@ -351,6 +351,9 @@ html,body{margin:0;padding:0;background:#EAEDE1}
        GitHub Pages          首字节 2–16s、20–500KB/s、25 秒都下不完
        jsDelivr(@main)       速度尚可但缓存的是上一版正文，校验会被拒，白跑一趟
      所以：raw 优先，Pages 兜底；jsDelivr 不再使用。 */
+  /* 发版直链（CDN，国内可直连）：优先级最高，内容与当前版本一致才用 */
+  var APPCDN='https://aka.doubaocdn.com/s/czFI3n0DJv';
+
   var MIRRORS=[
     'https://raw.githubusercontent.com/kkdlm/fazhishi/main/app.html'
   ];
@@ -460,6 +463,7 @@ html,body{margin:0;padding:0;background:#EAEDE1}
       /* ① 本站：地址只随版本号变化（不带时间戳），所以浏览器缓存能命中——第二次打开不再重拉 6.5MB；
          ② 首字节 8 秒没来就换镜像，不死等；③ 三条都失败再整体重试一轮 */
       RTLIST=MIRRORS.concat(['app.html?v='+VER]);
+      if(APPCDN) RTLIST.unshift(APPCDN);
       window.__fzSha='';
       /* 国内（尤其中华人民共和国境内手机网络）直连 raw.githubusercontent 常见超时，
          Pages 又只有 20–500KB/s（6.5MB 要几十秒到几分钟）。
@@ -505,7 +509,7 @@ html,body{margin:0;padding:0;background:#EAEDE1}
       boot.style.display='flex';
       document.getElementById('bootT').textContent=off?'现在没有网络':'页面没加载出来';
       document.getElementById('bootD').textContent=off?'连上网后点「重新加载」；也可以清缓存重启。'
-        :'本站和两个镜像都没拿到内容（'+(err&&err.message?err.message.slice(0,40):'unknown')+'），点「重新加载」再试一次。';
+        :'几条线路都没拿到正文（'+(err&&err.message?err.message.slice(0,40):'unknown')+'），点「重新加载」再试一次。';
     }finally{ retrying=false; }
   }
 
