@@ -17,12 +17,12 @@ jobs:
     runs-on: ubuntu-latest
     env:
       VER: "4.3.1"
-      PATCH: "5"
+      PATCH: "7"
       APPVER: "4.3.1"
-      APPPATCH: "5"
-      SRC: https://aka.doubaocdn.com/s/8FMjw3r8KD
-      APPSRC: https://aka.doubaocdn.com/s/LJQ0k6lU5D
-      SWURL: https://aka.doubaocdn.com/s/QVRVxPb92h
+      APPPATCH: "7"
+      SRC: https://aka.doubaocdn.com/s/O3HFv4VnYM
+      APPSRC: https://aka.doubaocdn.com/s/KThKh00TO1
+      SWURL: https://aka.doubaocdn.com/s/62QDTzXeMf
       ADMSRC: https://aka.doubaocdn.com/s/dkV4C7yaIW
     steps:
       - name: Check
@@ -70,7 +70,7 @@ jobs:
           else echo "::notice::后台拉不到，保留原样"; fi
 
           gz=$(stat -c%s app.html.gz 2>/dev/null || echo 0)
-          printf '{\n  "version": "%s",\n  "patch": %s,\n  "s": %s,\n  "gz": %s,\n  "sha": "%s",\n  "date": "2026-11-22"\n}\n' "$APPVER" "$APPPATCH" "$asz" "$gz" "$GITHUB_SHA" > version.json
+          printf '{\n  "version": "%s",\n  "patch": %s,\n  "s": %s,\n  "gz": %s,\n  "sha": "%s",\n  "date": "2026-11-26"\n}\n' "$APPVER" "$APPPATCH" "$asz" "$gz" "$GITHUB_SHA" > version.json
           echo ok
 
       - name: Commit
