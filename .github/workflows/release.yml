@@ -14,8 +14,8 @@ jobs:
     env:
       VER: "1.1.8.8"
       APPVER: "1.1.8.8"
-      SRC: https://aka.doubaocdn.com/s/mNjxMqpSCV
-      APPSRC: https://aka.doubaocdn.com/s/ZS3qByUIMg
+      SRC: https://aka.doubaocdn.com/s/EUsQUeyPuA
+      APPSRC: https://aka.doubaocdn.com/s/MrzdfASW4o
       SWURL: https://aka.doubaocdn.com/s/zBGUAjZ26q
       ADMSRC: https://aka.doubaocdn.com/s/dkV4C7yaIW
     steps:
