@@ -98,10 +98,10 @@ html,body{margin:0;padding:0;background:#EAEDE1}
 </div></div>
 <script>
 (function(){
-  var VER='1.1.8.9', VERB='1.1.8.9';
+  var VER='1.1.9.0', VERB='1.1.9.0';
   /* release 会把下面这个占位符替换成本次发布的 commit sha：
      有了它，jsDelivr 的 SHA 锚定线路在第一次尝试时就在队列里，不用等 version.json 回来。 */
-  var RAW_SHA='e7ff7b76af627e4037feec5f44dd0f686529e75a';
+  var RAW_SHA='f2a898d1d9d168161c38a09c644b82081172cc6d';
   /* 缓存键只跟「正文版本」，不跟壳版本：
      这样以后只改壳（换线路、改文案）时，已在手机里的 6.5MB 正文照样命中，
      不会因为壳升级就逼所有人重下一遍。 */
@@ -215,7 +215,7 @@ html,body{margin:0;padding:0;background:#EAEDE1}
       var base='<base href="'+location.origin+location.pathname+'">';
       html=html.replace(/<head([^>]*)>/i,'<head$1>'+base);
       /* 邀请链接：?inv=FZxxxxxx，把码直接送进正文（正文跑在 iframe 里，读不到地址栏 query） */
-      html=html.replace(/<body([^>]*)>/i,'<body$1><script>window.__shellMounted=1;window.__FZ_INV="'+INV+'";<\/script>');
+      html=html.replace(/<body([^>]*)>/i,'<body$1><script>window.__indexMounted=1;window.__FZ_INV="'+INV+'";<\/script>');
     }catch(e){}
     return html;
   }
@@ -359,7 +359,7 @@ html,body{margin:0;padding:0;background:#EAEDE1}
        jsDelivr(@main)       速度尚可但缓存的是上一版正文，校验会被拒，白跑一趟
      所以：raw 优先，Pages 兜底；jsDelivr 不再使用。 */
   /* 发版直链（CDN，国内可直连）：优先级最高，内容与当前版本一致才用 */
-  var APPCDN='https://aka.doubaocdn.com/s/vyWLuMOTRd';
+  var APPCDN='https://aka.doubaocdn.com/s/0SGKP2BLv4';
 
   var MIRRORS=[
     'https://raw.githubusercontent.com/kkdlm/fazhishi/main/app.html'
@@ -401,7 +401,10 @@ html,body{margin:0;padding:0;background:#EAEDE1}
         try{
           if(done || finishing) return;
           var idle=Date.now()-lastAt;                 /* 距上次收到字节多久 */
-          if(idle>=stallMs && got<(total||denom())*0.995){ ctl.abort(); return; }
+          var d=total||denom(); var prog=d>0?(got/d):0;
+          /* 越接近下完越耐心：已经 85% 以上就多等一会儿，别在最后一段把线路切掉重下 */
+          var allowance=stallMs*(prog>0.85?3.2:(prog>0.6?1.8:1));
+          if(idle>=allowance && got<d*0.995){ try{ window.__fzStall={got:got,total:d,idle:idle}; }catch(e){} ctl.abort(); return; }
           if(hardMs && Date.now()-t0>=hardMs) ctl.abort();
         }catch(e){}
       },1000);
@@ -504,7 +507,12 @@ html,body{margin:0;padding:0;background:#EAEDE1}
             return;
           }catch(e){
             lastErr=e;
-            if(!done && !finishing && i<RTLIST.length-1) status.textContent='这条线路太慢，换一条再试…';
+            if(!done && !finishing && i<RTLIST.length-1){
+              var sg=window.__fzStall;
+              status.textContent = (sg && sg.got>0)
+                ? ('这条线卡住了（已下 '+mb(sg.got)+(sg.total>0?('/'+mb(sg.total)+' MB'):' MB')+'），换一条接着下…')
+                : '这条线路太慢，换一条再试…';
+            }
           }
           if(!navigator.onLine) throw (lastErr||new Error('现在没有网络'));
         }
