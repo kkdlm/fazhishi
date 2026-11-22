@@ -13,12 +13,12 @@ jobs:
     runs-on: ubuntu-latest
     env:
       VER: "4.5.0"
-      PATCH: "8"
+      PATCH: "9"
       APPVER: "4.5.0"
-      APPPATCH: "8"
-      SRC: https://aka.doubaocdn.com/s/oWKBblfeFi
-      APPSRC: https://aka.doubaocdn.com/s/ZciVqJdsHM
-      SWURL: https://aka.doubaocdn.com/s/PnCWwaEtUf
+      APPPATCH: "9"
+      SRC: https://aka.doubaocdn.com/s/1ujTVwUe1a
+      APPSRC: https://aka.doubaocdn.com/s/gQsZusMl21
+      SWURL: https://aka.doubaocdn.com/s/020Y5VmRe7
       ADMSRC: https://aka.doubaocdn.com/s/dkV4C7yaIW
     steps:
       - name: Check
@@ -78,4 +78,3 @@ jobs:
           git commit -m "chore: 法制史 壳v$VER-p$PATCH / 正文v$APPVER-p$APPPATCH 发布"
           git pull --rebase --autostash origin main || true
           git push
-# retrigger p8
