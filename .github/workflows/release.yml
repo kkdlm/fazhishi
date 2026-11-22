@@ -17,12 +17,12 @@ jobs:
     runs-on: ubuntu-latest
     env:
       VER: "4.4.0"
-      PATCH: "1"
+      PATCH: "2"
       APPVER: "4.4.0"
-      APPPATCH: "1"
-      SRC: https://aka.doubaocdn.com/s/K65K5zk55t
-      APPSRC: https://aka.doubaocdn.com/s/rDiqAe4AUg
-      SWURL: https://aka.doubaocdn.com/s/OQUJBv7fBp
+      APPPATCH: "2"
+      SRC: https://aka.doubaocdn.com/s/rR3S8YYxqd
+      APPSRC: https://aka.doubaocdn.com/s/qpjLvifFXL
+      SWURL: https://aka.doubaocdn.com/s/B63d7CaUle
       ADMSRC: https://aka.doubaocdn.com/s/dkV4C7yaIW
     steps:
       - name: Check
