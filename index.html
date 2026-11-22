@@ -98,10 +98,10 @@ html,body{margin:0;padding:0;background:#EAEDE1}
 </div></div>
 <script>
 (function(){
-  var VER='1.1.9.4', VERB='1.1.9.4';
+  var VER='1.1.9.5', VERB='1.1.9.5';
   /* release 会把下面这个占位符替换成本次发布的 commit sha：
      有了它，jsDelivr 的 SHA 锚定线路在第一次尝试时就在队列里，不用等 version.json 回来。 */
-  var RAW_SHA='26f7a4051fb16feadffdc877498f7cd2c80fc5cc';
+  var RAW_SHA='5fdb4fd40bf00cd6644a73621b68c8d665720333';
   /* 缓存键只跟「正文版本」，不跟壳版本：
      这样以后只改壳（换线路、改文案）时，已在手机里的 6.5MB 正文照样命中，
      不会因为壳升级就逼所有人重下一遍。 */
@@ -359,7 +359,7 @@ html,body{margin:0;padding:0;background:#EAEDE1}
        jsDelivr(@main)       速度尚可但缓存的是上一版正文，校验会被拒，白跑一趟
      所以：raw 优先，Pages 兜底；jsDelivr 不再使用。 */
   /* 发版直链（CDN，国内可直连）：优先级最高，内容与当前版本一致才用 */
-  var APPCDN='https://aka.doubaocdn.com/s/YH42LfRJAp';
+  var APPCDN='https://aka.doubaocdn.com/s/x3YoKzCVGB';
 
   var MIRRORS=[
     'https://raw.githubusercontent.com/kkdlm/fazhishi/main/app.html'
