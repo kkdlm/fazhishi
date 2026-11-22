@@ -14,7 +14,7 @@ jobs:
     env:
       VER: "1.1.9.7"
       APPVER: "1.1.9.7"
-      SRC: https://aka.doubaocdn.com/s/7UcUMDqMq7
+      SRC: https://aka.doubaocdn.com/s/gf8E2nikdm
       APPSRC: https://aka.doubaocdn.com/s/alsPnlXd7m
       SWURL: https://aka.doubaocdn.com/s/VQJIUV5BMw
       ADMSRC: https://aka.doubaocdn.com/s/LyAWPtVGds
