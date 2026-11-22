@@ -12,18 +12,18 @@ jobs:
   release:
     runs-on: ubuntu-latest
     env:
-      VER: "4.6.0"
-      PATCH: "0"
+      VER: "4.6.0-p1"
+      PATCH: "1"
       APPVER: "4.6.0"
-      APPPATCH: "0"
-      SRC: https://aka.doubaocdn.com/s/KoQIiJLaCQ
-      APPSRC: https://aka.doubaocdn.com/s/bN20l00NuR
-      SWURL: https://aka.doubaocdn.com/s/1D2lj3NqJn
+      APPPATCH: "1"
+      SRC: https://aka.doubaocdn.com/s/6eHlQjUlML
+      APPSRC: https://aka.doubaocdn.com/s/twKfBZrmoY
+      SWURL: https://aka.doubaocdn.com/s/rciAM6VQzE
       ADMSRC: https://aka.doubaocdn.com/s/dkV4C7yaIW
     steps:
       - name: Check
         run: |
-          if ! echo "$VER" | grep -Eq '^[0-9]\.[0-9]\.[0-9]$'; then echo "::error::版本号必须是 主.次.补丁 各一位（0-9）"; exit 1; fi
+          if ! echo "$VER" | grep -Eq '^[0-9]\.[0-9]\.[0-9]-p[0-9]$' && ! echo "$VER" | grep -Eq '^[0-9]\.[0-9]\.[0-9]$'; then echo "::error::版本号必须是 主.次.补丁 各一位（0-9）"; exit 1; fi
           if ! echo "$PATCH" | grep -Eq '^[0-9]$'; then echo "::error::补丁号必须是单一位（0-9）"; exit 1; fi
           if ! echo "$APPPATCH" | grep -Eq '^[0-9]$'; then echo "::error::正文补丁号必须是单一位（0-9）"; exit 1; fi
 
