@@ -1,4 +1,3 @@
-# release pipeline for fazhishi (retry)
 name: release
 
 on:
@@ -18,12 +17,12 @@ jobs:
     runs-on: ubuntu-latest
     env:
       VER: "4.3.1"
-      PATCH: "4"
+      PATCH: "5"
       APPVER: "4.3.1"
-      APPPATCH: "4"
-      SRC: https://aka.doubaocdn.com/s/hUeEfw63pz
-      APPSRC: https://aka.doubaocdn.com/s/yaXaKLLUVX
-      SWURL: https://aka.doubaocdn.com/s/Ae4t2hFXNv
+      APPPATCH: "5"
+      SRC: https://aka.doubaocdn.com/s/8FMjw3r8KD
+      APPSRC: https://aka.doubaocdn.com/s/LJQ0k6lU5D
+      SWURL: https://aka.doubaocdn.com/s/QVRVxPb92h
       ADMSRC: https://aka.doubaocdn.com/s/dkV4C7yaIW
     steps:
       - name: Check
