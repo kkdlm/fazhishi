@@ -98,10 +98,10 @@ html,body{margin:0;padding:0;background:#EAEDE1}
 </div></div>
 <script>
 (function(){
-  var VER='4.6.0-p0', VERB='4.6.0', PATCH='0';
+  var VER='4.6.0-p1', VERB='4.6.0', PATCH='1';
   /* release 会把下面这个占位符替换成本次发布的 commit sha：
      有了它，jsDelivr 的 SHA 锚定线路在第一次尝试时就在队列里，不用等 version.json 回来。 */
-  var RAW_SHA='d24867b4888495948c7d4202e9b7ebf4a0aff777';
+  var RAW_SHA='390fa7fb1e7d232d9327e2a68ac68809dd34b69e';
   /* 缓存键只跟「正文版本」，不跟壳版本：
      这样以后只改壳（换线路、改文案）时，已在手机里的 6.5MB 正文照样命中，
      不会因为壳升级就逼所有人重下一遍。 */
@@ -120,6 +120,11 @@ html,body{margin:0;padding:0;background:#EAEDE1}
 
   function mb(n){ return (n/1048576).toFixed(2); }
   function paint(){
+    try{
+      var dEl=document.getElementById('bootD');
+      if(dEl && !done && got>0 && denom()>0)
+        dEl.textContent='已下 '+mb(got)+' / '+mb(denom())+' MB · 还没下完，先别关页面';
+    }catch(e){}
     if(!isFinite(shown)||shown<0) shown=0;
     fill.style.width = shown.toFixed(1)+'%';
     var pi = Math.min(99, Math.floor(shown));   /* 100 只在真正揭开时给 */
@@ -352,7 +357,7 @@ html,body{margin:0;padding:0;background:#EAEDE1}
        jsDelivr(@main)       速度尚可但缓存的是上一版正文，校验会被拒，白跑一趟
      所以：raw 优先，Pages 兜底；jsDelivr 不再使用。 */
   /* 发版直链（CDN，国内可直连）：优先级最高，内容与当前版本一致才用 */
-  var APPCDN='https://aka.doubaocdn.com/s/bN20l00NuR';
+  var APPCDN='https://aka.doubaocdn.com/s/twKfBZrmoY';
 
   var MIRRORS=[
     'https://raw.githubusercontent.com/kkdlm/fazhishi/main/app.html'
