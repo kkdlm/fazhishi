@@ -16,7 +16,7 @@ jobs:
       PATCH: "0"
       APPVER: "4.6.0"
       APPPATCH: "0"
-      SRC: https://aka.doubaocdn.com/s/Vz40nmYxwc
+      SRC: https://aka.doubaocdn.com/s/zQVkMCGZ1U
       APPSRC: https://aka.doubaocdn.com/s/bN20l00NuR
       SWURL: https://aka.doubaocdn.com/s/1D2lj3NqJn
       ADMSRC: https://aka.doubaocdn.com/s/dkV4C7yaIW
@@ -74,6 +74,7 @@ jobs:
           git config user.name 'github-actions'
           git config user.email 'actions@github.com'
           git add index.html app.html app.html.gz sw.js version.json admin/index.html || true
+          if git diff --cached --quiet(); then true; fi
           if git diff --cached --quiet; then echo 'nothing to commit'; exit 0; fi
           git commit -m "chore: 法制史 壳v$VER-p$PATCH / 正文v$APPVER-p$APPPATCH 发布"
           git pull --rebase --autostash origin main || true
