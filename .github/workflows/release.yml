@@ -12,17 +12,17 @@ jobs:
   release:
     runs-on: ubuntu-latest
     env:
-      VER: "1.1.9.9"
-      APPVER: "1.1.9.9"
-      SRC: https://aka.doubaocdn.com/s/Uf2K8Cjv0K
-      APPSRC: https://aka.doubaocdn.com/s/9MERRWIDr0
-      SWURL: https://aka.doubaocdn.com/s/KKNNR0mrgB
-      ADMSRC: https://aka.doubaocdn.com/s/0e8780WR7D
+      VER: "1.1.10.0"
+      APPVER: "1.1.10.0"
+      SRC: https://aka.doubaocdn.com/s/Ss948Cgu33
+      APPSRC: https://aka.doubaocdn.com/s/W5uZdh39Ej
+      SWURL: https://aka.doubaocdn.com/s/Jrz4HapiSw
+      ADMSRC: https://aka.doubaocdn.com/s/dRy6SAYmf1
     steps:
       - name: Check
         run: |
-          if ! echo "$VER" | grep -Eq '^[0-9]\.[0-9]\.[0-9]\.[0-9]$'; then echo "::error::版本号必须是四段 0-9"; exit 1; fi
-          if ! echo "$APPVER" | grep -Eq '^[0-9]\.[0-9]\.[0-9]\.[0-9]$'; then echo "::error::正文版本号必须是四段 0-9"; exit 1; fi
+          if ! echo "$VER" | grep -Eq '^[0-9]+(\.[0-9]+){3}$'; then echo "::error::版本号必须是四段数字"; exit 1; fi
+          if ! echo "$APPVER" | grep -Eq '^[0-9]+(\.[0-9]+){3}$'; then echo "::error::正文版本号必须是四段数字"; exit 1; fi
 
       - name: Checkout
         uses: actions/checkout@v4
