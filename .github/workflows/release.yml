@@ -1,3 +1,4 @@
+# release pipeline for fazhishi (retry)
 name: release
 
 on:
