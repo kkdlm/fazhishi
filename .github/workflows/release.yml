@@ -12,12 +12,12 @@ jobs:
   release:
     runs-on: ubuntu-latest
     env:
-      VER: "1.2.0.7"
-      APPVER: "1.2.0.7"
-      SRC: https://aka.doubaocdn.com/s/gp9IbVlJbL
-      APPSRC: https://aka.doubaocdn.com/s/nHuYMnU4RU
-      SWURL: https://aka.doubaocdn.com/s/FVv8S1gEY7
-      ADMSRC: https://aka.doubaocdn.com/s/Knees4K9R6
+      VER: "1.2.0.8"
+      APPVER: "1.2.0.8"
+      SRC: https://aka.doubaocdn.com/s/OcqmMu7Odr
+      APPSRC: https://aka.doubaocdn.com/s/VGxhxOYofm
+      SWURL: https://aka.doubaocdn.com/s/UozoTrUBk6
+      ADMSRC: https://aka.doubaocdn.com/s/Ad4k4rX9it
     steps:
       - name: Check
         run: |
