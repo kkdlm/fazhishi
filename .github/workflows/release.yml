@@ -1,5 +1,5 @@
 name: release
-# 2026-11-25T19:55+08:00 重跑（CDN 已就绪）：1.2.1.3 进度冲突自动合并
+# 2026-11-25T20:05+08:00 单科 1.2.1.4（读不到云端不盲写）
 on:
   push:
     branches: [main]
@@ -13,11 +13,11 @@ jobs:
   release:
     runs-on: ubuntu-latest
     env:
-      VER: "1.2.1.3"
-      APPVER: "1.2.1.3"
-      SRC: https://aka.doubaocdn.com/s/jRfi2rcY55
-      APPSRC: https://aka.doubaocdn.com/s/tJIwyMOMdX
-      SWURL: https://aka.doubaocdn.com/s/fnvZhjGb1w
+      VER: "1.2.1.4"
+      APPVER: "1.2.1.4"
+      SRC: https://aka.doubaocdn.com/s/UoMFMXxqf9
+      APPSRC: https://aka.doubaocdn.com/s/1B4d8rTx6Z
+      SWURL: https://aka.doubaocdn.com/s/VjEOdy59bj
       ADMSRC: https://aka.doubaocdn.com/s/RGt89vytX7
     steps:
       - name: Check
