@@ -1,5 +1,5 @@
 name: release
-# 2026-11-25T20:10+08:00 重跑 1.2.1.4（CDN 就绪）
+# 2026-11-25T20:12+08:00 后台门页：进度只认法制史那一行
 on:
   push:
     branches: [main]
@@ -18,7 +18,7 @@ jobs:
       SRC: https://aka.doubaocdn.com/s/UoMFMXxqf9
       APPSRC: https://aka.doubaocdn.com/s/1B4d8rTx6Z
       SWURL: https://aka.doubaocdn.com/s/VjEOdy59bj
-      ADMSRC: https://aka.doubaocdn.com/s/RGt89vytX7
+      ADMSRC: https://aka.doubaocdn.com/s/GWubbRe0WG
     steps:
       - name: Check
         run: |
