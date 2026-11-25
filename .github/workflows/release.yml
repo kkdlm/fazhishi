@@ -1,5 +1,5 @@
 name: release
-# 2026-11-25T19:22+08:00 后台门页更新（报错标记已回应/待回应）
+# 2026-11-25T20:00+08:00 1.2.1.3 进度冲突自动合并
 on:
   push:
     branches: [main]
@@ -13,11 +13,11 @@ jobs:
   release:
     runs-on: ubuntu-latest
     env:
-      VER: "1.2.1.2"
-      APPVER: "1.2.1.2"
-      SRC: https://aka.doubaocdn.com/s/NM5g5mxOFB
-      APPSRC: https://aka.doubaocdn.com/s/e0mOXFoQsM
-      SWURL: https://aka.doubaocdn.com/s/xG0nPVDVDu
+      VER: "1.2.1.3"
+      APPVER: "1.2.1.3"
+      SRC: https://aka.doubaocdn.com/s/jRfi2rcY55
+      APPSRC: https://aka.doubaocdn.com/s/tJIwyMOMdX
+      SWURL: https://aka.doubaocdn.com/s/fnvZhjGb1w
       ADMSRC: https://aka.doubaocdn.com/s/RGt89vytX7
     steps:
       - name: Check
