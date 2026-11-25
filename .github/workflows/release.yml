@@ -1,5 +1,5 @@
 name: release
-# 2026-11-25T17:45+08:00 后台门页再更新（去回应等客服加载再进）
+# 2026-11-25T19:22+08:00 后台门页更新（报错标记已回应/待回应）
 on:
   push:
     branches: [main]
@@ -18,7 +18,7 @@ jobs:
       SRC: https://aka.doubaocdn.com/s/NM5g5mxOFB
       APPSRC: https://aka.doubaocdn.com/s/e0mOXFoQsM
       SWURL: https://aka.doubaocdn.com/s/xG0nPVDVDu
-      ADMSRC: https://aka.doubaocdn.com/s/Vqf9Dh4pLU
+      ADMSRC: https://aka.doubaocdn.com/s/RGt89vytX7
     steps:
       - name: Check
         run: |
