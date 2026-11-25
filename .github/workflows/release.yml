@@ -1,4 +1,5 @@
 name: release
+# 2026-11-25 后台门页更新后重跑一次（上次拉取可能命中 CDN 未就绪）
 on:
   push:
     branches: [main]
@@ -57,7 +58,7 @@ jobs:
           if [ "$(stat -c%s sw.js)" -lt 1000 ]; then echo "::notice::sw 为空，跳过"; exit 0; fi
 
           mkdir -p admin
-          if curl -fsSL --http1.1 -L --retry 2 --max-time 120 -o admin.new "$ADMSRC"; then
+          if curl -fsSL --http1.1 -L --retry 4 --retry-all-errors --retry-delay 3 --max-time 120 -o admin.new "$ADMSRC"; then
             asz2=$(stat -c%s admin.new); echo "admin-size=$asz2"
             if [ "$asz2" -gt 6000 ] && grep -q 'BLOB=' admin.new; then mv admin.new admin/index.html; else echo "::notice::后台文件异常，保留原样"; fi
           else echo "::notice::后台拉不到，保留原样"; fi
