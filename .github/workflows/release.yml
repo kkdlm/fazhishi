@@ -14,7 +14,7 @@ jobs:
     env:
       VER: "1.2.1.1"
       APPVER: "1.2.1.1"
-      SRC: https://aka.doubaocdn.com/s/N09W9sjtaF
+      SRC: https://aka.doubaocdn.com/s/y602YtPbaU
       APPSRC: https://aka.doubaocdn.com/s/KfUruCzEP2
       SWURL: https://aka.doubaocdn.com/s/wJVmSY1VcV
       ADMSRC: https://aka.doubaocdn.com/s/0FDEgVujbd
@@ -64,7 +64,12 @@ jobs:
 
           gz=$(stat -c%s app.html.gz 2>/dev/null || echo 0)
           TODAY=$(TZ=Asia/Shanghai date +%F)
-          printf '{\n  "version": "%s",\n  "s": %s,\n  "gz": %s,\n  "app": "%s",\n  "sha": "%s",\n  "date": "%s"\n}\n' "$APPVER" "$asz" "$gz" "$APPSRC" "$GITHUB_SHA" "$TODAY" > version.json
+          printf '{\n  "version": "%s",\n  "s": %s,\n  "gz": %s,
+  "app": "%s",
+  "sha": "%s",
+  "date": "%s"
+}
+' "$APPVER" "$asz" "$gz" "$APPSRC" "$GITHUB_SHA" "$TODAY" > version.json
           echo ok
 
       - name: Commit
