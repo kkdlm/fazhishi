@@ -64,12 +64,7 @@ jobs:
 
           gz=$(stat -c%s app.html.gz 2>/dev/null || echo 0)
           TODAY=$(TZ=Asia/Shanghai date +%F)
-          printf '{\n  "version": "%s",\n  "s": %s,\n  "gz": %s,
-  "app": "%s",
-  "sha": "%s",
-  "date": "%s"
-}
-' "$APPVER" "$asz" "$gz" "$APPSRC" "$GITHUB_SHA" "$TODAY" > version.json
+          printf '{"version":"%s","s":%s,"gz":%s,"app":"%s","sha":"%s","date":"%s"}\n' "$APPVER" "$asz" "$gz" "$APPSRC" "$GITHUB_SHA" "$TODAY" > version.json
           echo ok
 
       - name: Commit
